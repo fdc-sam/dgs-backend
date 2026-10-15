@@ -27,6 +27,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Behind a TLS-terminating proxy (Render): TRUSTED_PROXIES=* so URLs are generated as https.
+        if ($proxies = env('TRUSTED_PROXIES')) {
+            $middleware->trustProxies(at: $proxies === '*' ? '*' : explode(',', $proxies));
+        }
         $middleware->append(SecurityHeaders::class);
         $middleware->alias([
             'customer' => EnsureCustomer::class,
