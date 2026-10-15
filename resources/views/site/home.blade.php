@@ -11,8 +11,15 @@
         'clock' => '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm.75 10.4 3.5 2.1-.75 1.25-4.25-2.55V7h1.5z"/>',
         'fb' => '<path d="M14 9V7.5c0-.7.15-1 1.1-1H17V3h-2.8C11.3 3 10.5 4.5 10.5 7v2H8v3.5h2.5V21H14v-8.5h2.6L17 9z"/>',
         'star' => '<path d="m12 17.3 6.2 3.7-1.6-7 5.4-4.7-7.2-.6L12 2 9.2 8.7 2 9.3l5.4 4.7-1.6 7z"/>',
+        'android' => '<path d="m17.6 9.48 1.84-3.18a.63.63 0 0 0-1.09-.63l-1.88 3.24a11.4 11.4 0 0 0-8.94 0L5.65 5.67a.64.64 0 0 0-1.09.63L6.4 9.48A10.8 10.8 0 0 0 1 18h22a10.8 10.8 0 0 0-5.4-8.52zM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5z"/>',
     ];
     $svg = fn ($k, $cls = 'h-5 w-5') => '<svg class="'.$cls.'" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">'.$icon[$k].'</svg>';
+    // Customer app (public/downloads/dgs-salon.apk, copied in before deploy — not in git). Hidden when absent.
+    $apkPath = public_path('downloads/dgs-salon.apk');
+    $apk = is_file($apkPath) ? [
+        'url' => asset('downloads/dgs-salon.apk').'?v='.filemtime($apkPath),
+        'size' => max(1, round(filesize($apkPath) / 1048576)),
+    ] : null;
 @endphp
 <x-site.layout :s="$s" :seo="$seo" :json-ld="$jsonLd">
     <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-primary focus:px-4 focus:py-2 focus:text-on-primary">Skip to content</a>
@@ -24,6 +31,7 @@
                 <span class="hidden font-semibold sm:block">{{ $name }}</span>
             </a>
             <nav class="ml-auto hidden items-center gap-1 text-sm font-medium md:flex" aria-label="Sections">
+                @if ($apk)<a href="#app" class="rounded-full px-3 py-2 hover:bg-surface-container-high">Get the app</a>@endif
                 @if ($categories->isNotEmpty())<a href="#services" class="rounded-full px-3 py-2 hover:bg-surface-container-high">Services & prices</a>@endif
                 @if ($promotions->isNotEmpty())<a href="#promos" class="rounded-full px-3 py-2 hover:bg-surface-container-high">Promos</a>@endif
                 @if ($branches->isNotEmpty())<a href="#visit" class="rounded-full px-3 py-2 hover:bg-surface-container-high">Location & hours</a>@endif
@@ -55,6 +63,9 @@
                         </p>
                     @endif
                     <div class="mt-8 flex flex-wrap gap-3">
+                        @if ($apk)
+                            <a href="{{ $apk['url'] }}" download="DGS-Salon.apk" class="inline-flex min-h-12 items-center gap-2 rounded-full bg-white px-6 font-semibold text-on-surface hover:bg-white/90">{!! $svg('android') !!} Download for Android</a>
+                        @endif
                         @if ($tel)
                             <a href="{{ $tel }}" class="inline-flex min-h-12 items-center gap-2 rounded-full bg-gold px-6 font-semibold text-on-primary-container hover:brightness-95">{!! $svg('phone') !!} Call {{ $phone }}</a>
                         @endif
@@ -71,6 +82,27 @@
                 </div>
             </div>
         </section>
+
+        {{-- Customer app --}}
+        @if ($apk)
+            <section id="app" class="scroll-mt-20 border-b border-outline-variant/60">
+                <div class="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 sm:px-6 md:flex-row md:items-center md:justify-between">
+                    <div class="max-w-2xl">
+                        <h2 class="text-2xl font-semibold tracking-tight">Book from your phone</h2>
+                        <p class="mt-2 text-on-surface-variant">Get the {{ $name }} app for Android to book appointments and get reminders before your visit.</p>
+                        <ol class="mt-4 list-decimal space-y-1 pl-5 text-sm text-on-surface-variant">
+                            <li>On your Android phone, tap <strong class="text-on-surface">Download for Android</strong>.</li>
+                            <li>Open the downloaded file. If your phone asks, allow your browser to <strong class="text-on-surface">install unknown apps</strong>.</li>
+                            <li>Tap <strong class="text-on-surface">Install</strong>, then open the app and sign up.</li>
+                        </ol>
+                    </div>
+                    <div class="flex flex-col items-start gap-2 md:items-center">
+                        <a href="{{ $apk['url'] }}" download="DGS-Salon.apk" class="inline-flex min-h-12 items-center gap-2 rounded-full bg-primary px-6 font-semibold text-on-primary shadow-e1 hover:bg-primary-hover">{!! $svg('android') !!} Download for Android</a>
+                        <p class="text-xs text-on-surface-variant">Android 8.0 or newer · {{ $apk['size'] }} MB</p>
+                    </div>
+                </div>
+            </section>
+        @endif
 
         {{-- Services & prices --}}
         @if ($categories->isNotEmpty())
