@@ -1,0 +1,134 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../views/**/*.blade.php';
+
+/*
+ | DGS admin design tokens — Material Design 3 tonal scheme seeded from the logo gold (#F0B800).
+ | Gold fails contrast as text on white, so it is used for containers/accents; text & primary actions use deep amber.
+ */
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+
+    --color-gold: #F0B800;
+    --color-gold-soft: #FFF1C7;
+
+    --color-primary: #7A5900;
+    --color-primary-hover: #664A00;
+    --color-on-primary: #FFFFFF;
+    --color-primary-container: #FFDF9E;
+    --color-on-primary-container: #261A00;
+
+    --color-secondary-container: #F4E0BB;
+    --color-on-secondary-container: #251A04;
+
+    --color-surface: #FFFBF5;
+    --color-surface-dim: #F5EFE6;
+    --color-surface-container: #FAF3E8;
+    --color-surface-container-high: #F2EADC;
+    --color-on-surface: #1F1B13;
+    --color-on-surface-variant: #4E4639;
+    --color-outline: #807667;
+    --color-outline-variant: #D2C5B4;
+
+    --color-success: #1E6B3A;
+    --color-success-container: #D2F2DB;
+    --color-info: #1D5A8E;
+    --color-info-container: #D6E7F7;
+    --color-warning: #8A5100;
+    --color-warning-container: #FFE3C2;
+    --color-danger: #B3261E;
+    --color-danger-container: #F9DEDC;
+
+    --radius-card: 1rem;
+    --radius-field: 0.75rem;
+
+    --shadow-e1: 0 1px 2px rgb(31 27 19 / 0.08), 0 1px 3px 1px rgb(31 27 19 / 0.05);
+    --shadow-e2: 0 2px 6px 2px rgb(31 27 19 / 0.08), 0 1px 2px rgb(31 27 19 / 0.1);
+}
+
+@layer base {
+    html { -webkit-font-smoothing: antialiased; }
+    body { @apply bg-surface text-on-surface; }
+    [x-cloak] { display: none !important; }
+    :focus-visible { @apply outline-2 outline-offset-2 outline-primary; }
+}
+
+@layer components {
+    .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        font-size: 1.25rem;
+        line-height: 1;
+        user-select: none;
+    }
+    .icon-fill { font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24; }
+
+    .field {
+        @apply block w-full rounded-field border border-outline-variant bg-white px-3.5 py-2.5 text-sm text-on-surface
+            placeholder:text-outline shadow-none transition
+            focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none
+            disabled:bg-surface-dim disabled:text-on-surface-variant;
+    }
+    .field-error { @apply border-danger focus:border-danger focus:ring-danger/20; }
+    .label { @apply mb-1.5 block text-sm font-medium text-on-surface-variant; }
+
+    .table-base { @apply w-full text-left text-sm; }
+    .table-base thead th { @apply whitespace-nowrap border-b border-outline-variant bg-surface-container px-4 py-3 text-xs font-semibold uppercase tracking-wide text-on-surface-variant; }
+    .table-base tbody td { @apply border-b border-outline-variant/60 px-4 py-3 align-middle; }
+    .table-base tbody tr { @apply transition-colors hover:bg-surface-container/60; }
+
+    .nav-link { @apply flex min-h-11 items-center gap-3 rounded-full px-4 text-sm font-medium text-on-surface-variant transition hover:bg-surface-container-high; }
+    .nav-link-active { @apply bg-primary-container text-on-primary-container hover:bg-primary-container; }
+}
+
+/*
+ | Select2 (resources/js/select2.js) styled like .field: same height, radius, border, focus ring and palette.
+ | Not in a layer and prefixed with `body` so it beats select2.css, which is unlayered and loads on its own.
+ */
+body .select2-container { @apply text-sm; }
+body .select2-container--default .select2-selection--single,
+body .select2-container--default .select2-selection--multiple {
+    @apply flex min-h-[2.625rem] items-center rounded-field border border-outline-variant bg-white transition;
+}
+body .select2-container--default .select2-selection--single .select2-selection__rendered {
+    @apply truncate py-2.5 pl-3.5 pr-9 leading-5 text-on-surface;
+}
+body .select2-container--default .select2-selection--single .select2-selection__placeholder { @apply text-outline; }
+body .select2-container--default .select2-selection--single .select2-selection__arrow { @apply top-0 right-2 h-full w-6; }
+body .select2-container--default .select2-selection--single .select2-selection__arrow b { border-color: var(--color-on-surface-variant) transparent transparent transparent; }
+body .select2-container--default.select2-container--open .select2-selection--single .select2-selection__arrow b { border-color: transparent transparent var(--color-on-surface-variant) transparent; }
+body .select2-container--default .select2-selection--single { @apply relative; }
+body .select2-container--default .select2-selection--single .select2-selection__clear {
+    @apply absolute top-1/2 right-8 m-0 h-6 w-6 -translate-y-1/2 rounded-full border-0 bg-transparent p-0 text-lg leading-6 text-outline hover:bg-surface-container-high hover:text-on-surface;
+}
+
+body .select2-container--default.select2-container--focus .select2-selection,
+body .select2-container--default.select2-container--open .select2-selection { @apply border-primary ring-2 ring-primary/20; }
+body .select2-container--default.select2-container--disabled .select2-selection { @apply cursor-not-allowed bg-surface-dim; }
+body .select2-error .select2-selection { @apply border-danger; }
+
+body .select2-container--default .select2-selection--multiple { @apply flex-wrap gap-1 px-2 py-1.5; }
+body .select2-container--default .select2-selection--multiple .select2-selection__rendered { @apply m-0 flex flex-wrap gap-1 p-0; }
+body .select2-container--default .select2-selection--multiple .select2-selection__choice {
+    @apply m-0 flex items-center gap-1 rounded-full border-0 bg-secondary-container py-0.5 pr-2.5 pl-1 text-xs font-medium text-on-secondary-container;
+}
+body .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+    @apply static rounded-full border-0 px-1.5 text-on-secondary-container hover:bg-primary/10;
+}
+body .select2-container .select2-search--inline .select2-search__field { @apply m-0 h-7 px-1 font-sans text-sm; }
+
+body .select2-dropdown { @apply z-[60] overflow-hidden rounded-field border border-outline-variant bg-white shadow-e2; }
+body .select2-container--open .select2-dropdown--below { @apply mt-1 rounded-field border-t; }
+body .select2-container--open .select2-dropdown--above { @apply mb-1 rounded-field border-b; }
+body .select2-search--dropdown { @apply p-2; }
+body .select2-container--default .select2-search--dropdown .select2-search__field {
+    @apply rounded-full border border-outline-variant px-3.5 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20;
+}
+body .select2-results__option { @apply px-3.5 py-2.5; }
+body .select2-container--default .select2-results > .select2-results__options { @apply max-h-72; }
+body .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable { @apply bg-primary-container text-on-primary-container; }
+body .select2-container--default .select2-results__option--selected { @apply bg-surface-container font-medium; }
+body .select2-container--default .select2-results__option--disabled { @apply text-outline; }
+/* A Select2 box with a leading icon (data-container-class="select2-with-icon", icon placed by the page). */
+body .select2-with-icon .select2-selection--single .select2-selection__rendered { @apply pl-11; }
