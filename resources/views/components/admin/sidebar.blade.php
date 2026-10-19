@@ -31,40 +31,44 @@
     ];
 @endphp
 
+@php
+    $initials = \Illuminate\Support\Str::of($user->name)->explode(' ')->map(fn ($p) => mb_substr($p, 0, 1))->take(2)->join('');
+@endphp
+
 {{-- Mobile scrim --}}
 <div x-show="nav" x-cloak x-transition.opacity class="fixed inset-0 z-30 bg-on-surface/40 lg:hidden" @click="nav = false" aria-hidden="true"></div>
 
-<aside class="fixed inset-y-0 left-0 z-40 flex w-72 -translate-x-full flex-col border-r border-outline-variant bg-surface-container transition-transform lg:translate-x-0"
+<aside class="fixed inset-y-0 left-0 z-40 flex w-72 -translate-x-full flex-col border-r border-outline-variant bg-white transition-transform lg:translate-x-0"
        :class="nav && 'translate-x-0'" aria-label="Main navigation">
-    <div class="flex items-center gap-3 px-6 py-5">
-        <img src="{{ $logoUrl }}" alt="" class="h-11 w-11 rounded-xl bg-white object-contain p-0.5 shadow-e1">
-        <div class="min-w-0">
-            <p class="truncate text-base font-semibold leading-tight">{{ $salonName }}</p>
-            <p class="text-xs text-on-surface-variant">Admin portal</p>
-        </div>
-    </div>
+    <a href="{{ route('dashboard') }}" class="flex items-center gap-3 px-6 pb-5 pt-6">
+        <img src="{{ $logoUrl }}" alt="" class="h-11 w-11 rounded-xl bg-white object-contain p-0.5 ring-1 ring-outline-variant">
+        <span class="min-w-0">
+            <span class="block truncate text-lg font-bold leading-tight tracking-tight">{{ $salonName }}</span>
+            <span class="block text-xs text-outline">Admin portal</span>
+        </span>
+    </a>
 
-    <nav class="flex-1 space-y-5 overflow-y-auto px-3 pb-6">
+    <nav class="flex-1 space-y-6 overflow-y-auto px-4 pb-6 pt-2">
         @foreach ($sections as $section => $links)
             @php $visible = array_filter($links, fn ($l) => $l[3]); @endphp
             @if ($visible)
                 <div>
-                    <p class="px-4 pb-1 text-xs font-semibold uppercase tracking-wider text-outline">{{ $section }}</p>
-                    <ul class="space-y-0.5">
+                    <p class="eyebrow px-3.5 pb-2">{{ $section }}</p>
+                    <ul class="space-y-1">
                         @foreach ($visible as $link)
                             @php $active = request()->routeIs($link[4] ?? $link[0]); @endphp
                             <li>
                                 <a href="{{ route($link[0]) }}" @class(['nav-link', 'nav-link-active' => $active]) @if ($active) aria-current="page" @endif>
-                                    <span @class(['material-symbols-outlined', 'icon-fill' => $active]) aria-hidden="true">{{ $link[2] }}</span>
+                                    <span class="material-symbols-outlined nav-icon" aria-hidden="true">{{ $link[2] }}</span>
                                     <span class="flex-1">{{ $link[1] }}</span>
                                     @if ($link[0] === 'notifications.index' && $unreadCount > 0)
-                                        <span class="rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-on-primary">{{ $unreadCount > 99 ? '99+' : $unreadCount }}</span>
+                                        <span class="rounded-full bg-gold px-2 py-0.5 text-xs font-semibold text-on-surface">{{ $unreadCount > 99 ? '99+' : $unreadCount }}</span>
                                     @endif
                                     @if ($link[0] === 'products.index' && $lowStockCount > 0)
                                         <span class="rounded-full bg-warning-container px-2 py-0.5 text-xs font-semibold text-warning" title="Low or out of stock" aria-label="{{ $lowStockCount }} low or out of stock">{{ $lowStockCount > 99 ? '99+' : $lowStockCount }}</span>
                                     @endif
                                     @if ($link[0] === 'payments.index' && $paymentsToVerify > 0)
-                                        <span class="rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-on-primary" aria-label="{{ $paymentsToVerify }} to verify">{{ $paymentsToVerify > 99 ? '99+' : $paymentsToVerify }}</span>
+                                        <span class="rounded-full bg-gold px-2 py-0.5 text-xs font-semibold text-on-surface" aria-label="{{ $paymentsToVerify }} to verify">{{ $paymentsToVerify > 99 ? '99+' : $paymentsToVerify }}</span>
                                     @endif
                                 </a>
                             </li>
@@ -74,4 +78,16 @@
             @endif
         @endforeach
     </nav>
+
+    <a href="{{ route('profile.edit') }}" class="mx-4 mb-4 flex items-center gap-3 border-t border-outline-variant px-2 pt-4 hover:opacity-80">
+        @if ($user->profile_photo)
+            <img src="{{ $user->profilePhotoUrl() }}" alt="" class="h-11 w-11 shrink-0 rounded-full object-cover">
+        @else
+            <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gold text-sm font-bold text-on-surface" aria-hidden="true">{{ $initials }}</span>
+        @endif
+        <span class="min-w-0 flex-1">
+            <span class="block truncate text-sm font-semibold">{{ $user->name }}</span>
+            <span class="block truncate text-xs text-outline">{{ $user->role->label() }}</span>
+        </span>
+    </a>
 </aside>

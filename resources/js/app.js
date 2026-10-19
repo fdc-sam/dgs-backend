@@ -18,9 +18,11 @@ document.addEventListener('submit', (event) => {
 
 /** Line/bar chart helper used by dashboard & reports: <canvas data-chart='{"type":"line","labels":[],"series":[...]}'> */
 function renderCharts() {
+    Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
     document.querySelectorAll('canvas[data-chart]').forEach((canvas) => {
         const config = JSON.parse(canvas.dataset.chart);
-        const palette = ['#7A5900', '#F0B800', '#1D5A8E', '#1E6B3A', '#B3261E'];
+        // Ink first, then the brand gold; area fills stay faint so lines read like the admin's line icons.
+        const palette = ['#18181B', '#F0B800', '#1D5A8E', '#15803D', '#B3261E'];
         new Chart(canvas, {
             type: config.type ?? 'line',
             data: {
@@ -29,11 +31,12 @@ function renderCharts() {
                     label: s.label,
                     data: s.data,
                     borderColor: palette[i % palette.length],
-                    backgroundColor: (config.type === 'bar' ? palette[i % palette.length] : palette[i % palette.length] + '22'),
-                    fill: config.type !== 'bar',
+                    backgroundColor: (config.type === 'bar' ? palette[i % palette.length] : palette[i % palette.length] + '12'),
+                    fill: config.type !== 'bar' && i === 0,
                     tension: 0.35,
                     borderWidth: 2,
-                    pointRadius: 2,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
                     borderRadius: config.type === 'bar' ? 6 : 0,
                 })),
             },
@@ -41,10 +44,10 @@ function renderCharts() {
                 responsive: true,
                 maintainAspectRatio: false,
                 interaction: { mode: 'index', intersect: false },
-                plugins: { legend: { display: config.series.length > 1, labels: { usePointStyle: true } } },
+                plugins: { legend: { display: config.series.length > 1, align: 'end', labels: { usePointStyle: true, boxWidth: 6, boxHeight: 6 } } },
                 scales: {
-                    x: { grid: { display: false } },
-                    y: { beginAtZero: true, grid: { color: '#D2C5B455' }, ticks: { callback: (v) => (config.money ? '₱' : '') + Number(v).toLocaleString() } },
+                    x: { grid: { display: false }, border: { display: false }, ticks: { color: '#707078' } },
+                    y: { beginAtZero: true, grid: { color: '#E6E6E9' }, border: { display: false }, ticks: { color: '#707078', callback: (v) => (config.money ? '₱' : '') + Number(v).toLocaleString() } },
                 },
             },
         });

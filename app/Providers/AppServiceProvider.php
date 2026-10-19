@@ -70,7 +70,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('super-admin', fn (User $user) => $user->isSuperAdmin() && $user->isActive());
 
         // Shared chrome data for admin/guest layouts.
-        View::composer(['components.admin.layout', 'components.admin.sidebar', 'components.admin.topbar', 'components.guest.layout'], function ($view) {
+        View::composer(['admin.dashboard', 'components.admin.layout', 'components.admin.sidebar', 'components.admin.topbar', 'components.guest.layout'], function ($view) {
             $settings = app(SettingsService::class);
             $view->with('salonName', $settings->get('salon_name', config('app.name')));
             $view->with('logoUrl', $settings->logoUrl());
