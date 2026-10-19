@@ -68,7 +68,7 @@ class AuthController extends ApiController
 
     public function changePassword(ChangePasswordRequest $request): JsonResponse
     {
-        $this->auth->changePassword($request->user(), $request->input('current_password'), $request->input('password'));
+        $this->auth->changePassword($request->user(), $request->input('current_password'), $request->input('password'), $request->input('device_token'));
 
         return $this->ok(null, 'Password changed.');
     }

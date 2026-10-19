@@ -11,6 +11,7 @@ class ChangePasswordRequest extends ApiRequest
         return [
             'current_password' => ['required', 'string'],
             'password' => ['required', 'confirmed', 'different:current_password', Password::min(8)->letters()->numbers()],
+            'device_token' => ['nullable', 'string', 'max:512'],
         ];
     }
 }

@@ -130,9 +130,10 @@
 
             <x-admin.card title="Customer">
                 <p class="font-semibold">{{ $a->customer->name }}</p>
-                <p class="text-sm text-on-surface-variant"><a class="hover:underline" href="mailto:{{ $a->customer->email }}">{{ $a->customer->email }}</a></p>
-                <p class="text-sm text-on-surface-variant"><a class="hover:underline" href="tel:{{ $a->customer->phone }}">{{ $a->customer->phone ?? 'No phone' }}</a></p>
                 @can('manage')
+                    {{-- Contact details are for managers (same rule as the admin app). --}}
+                    <p class="text-sm text-on-surface-variant"><a class="hover:underline" href="mailto:{{ $a->customer->email }}">{{ $a->customer->email }}</a></p>
+                    <p class="text-sm text-on-surface-variant"><a class="hover:underline" href="tel:{{ $a->customer->phone }}">{{ $a->customer->phone ?? 'No phone' }}</a></p>
                     <x-admin.button :href="route('customers.show', $a->customer)" variant="text" size="sm" class="-ml-3 mt-2">View profile & history</x-admin.button>
                 @endcan
             </x-admin.card>

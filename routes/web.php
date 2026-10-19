@@ -19,7 +19,7 @@ Route::middleware('guest')->group(function () {
     Route::post('login', [Admin\AuthController::class, 'store'])->middleware('throttle:admin-login')->name('login.store');
 });
 
-Route::middleware(['auth', 'admin'])->group(function () {
+Route::middleware(['auth', 'auth.session', 'admin'])->group(function () {
     Route::post('logout', [Admin\AuthController::class, 'destroy'])->name('logout');
 
     Route::get('dashboard', Admin\DashboardController::class)->name('dashboard');

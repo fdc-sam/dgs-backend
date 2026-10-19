@@ -29,6 +29,7 @@ class StaffAdminService
                 // Deactivating a profile also blocks admin-portal sign-in.
                 'status' => $data['status'] === 'active' ? UserStatus::Active : UserStatus::Inactive,
             ]);
+            $passwordChanged = $user->exists && ! empty($data['password']);
             if (! empty($data['password'])) {
                 $user->password = $data['password'];
             }
@@ -36,6 +37,9 @@ class StaffAdminService
                 $user->profile_photo = $this->uploads->storeImage($photo, 'staff', $user->profile_photo);
             }
             $user->save();
+            if ($passwordChanged) {
+                $user->signOutOtherDevices(); // a password set by an admin ends the staff member's open sessions
+            }
 
             $staff ??= new StaffProfile(['user_id' => $user->id]);
             $original = $staff->getAttributes();

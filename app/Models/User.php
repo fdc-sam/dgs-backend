@@ -18,6 +18,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
+use Laravel\Sanctum\PersonalAccessToken;
 
 #[Fillable(['name', 'email', 'password', 'phone', 'role', 'profile_photo', 'status'])]
 #[Hidden(['password', 'remember_token'])]
@@ -84,6 +85,18 @@ class User extends Authenticatable
     public function reviews(): HasMany
     {
         return $this->hasMany(Review::class, 'customer_id');
+    }
+
+    /**
+     * After a password change or reset: end every other API session (mobile apps) and stop push to the devices they were
+     * on. The current API token and, when given, this device's push token are kept. Web sessions are signed out by the
+     * `auth.session` middleware once the password hash changes.
+     */
+    public function signOutOtherDevices(?string $keepDeviceToken = null): void
+    {
+        $current = $this->currentAccessToken();
+        $this->tokens()->when($current instanceof PersonalAccessToken, fn ($q) => $q->whereKeyNot($current->getKey()))->delete();
+        $this->deviceTokens()->when($keepDeviceToken, fn ($q, $token) => $q->where('token', '!=', $token))->delete();
     }
 
     public function deviceTokens(): HasMany
