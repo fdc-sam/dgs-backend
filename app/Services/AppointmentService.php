@@ -58,9 +58,6 @@ class AppointmentService
         $discount = $promotion ? $this->promotions->discountFor($promotion, $branch, $selections) : 0.0;
 
         $candidates = $this->candidateStaffIds($branch, $selections, $staff);
-        if ($candidates === []) {
-            throw new SlotUnavailableException('No staff member offers the selected services at this branch.');
-        }
 
         $appointment = DB::transaction(function () use ($customer, $branch, $selections, $staff, $date, $time, $promotion, $discount, $candidates, $data, $walkInBy) {
             $this->lock($customer, $candidates);
@@ -153,28 +150,36 @@ class AppointmentService
 
     /**
      * The customer has arrived. A pending/rescheduled booking is confirmed on the spot (the customer is told),
-     * and the arrival time and the person who recorded it are saved. Doing it twice is harmless.
+     * and the arrival time and the person who recorded it are saved. Only on the appointment's own day.
+     * Doing it twice is harmless.
      */
     public function checkIn(Appointment $appointment, User $actor): Appointment
     {
-        if ($appointment->checked_in_at) {
-            return $appointment; // already checked in
-        }
-        if (! $appointment->status->isActive()) {
-            throw ApiException::conflict("A {$appointment->status->label()} appointment cannot be checked in.");
-        }
+        $wasPending = DB::transaction(function () use ($appointment, $actor) {
+            $locked = $this->lockAppointment($appointment);
+            if ($locked->checked_in_at) {
+                return false; // already checked in
+            }
+            if (! $locked->status->isActive()) {
+                throw ApiException::conflict("A {$locked->status->label()} appointment cannot be checked in.");
+            }
+            if (! $locked->starts_at->isSameDay(now())) {
+                throw ApiException::conflict("Only today's appointments can be checked in. This one is on {$locked->starts_at->format('M j, Y')}.");
+            }
 
-        $wasPending = $appointment->status !== AppointmentStatus::Confirmed;
-        $old = ['status' => $appointment->status->value];
-        $appointment->update([
-            'status' => AppointmentStatus::Confirmed,
-            'confirmed_at' => $appointment->confirmed_at ?? now(),
-            'checked_in_at' => now(),
-            'checked_in_by' => $actor->id,
-            // The customer is here: an unpaid deposit is settled at the counter, never auto-cancelled.
-            'payment_due_at' => null,
-        ]);
-        $this->audit->log('appointment.checked_in', $appointment, $old, ['status' => 'confirmed', 'checked_in_by' => $actor->id]);
+            $old = ['status' => $locked->status->value];
+            $locked->update([
+                'status' => AppointmentStatus::Confirmed,
+                'confirmed_at' => $locked->confirmed_at ?? now(),
+                'checked_in_at' => now(),
+                'checked_in_by' => $actor->id,
+                // The customer is here: an unpaid deposit is settled at the counter, never auto-cancelled.
+                'payment_due_at' => null,
+            ]);
+            $this->audit->log('appointment.checked_in', $locked, $old, ['status' => 'confirmed', 'checked_in_by' => $actor->id]);
+
+            return $old['status'] !== AppointmentStatus::Confirmed->value;
+        });
 
         $appointment = $this->fresh($appointment);
         if ($wasPending) {
@@ -188,23 +193,26 @@ class AppointmentService
     {
         $isCustomer = $actor->id === $appointment->customer_id && $actor->isCustomer();
 
-        if ($isCustomer && ! $this->canCustomerCancel($appointment)) {
-            throw ApiException::conflict($this->customerChangeBlockedReason($appointment, 'cancelled'));
-        }
-        if (! $appointment->status->canTransitionTo(AppointmentStatus::Cancelled)) {
-            throw ApiException::conflict("A {$appointment->status->label()} appointment cannot be cancelled.");
-        }
+        DB::transaction(function () use ($appointment, $actor, $reason, $isCustomer) {
+            $locked = $this->lockAppointment($appointment);
+            if ($isCustomer && ! $this->canCustomerCancel($locked)) {
+                throw ApiException::conflict($this->customerChangeBlockedReason($locked, 'cancelled'));
+            }
+            if (! $locked->status->canTransitionTo(AppointmentStatus::Cancelled)) {
+                throw ApiException::conflict("A {$locked->status->label()} appointment cannot be cancelled.");
+            }
 
-        $old = ['status' => $appointment->status->value];
-        $appointment->update([
-            'status' => AppointmentStatus::Cancelled,
-            'cancelled_at' => now(),
-            'cancelled_by' => $actor->id,
-            'cancellation_reason' => $reason,
-            // Nothing was paid yet, so nothing is owed either way. A receipt under review stays for staff to settle.
-            ...($appointment->payment_status->acceptsProof() ? ['payment_status' => PaymentStatus::Void, 'payment_due_at' => null] : []),
-        ]);
-        $this->audit->log('appointment.cancelled', $appointment, $old, ['status' => 'cancelled', 'reason' => $reason]);
+            $old = ['status' => $locked->status->value];
+            $locked->update([
+                'status' => AppointmentStatus::Cancelled,
+                'cancelled_at' => now(),
+                'cancelled_by' => $actor->id,
+                'cancellation_reason' => $reason,
+                // Nothing was paid yet, so nothing is owed either way. A receipt under review stays for staff to settle.
+                ...($locked->payment_status->acceptsProof() ? ['payment_status' => PaymentStatus::Void, 'payment_due_at' => null] : []),
+            ]);
+            $this->audit->log('appointment.cancelled', $locked, $old, ['status' => 'cancelled', 'reason' => $reason]);
+        });
 
         $appointment = $this->fresh($appointment);
         $this->notifications->appointmentCancelled($appointment, $actor);
@@ -241,9 +249,6 @@ class AppointmentService
         $start = CarbonImmutable::parse($day->toDateString().' '.substr($startTime, 0, 5));
 
         $candidates = $this->candidateStaffIds($branch, $selections, $staff);
-        if ($candidates === []) {
-            throw new SlotUnavailableException('The selected staff member cannot perform these services at this branch.');
-        }
 
         $old = [
             'starts_at' => $appointment->starts_at->toDateTimeString(),
@@ -253,6 +258,10 @@ class AppointmentService
 
         DB::transaction(function () use ($appointment, $isCustomer, $branch, $selections, $staff, $day, $start, $candidates) {
             $this->lock($appointment->customer, $candidates);
+            $locked = $this->lockAppointment($appointment);
+            if (! $locked->status->canTransitionTo(AppointmentStatus::Rescheduled)) {
+                throw ApiException::conflict("A {$locked->status->label()} appointment cannot be rescheduled.");
+            }
 
             $assignments = $this->assignStaffAt($branch, $selections, $staff, $start, $appointment->id, enforceCustomerRules: $isCustomer);
             if ($assignments === null) {
@@ -297,13 +306,15 @@ class AppointmentService
         if ($to === AppointmentStatus::Cancelled || $to === AppointmentStatus::Rescheduled) {
             throw new \InvalidArgumentException('Use cancel() or reschedule() for this transition.');
         }
-        if (! $appointment->status->canTransitionTo($to)) {
-            throw ApiException::conflict("Cannot change a {$appointment->status->label()} appointment to {$to->label()}.");
-        }
 
-        $old = ['status' => $appointment->status->value];
         DB::transaction(function () use ($appointment, $to) {
-            $appointment->update([
+            $locked = $this->lockAppointment($appointment);
+            if (! $locked->status->canTransitionTo($to)) {
+                throw ApiException::conflict("Cannot change a {$locked->status->label()} appointment to {$to->label()}.");
+            }
+
+            $old = ['status' => $locked->status->value];
+            $locked->update([
                 ...array_filter([
                     'status' => $to,
                     'confirmed_at' => $to === AppointmentStatus::Confirmed ? now() : null,
@@ -313,10 +324,10 @@ class AppointmentService
                 'payment_due_at' => null,
             ]);
             if ($to === AppointmentStatus::Completed) {
-                $this->inventory->recordUsage($appointment->items);
+                $this->inventory->recordUsage($locked->items);
             }
+            $this->audit->log('appointment.'.$to->value, $locked, $old, ['status' => $to->value]);
         });
-        $this->audit->log('appointment.'.$to->value, $appointment, $old, ['status' => $to->value]);
 
         $appointment = $this->fresh($appointment);
         match ($to) {
@@ -428,6 +439,10 @@ class AppointmentService
         ?string $excludeAppointmentId = null,
         bool $enforceCustomerRules = true,
     ): ?array {
+        if ($enforceCustomerRules && ! $this->availability->onGrid($branch, $start)) {
+            return null;
+        }
+
         $assignments = [];
         $offset = 0;
         foreach ($selections as $selection) {
@@ -460,6 +475,15 @@ class AppointmentService
 
         return StaffProfile::query()->bookable()->find($staffId)
             ?? throw ValidationException::withMessages(['staff_id' => 'The selected staff member is not available.']);
+    }
+
+    /**
+     * Re-reads the appointment with a row lock (inside a transaction), so status checks see the latest state and
+     * concurrent changes (payment review, expiry job, a second click) are serialised instead of overwriting each other.
+     */
+    private function lockAppointment(Appointment $appointment): Appointment
+    {
+        return Appointment::query()->lockForUpdate()->findOrFail($appointment->id);
     }
 
     /** Locks acquired in a fixed order (customer, then staff by id) to avoid deadlocks. */

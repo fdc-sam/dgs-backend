@@ -42,6 +42,15 @@ class AppointmentRescheduleTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'appointment.rescheduled', 'entity_id' => $this->appointment->id]);
     }
 
+    public function test_customer_must_pick_a_grid_slot_when_rescheduling(): void
+    {
+        $this->postJson("/api/v1/appointments/{$this->appointment->id}/reschedule", [
+            'appointment_date' => '2026-10-04', 'start_time' => '14:10',
+        ])->assertStatus(409)->assertJsonPath('code', 'SLOT_UNAVAILABLE');
+
+        $this->assertSame('10:00:00', $this->appointment->fresh()->start_time);
+    }
+
     public function test_can_shift_within_own_time_range(): void
     {
         // 10:30 overlaps the current 10:00–11:15 occupancy but that is the appointment being moved.

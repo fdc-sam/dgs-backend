@@ -112,6 +112,22 @@ class AvailabilityService
     }
 
     /**
+     * Whether a start time sits on the branch's slot grid: opening time plus a whole number of
+     * `booking_slot_interval_minutes`. Customers may only book grid slots; a closed day is never on the grid.
+     */
+    public function onGrid(Branch $branch, CarbonImmutable $start): bool
+    {
+        $hours = $this->branchWindow($branch, $start->startOfDay());
+        if (is_string($hours)) {
+            return false;
+        }
+        $interval = max(5, $this->settings->int('booking_slot_interval_minutes', 30));
+        $minutes = (int) round($hours->start->diffInMinutes($start, false));
+
+        return $minutes >= 0 && $minutes % $interval === 0;
+    }
+
+    /**
      * Per-date availability summary for a month (booking calendar).
      *
      * @param  Collection<int, ServiceSelection>  $selections
