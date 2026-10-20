@@ -155,7 +155,7 @@ class PaymentTest extends TestCase
         $appointment = $this->book();
         $this->pay($appointment)->assertOk();
 
-        $this->actingAs($this->admin)
+        $this->actingAs($this->admin, 'web')
             ->post("/appointments/{$appointment->id}/payment/approve", ['amount' => '200'])
             ->assertSessionHasNoErrors()->assertSessionHas('success');
 
@@ -181,7 +181,7 @@ class PaymentTest extends TestCase
         $this->pay($appointment, '5555555555555')->assertOk();
 
         $this->travel(20)->minutes();
-        $this->actingAs($this->admin)
+        $this->actingAs($this->admin, 'web')
             ->post("/appointments/{$appointment->id}/payment/reject", ['reason' => 'Amount is short'])
             ->assertSessionHas('success');
 
@@ -234,7 +234,7 @@ class PaymentTest extends TestCase
         $this->actingAsCustomer();
         $appointment = $this->book();
 
-        $this->actingAs($this->admin)->post("/appointments/{$appointment->id}/status", ['status' => 'confirmed'])->assertSessionHas('success');
+        $this->actingAs($this->admin, 'web')->post("/appointments/{$appointment->id}/status", ['status' => 'confirmed'])->assertSessionHas('success');
         $this->travel(2)->hours();
         $this->artisan('appointments:release-unpaid');
 
@@ -261,7 +261,7 @@ class PaymentTest extends TestCase
         $customer = $this->actingAsCustomer();
         $appointment = $this->book();
 
-        $this->actingAs($this->admin)->post("/appointments/{$appointment->id}/payment/waive")->assertSessionHas('success');
+        $this->actingAs($this->admin, 'web')->post("/appointments/{$appointment->id}/payment/waive")->assertSessionHas('success');
 
         $appointment->refresh();
         $this->assertSame('confirmed', $appointment->status->value);
@@ -277,7 +277,7 @@ class PaymentTest extends TestCase
         $this->travel(31)->minutes();
         $this->artisan('appointments:release-unpaid');
 
-        $this->actingAs($this->admin)
+        $this->actingAs($this->admin, 'web')
             ->post("/appointments/{$appointment->id}/payment/approve", ['amount' => '200', 'reference_number' => '7777 888 999000'])
             ->assertSessionHasNoErrors();
         $appointment->refresh();
@@ -297,7 +297,7 @@ class PaymentTest extends TestCase
         $this->actingAsCustomer();
         $appointment = $this->book();
         $this->pay($appointment)->assertOk();
-        $this->actingAs($this->admin)->post("/appointments/{$appointment->id}/payment/approve", ['amount' => '200']);
+        $this->actingAs($this->admin, 'web')->post("/appointments/{$appointment->id}/payment/approve", ['amount' => '200']);
 
         $this->post("/appointments/{$appointment->id}/payment/refund")->assertSessionHas('error');
         $this->assertSame('paid', $appointment->fresh()->payment_status->value);
@@ -323,11 +323,11 @@ class PaymentTest extends TestCase
         $this->pay($appointment)->assertOk();
         $payment = Payment::sole();
 
-        $this->actingAs($this->admin)->get("/payments/{$payment->id}/proof")->assertOk();
+        $this->actingAs($this->admin, 'web')->get("/payments/{$payment->id}/proof")->assertOk();
         $this->get('/payments')->assertOk()->assertSee($appointment->appointment_number);
         $this->get("/appointments/{$appointment->id}")->assertOk()->assertSee('Receipt to check');
 
-        $this->actingAs($this->stylist->user)->get("/payments/{$payment->id}/proof")->assertForbidden();
+        $this->actingAs($this->stylist->user, 'web')->get("/payments/{$payment->id}/proof")->assertForbidden();
     }
 
     public function test_a_service_qr_sets_a_fixed_downpayment_and_the_balance_follows(): void
@@ -351,7 +351,7 @@ class PaymentTest extends TestCase
         $appointment = Appointment::findOrFail($id);
         $this->pay($appointment)->assertOk()->assertJsonPath('data.payment.qr_codes', []);
 
-        $this->actingAs($this->admin)->post("/appointments/{$id}/payment/approve", ['amount' => '50'])->assertSessionHas('success');
+        $this->actingAs($this->admin, 'web')->post("/appointments/{$id}/payment/approve", ['amount' => '50'])->assertSessionHas('success');
         $this->get("/appointments/{$id}")->assertOk()->assertSee('Balance to pay at the salon')->assertSee('₱950.00');
 
         Sanctum::actingAs($customer);
@@ -388,7 +388,7 @@ class PaymentTest extends TestCase
 
     public function test_admin_sets_a_service_downpayment_qr(): void
     {
-        $this->actingAs($this->admin);
+        $this->actingAs($this->admin, 'web');
         $form = fn (array $extra = []) => [
             'category_id' => $this->service->category_id, 'name' => $this->service->name, 'regular_price' => 100,
             'duration_minutes' => 60, 'status' => 'active',

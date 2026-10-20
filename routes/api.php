@@ -93,6 +93,7 @@ Route::prefix('v1')->name('api.v1.')->middleware('throttle:api')->group(function
             Route::put('profile', [AuthController::class, 'updateProfile'])->name('profile');
             Route::post('profile/photo', [AuthController::class, 'updatePhoto'])->name('profile.photo');
             Route::put('password', [AuthController::class, 'changePassword'])->name('password');
+            Route::delete('account', [AuthController::class, 'deleteAccount'])->middleware('throttle:auth')->name('account.destroy');
         });
 
         Route::get('appointments', [AppointmentController::class, 'index'])->name('appointments.index');

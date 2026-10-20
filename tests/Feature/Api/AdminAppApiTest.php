@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use App\Enums\AppointmentStatus;
+use App\Exceptions\ApiException;
 use App\Models\Appointment;
 use App\Models\Branch;
 use App\Models\Setting;
@@ -244,6 +245,48 @@ class AdminAppApiTest extends TestCase
         $this->postJson("/api/v1/admin/appointments/{$appointment->id}/check-in")->assertStatus(409)->assertJsonPath('code', 'CONFLICT');
     }
 
+    public function test_only_todays_appointments_can_be_checked_in(): void
+    {
+        $tomorrow = $this->bookToday($this->customer(), '09:00', '2026-10-02');
+        $this->manager();
+
+        $this->postJson("/api/v1/admin/appointments/{$tomorrow->id}/check-in")
+            ->assertStatus(409)->assertJsonPath('code', 'CONFLICT')
+            ->assertJsonPath('message', "Only today's appointments can be checked in. This one is on Oct 2, 2026.");
+        $this->assertNull($tomorrow->fresh()->checked_in_at);
+
+        $this->travelTo(CarbonImmutable::parse('2026-10-02 08:30'));
+        $this->postJson("/api/v1/admin/appointments/{$tomorrow->id}/check-in")->assertOk();
+    }
+
+    public function test_status_changes_are_decided_on_the_latest_saved_state(): void
+    {
+        $appointment = $this->bookToday($this->customer());
+        $admin = $this->manager();
+        $stale = Appointment::findOrFail($appointment->id);
+        // Meanwhile something else (the payment-expiry job, another device) cancelled it.
+        Appointment::query()->whereKey($appointment->id)->update(['status' => AppointmentStatus::Cancelled->value]);
+
+        $service = app(AppointmentService::class);
+        foreach ([
+            fn () => $service->checkIn($stale, $admin),
+            fn () => $service->transition($stale, AppointmentStatus::Completed, $admin),
+            fn () => $service->cancel($stale, $admin),
+        ] as $change) {
+            try {
+                $change();
+                $this->fail('A change based on a stale status went through.');
+            } catch (ApiException $e) {
+                $this->assertSame(409, $e->status);
+            }
+        }
+
+        $fresh = $appointment->fresh();
+        $this->assertSame(AppointmentStatus::Cancelled, $fresh->status);
+        $this->assertNull($fresh->checked_in_at);
+        $this->assertNull($fresh->completed_at);
+    }
+
     public function test_the_service_runs_through_start_and_complete(): void
     {
         $appointment = $this->bookToday($this->customer());
@@ -361,6 +404,14 @@ class AdminAppApiTest extends TestCase
 
         $this->postJson("/api/v1/admin/customers/{$this->customer()->id}/appointments", $this->bookingPayload(['appointment_date' => self::TODAY, 'start_time' => '17:30']))->assertStatus(409); // runs past closing
         $this->postJson("/api/v1/admin/customers/{$this->customer()->id}/appointments", $this->bookingPayload(['appointment_date' => self::TODAY, 'start_time' => '09:00']))->assertStatus(409); // already past
+    }
+
+    public function test_a_walk_in_may_start_off_the_slot_grid(): void
+    {
+        $this->manager();
+
+        $this->postJson("/api/v1/admin/customers/{$this->customer()->id}/appointments", $this->bookingPayload(['appointment_date' => self::TODAY, 'start_time' => '10:10']))
+            ->assertCreated()->assertJsonPath('data.start_time', '10:10');
     }
 
     public function test_a_walk_in_cannot_double_book_a_stylist_or_the_customer(): void

@@ -13,6 +13,7 @@
 
     --color-gold: #F0B800;
     --color-gold-soft: #FFF1C7;
+    --color-gold-strong: #8F6A00;
 
     --color-primary: #7A5900;
     --color-primary-hover: #664A00;
@@ -48,6 +49,48 @@
     --shadow-e2: 0 2px 6px 2px rgb(31 27 19 / 0.08), 0 1px 2px rgb(31 27 19 / 0.1);
 }
 
+/*
+ | Admin portal & login theme (body.theme-admin): a quiet neutral UI — white sidebar and cards on light grey,
+ | near-black primary actions — with gold kept as the brand accent (active nav icon, button edge, highlights).
+ | Scoped to a class so the public website keeps the warm tokens above.
+ */
+@layer base {
+    .theme-admin {
+        --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+
+        --color-primary: #18181B;
+        --color-primary-hover: #2E2E33;
+        --color-on-primary: #FFFFFF;
+        --color-primary-container: #FFF1C7;
+        --color-on-primary-container: #5C4300;
+
+        --color-secondary-container: #F1F1F3;
+        --color-on-secondary-container: #18181B;
+
+        --color-surface: #F7F7F8;
+        --color-surface-dim: #EFEFF1;
+        --color-surface-container: #F5F5F6;
+        --color-surface-container-high: #ECECEF;
+        --color-on-surface: #18181B;
+        --color-on-surface-variant: #5B5B63;
+        --color-outline: #707078;
+        --color-outline-variant: #E6E6E9;
+
+        --color-success: #15803D;
+        --color-success-container: #DCFCE7;
+        --color-warning: #C2410C;
+        --color-warning-container: #FFEDD5;
+
+        --radius-card: 1.125rem;
+        --radius-field: 0.75rem;
+
+        --shadow-e1: 0 1px 2px rgb(24 24 27 / 0.04);
+        --shadow-e2: 0 12px 32px -8px rgb(24 24 27 / 0.14), 0 2px 6px rgb(24 24 27 / 0.06);
+
+        font-family: var(--font-sans);
+    }
+}
+
 @layer base {
     html { -webkit-font-smoothing: antialiased; }
     body { @apply bg-surface text-on-surface; }
@@ -74,12 +117,18 @@
     .label { @apply mb-1.5 block text-sm font-medium text-on-surface-variant; }
 
     .table-base { @apply w-full text-left text-sm; }
-    .table-base thead th { @apply whitespace-nowrap border-b border-outline-variant bg-surface-container px-4 py-3 text-xs font-semibold uppercase tracking-wide text-on-surface-variant; }
-    .table-base tbody td { @apply border-b border-outline-variant/60 px-4 py-3 align-middle; }
-    .table-base tbody tr { @apply transition-colors hover:bg-surface-container/60; }
+    .table-base thead th { @apply whitespace-nowrap border-b border-outline-variant bg-white px-5 py-3.5 text-xs font-medium uppercase tracking-[0.08em] text-outline; }
+    .table-base tbody td { @apply border-b border-outline-variant/80 px-5 py-4 align-middle; }
+    .table-base tbody tr { @apply transition-colors hover:bg-surface-container/70; }
 
-    .nav-link { @apply flex min-h-11 items-center gap-3 rounded-full px-4 text-sm font-medium text-on-surface-variant transition hover:bg-surface-container-high; }
-    .nav-link-active { @apply bg-primary-container text-on-primary-container hover:bg-primary-container; }
+    /* Sidebar links: grey line icons; the active one is a near-black pill with a gold icon. */
+    .nav-link { @apply flex min-h-11 items-center gap-3 rounded-xl px-3.5 text-[0.9375rem] font-medium text-on-surface-variant transition hover:bg-surface-container hover:text-on-surface; }
+    .nav-link .nav-icon { @apply text-outline transition-colors; font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; font-size: 1.375rem; }
+    .nav-link-active { @apply bg-primary text-on-primary shadow-e1 hover:bg-primary hover:text-on-primary; }
+    .nav-link-active .nav-icon { @apply text-gold; font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+
+    /* Small uppercase section label, e.g. "BUSINESS SNAPSHOT". */
+    .eyebrow { @apply text-xs font-semibold uppercase tracking-[0.12em] text-outline; }
 }
 
 /*

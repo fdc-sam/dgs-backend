@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400..500,0..1,0&display=block">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="min-h-screen bg-surface-container">
+<body class="theme-admin min-h-screen bg-surface">
     <div class="grid min-h-screen lg:grid-cols-2">
         <div class="relative hidden overflow-hidden bg-on-surface lg:block" aria-hidden="true">
             <div class="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,#F0B80055,transparent_55%),radial-gradient(circle_at_80%_90%,#7A590066,transparent_50%)]"></div>

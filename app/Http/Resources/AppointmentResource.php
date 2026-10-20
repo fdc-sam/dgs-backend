@@ -19,6 +19,7 @@ class AppointmentResource extends JsonResource
     {
         $rules = app(AppointmentService::class);
         $isStaffView = $request->user()?->role?->canAccessAdmin() ?? false;
+        $isManagerView = $request->user()?->isManager() ?? false;
 
         return [
             'id' => $this->id,
@@ -39,8 +40,9 @@ class AppointmentResource extends JsonResource
             'customer' => $this->when($isStaffView, fn () => [
                 'id' => $this->customer->id,
                 'name' => $this->customer->name,
-                'email' => $this->customer->email,
-                'phone' => $this->customer->phone,
+                // Contact details are for managers; stylists see who the customer is, not how to reach them.
+                'email' => $this->when($isManagerView, $this->customer->email),
+                'phone' => $this->when($isManagerView, $this->customer->phone),
             ]),
             'branch' => [
                 'id' => $this->branch->id,

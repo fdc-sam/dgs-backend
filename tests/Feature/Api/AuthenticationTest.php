@@ -174,6 +174,81 @@ class AuthenticationTest extends TestCase
             ->assertStatus(422);
     }
 
+    public function test_a_new_reset_code_does_not_buy_new_guesses(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create(['email' => 'reset@example.com']);
+        $reset = fn (string $token) => $this->postJson('/api/v1/auth/reset-password', ['email' => 'reset@example.com', 'token' => $token, 'password' => 'brandnew123', 'password_confirmation' => 'brandnew123']);
+
+        $this->postJson('/api/v1/auth/forgot-password', ['email' => 'reset@example.com']);
+        for ($i = 0; $i < 5; $i++) {
+            $reset('abcdef')->assertStatus(422); // never a valid 6-digit code
+        }
+
+        // Asking for a fresh code does not reset the counter: even the right new code is refused for the hour.
+        $this->postJson('/api/v1/auth/forgot-password', ['email' => 'reset@example.com'])->assertOk();
+        $reset($this->lastResetCode($user))->assertStatus(422)->assertJsonPath('errors.token.0', 'Too many incorrect attempts. Please wait an hour, then request a new reset code.');
+
+        $this->travel(61)->minutes();
+        $this->postJson('/api/v1/auth/forgot-password', ['email' => 'reset@example.com'])->assertOk();
+        $reset($this->lastResetCode($user))->assertOk();
+    }
+
+    public function test_reset_codes_are_limited_to_three_an_hour(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create(['email' => 'reset@example.com']);
+
+        for ($i = 0; $i < 5; $i++) {
+            $this->postJson('/api/v1/auth/forgot-password', ['email' => 'reset@example.com'])->assertOk(); // same answer every time
+        }
+
+        Notification::assertSentToTimes($user, ResetPasswordCode::class, 3);
+    }
+
+    public function test_changing_the_password_signs_out_other_devices_but_keeps_this_one(): void
+    {
+        $user = User::factory()->create(['password' => 'secret123']);
+        $thisPhone = $user->createToken('this phone')->plainTextToken;
+        $user->createToken('lost phone');
+        $user->deviceTokens()->create(['token' => 'push-this', 'platform' => 'android']);
+        $user->deviceTokens()->create(['token' => 'push-lost', 'platform' => 'android']);
+
+        $this->withToken($thisPhone)->putJson('/api/v1/auth/password', [
+            'current_password' => 'secret123', 'password' => 'newpass123', 'password_confirmation' => 'newpass123', 'device_token' => 'push-this',
+        ])->assertOk();
+
+        $this->assertSame(['this phone'], $user->tokens()->pluck('name')->all());
+        $this->assertSame(['push-this'], $user->deviceTokens()->pluck('token')->all());
+    }
+
+    public function test_a_password_reset_stops_push_to_every_device(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create(['email' => 'reset@example.com']);
+        $user->createToken('lost phone');
+        $user->deviceTokens()->create(['token' => 'push-lost', 'platform' => 'android']);
+
+        $this->postJson('/api/v1/auth/forgot-password', ['email' => 'reset@example.com']);
+        $this->postJson('/api/v1/auth/reset-password', ['email' => 'reset@example.com', 'token' => $this->lastResetCode($user), 'password' => 'brandnew123', 'password_confirmation' => 'brandnew123'])
+            ->assertOk();
+
+        $this->assertSame(0, $user->tokens()->count());
+        $this->assertSame(0, $user->deviceTokens()->count());
+    }
+
+    private function lastResetCode(User $user): string
+    {
+        $code = null;
+        Notification::assertSentTo($user, ResetPasswordCode::class, function ($n) use (&$code) {
+            $code = $n->code;
+
+            return true;
+        });
+
+        return $code;
+    }
+
     public function test_protected_routes_require_token(): void
     {
         $this->getJson('/api/v1/auth/me')->assertUnauthorized()->assertJsonPath('code', 'UNAUTHENTICATED');

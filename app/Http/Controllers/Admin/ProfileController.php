@@ -44,6 +44,8 @@ class ProfileController extends Controller
         ]);
 
         $request->user()->update(['password' => $request->input('password')]);
+        // Other browsers are signed out by `auth.session`; this ends admin-app sessions too.
+        $request->user()->signOutOtherDevices();
         $request->session()->regenerate();
 
         return back()->with('success', 'Password changed.');

@@ -241,6 +241,8 @@
             </div>
             <div class="flex items-center gap-4">
                 @if (filled($s['facebook_url'] ?? null))<a href="{{ $s['facebook_url'] }}" rel="noopener" target="_blank" class="hover:underline">Facebook</a>@endif
+                <a href="{{ route('privacy') }}" class="hover:underline">Privacy policy</a>
+                <a href="{{ route('account-deletion') }}" class="hover:underline" rel="nofollow">Delete account</a>
                 <a href="{{ route('login') }}" class="hover:underline" rel="nofollow">Staff login</a>
                 <span>© {{ now()->year }}</span>
             </div>

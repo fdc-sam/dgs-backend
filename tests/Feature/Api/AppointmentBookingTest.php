@@ -96,15 +96,15 @@ class AppointmentBookingTest extends TestCase
         $this->assertSame('1500.00', Appointment::oldest('starts_at')->first()->items->first()->unit_price);
     }
 
-    public function test_multiple_services_are_sequential_and_need_a_stylist_offering_all(): void
+    public function test_multiple_services_are_sequential_and_each_needs_a_stylist_who_offers_it(): void
     {
         $nails = Service::factory()->duration(30, 10)->atBranch($this->branch)->create(['regular_price' => 300]);
         $this->actingAsCustomer();
 
-        // Stylist does not offer nails → no one qualifies.
+        // Nobody offers nails → the services list is rejected (each service is staffed on its own, see BOOKING.md).
         $this->postJson('/api/v1/appointments', $this->bookingPayload([
             'services' => [['service_id' => $this->service->id], ['service_id' => $nails->id]],
-        ]))->assertStatus(409)->assertJsonPath('code', 'SLOT_UNAVAILABLE');
+        ]))->assertStatus(422)->assertJsonPath('code', 'VALIDATION_ERROR')->assertJsonValidationErrors('services');
 
         $this->stylist->services()->attach($nails->id);
         $this->postJson('/api/v1/appointments', $this->bookingPayload([

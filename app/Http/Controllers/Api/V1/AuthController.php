@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\ChangePasswordRequest;
+use App\Http\Requests\Api\DeleteAccountRequest;
 use App\Http\Requests\Api\ForgotPasswordRequest;
 use App\Http\Requests\Api\LoginRequest;
 use App\Http\Requests\Api\RegisterRequest;
@@ -11,6 +12,7 @@ use App\Http\Requests\Api\ResetPasswordRequest;
 use App\Http\Requests\Api\UpdateProfilePhotoRequest;
 use App\Http\Requests\Api\UpdateProfileRequest;
 use App\Http\Resources\UserResource;
+use App\Services\AccountDeletionService;
 use App\Services\AuthService;
 use App\Services\CustomerQrService;
 use Illuminate\Http\JsonResponse;
@@ -68,9 +70,17 @@ class AuthController extends ApiController
 
     public function changePassword(ChangePasswordRequest $request): JsonResponse
     {
-        $this->auth->changePassword($request->user(), $request->input('current_password'), $request->input('password'));
+        $this->auth->changePassword($request->user(), $request->input('current_password'), $request->input('password'), $request->input('device_token'));
 
         return $this->ok(null, 'Password changed.');
+    }
+
+    /** Deletes the signed-in customer's account (Google Play requires in-app account deletion). */
+    public function deleteAccount(DeleteAccountRequest $request, AccountDeletionService $deletion): JsonResponse
+    {
+        $deletion->deleteWithPassword($request->user(), $request->input('password'));
+
+        return $this->ok(null, 'Your account has been deleted.');
     }
 
     public function forgotPassword(ForgotPasswordRequest $request): JsonResponse

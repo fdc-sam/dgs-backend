@@ -9,10 +9,10 @@
         </div>
     @endunless
 
-    <div class="mb-4 flex flex-wrap gap-2" role="tablist">
+    <div class="mb-6 flex flex-wrap gap-x-7 border-b border-outline-variant" role="tablist">
         @foreach ($tabs as $tab)
             <a href="{{ route('payments.index', ['status' => $tab->value]) }}" role="tab" @if ($status === $tab) aria-selected="true" @endif
-               @class(['inline-flex min-h-10 items-center gap-2 rounded-full px-4 text-sm font-medium', 'bg-secondary-container text-on-secondary-container' => $status === $tab, 'border border-outline-variant hover:bg-surface-container' => $status !== $tab])>
+               @class(['-mb-px inline-flex items-center gap-2 border-b-2 pb-3 pt-1 text-[0.9375rem] font-medium transition-colors', 'border-gold text-on-surface' => $status === $tab, 'border-transparent text-on-surface-variant hover:text-on-surface' => $status !== $tab])>
                 {{ $tab->label() }} <span class="text-xs opacity-70">{{ $counts[$tab->value] ?? 0 }}</span>
             </a>
         @endforeach
