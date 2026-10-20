@@ -10,6 +10,7 @@ use App\Models\ServiceCategory;
 use App\Services\PromotionService;
 use App\Services\SettingsService;
 use App\Support\Fmt;
+use App\Support\PrivacyPolicy;
 use Illuminate\Http\Response;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -58,6 +59,14 @@ class PublicSiteController extends Controller
         $data['jsonLd'] = $this->jsonLd($data);
 
         return view('site.home', $data);
+    }
+
+    /** Public privacy policy (Google Play requires a URL): the owner's text from Settings, or the default. */
+    public function privacy(): View
+    {
+        $s = $this->settings->all();
+
+        return view('site.privacy', ['s' => $s, 'policy' => PrivacyPolicy::text($s), 'logoUrl' => $this->settings->logoUrl()]);
     }
 
     public function robots(): Response

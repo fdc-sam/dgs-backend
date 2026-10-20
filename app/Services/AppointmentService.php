@@ -189,13 +189,14 @@ class AppointmentService
         return $appointment;
     }
 
-    public function cancel(Appointment $appointment, User $actor, ?string $reason = null): Appointment
+    /** @param  bool  $enforceCustomerRules  false only when the customer deletes their account: every upcoming booking goes */
+    public function cancel(Appointment $appointment, User $actor, ?string $reason = null, bool $enforceCustomerRules = true): Appointment
     {
         $isCustomer = $actor->id === $appointment->customer_id && $actor->isCustomer();
 
-        DB::transaction(function () use ($appointment, $actor, $reason, $isCustomer) {
+        DB::transaction(function () use ($appointment, $actor, $reason, $isCustomer, $enforceCustomerRules) {
             $locked = $this->lockAppointment($appointment);
-            if ($isCustomer && ! $this->canCustomerCancel($locked)) {
+            if ($isCustomer && $enforceCustomerRules && ! $this->canCustomerCancel($locked)) {
                 throw ApiException::conflict($this->customerChangeBlockedReason($locked, 'cancelled'));
             }
             if (! $locked->status->canTransitionTo(AppointmentStatus::Cancelled)) {

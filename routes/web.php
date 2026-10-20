@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin;
+use App\Http\Controllers\Site\AccountDeletionController;
 use App\Http\Controllers\Site\PublicSiteController;
 use Illuminate\Support\Facades\Route;
 
@@ -13,6 +14,9 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [PublicSiteController::class, 'home'])->name('home');
 Route::get('robots.txt', [PublicSiteController::class, 'robots'])->name('robots');
 Route::get('sitemap.xml', [PublicSiteController::class, 'sitemap'])->name('sitemap');
+Route::get('privacy', [PublicSiteController::class, 'privacy'])->name('privacy');
+Route::get('delete-account', [AccountDeletionController::class, 'create'])->name('account-deletion');
+Route::post('delete-account', [AccountDeletionController::class, 'store'])->middleware('throttle:auth')->name('account-deletion.store');
 
 Route::middleware('guest')->group(function () {
     Route::get('login', [Admin\AuthController::class, 'create'])->name('login');

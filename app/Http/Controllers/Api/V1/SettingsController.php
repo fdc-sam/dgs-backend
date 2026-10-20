@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\ApiController;
 use App\Services\PaymentService;
 use App\Services\SettingsService;
 use App\Support\Fmt;
+use App\Support\PrivacyPolicy;
 use Illuminate\Http\JsonResponse;
 
 class SettingsController extends ApiController
@@ -23,6 +24,7 @@ class SettingsController extends ApiController
 
         return $this->ok([
             ...array_intersect_key($all, array_flip(self::PUBLIC_KEYS)),
+            'privacy_policy' => PrivacyPolicy::text($all),
             'logo_url' => $settings->logoUrl(),
             // The salon's GCash account (shown on every payment screen) and the salon-wide deposit rule for services
             // without their own QR (booking review preview). Per-service QRs come with each appointment.
