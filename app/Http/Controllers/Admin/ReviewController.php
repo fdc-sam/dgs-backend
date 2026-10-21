@@ -22,7 +22,7 @@ class ReviewController extends Controller
             'reviews' => Review::query()->with(['customer', 'service', 'images', 'appointment.staff.user'])
                 ->when($status !== 'all', fn ($q) => $q->where('status', $status))
                 ->when($request->query('rating'), fn ($q, $r) => $q->where('rating', $r))
-                ->latest()->paginate(15)->withQueryString(),
+                ->latest()->paginate(self::PER_PAGE)->withQueryString(),
             'status' => $status,
             'counts' => Review::selectRaw('status, COUNT(*) as c')->groupBy('status')->pluck('c', 'status'),
         ]);

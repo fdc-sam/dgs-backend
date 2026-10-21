@@ -28,6 +28,22 @@ class AdminPagesTest extends TestCase
         $this->get('/login')->assertOk()->assertSee('Welcome back');
     }
 
+    public function test_lists_show_ten_rows_per_page(): void
+    {
+        $this->actingAs(User::factory()->superAdmin()->create());
+        User::factory()->customer()->count(11)->create();
+        User::factory()->admin()->count(10)->create();
+
+        $this->get('/customers')->assertOk()->assertViewHas('customers', fn ($page) => $page->perPage() === 10 && $page->count() === 10 && $page->hasMorePages())
+            ->assertSee('Showing');
+        $this->get('/admin-accounts')->assertOk()->assertViewHas('admins', fn ($page) => $page->perPage() === 10 && $page->hasMorePages());
+        foreach (['/appointments' => 'appointments', '/services' => 'services', '/categories' => 'categories', '/products' => 'products',
+            '/promotions' => 'promotions', '/achievements' => 'achievements', '/walk-ins' => 'visits', '/payments' => 'appointments',
+            '/reviews' => 'reviews', '/notifications' => 'notifications'] as $url => $list) {
+            $this->get($url)->assertOk()->assertViewHas($list, fn ($page) => $page->perPage() === 10);
+        }
+    }
+
     public function test_admin_login_and_logout(): void
     {
         User::factory()->admin()->create(['email' => 'boss@example.com', 'password' => 'secret123']);

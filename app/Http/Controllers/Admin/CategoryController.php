@@ -17,7 +17,7 @@ class CategoryController extends Controller
     public function index(): View
     {
         return view('admin.categories.index', [
-            'categories' => ServiceCategory::withCount('services')->ordered()->paginate(25),
+            'categories' => ServiceCategory::withCount('services')->ordered()->paginate(self::PER_PAGE),
         ]);
     }
 

@@ -28,7 +28,7 @@ class ServiceController extends Controller
             ->when($request->query('category_id'), fn ($q, $id) => $q->where('category_id', $id))
             ->when($request->query('status'), fn ($q, $s) => $q->where('status', $s))
             ->ordered()
-            ->paginate(20)->withQueryString();
+            ->paginate(self::PER_PAGE)->withQueryString();
 
         return view('admin.services.index', [
             'services' => $services,

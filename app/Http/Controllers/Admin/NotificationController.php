@@ -17,7 +17,7 @@ class NotificationController extends Controller
     public function index(Request $request): View
     {
         return view('admin.notifications.index', [
-            'notifications' => $request->user()->notifications()->latest()->paginate(20),
+            'notifications' => $request->user()->notifications()->latest()->paginate(self::PER_PAGE),
             'promotions' => Promotion::currentlyActive()->orderBy('name')->pluck('name', 'id'),
         ]);
     }

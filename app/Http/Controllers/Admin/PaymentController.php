@@ -48,7 +48,7 @@ class PaymentController extends Controller
             ->when($status === PaymentStatus::Submitted, fn ($q) => $q->orderBy('updated_at'))
             ->when($status->isHolding(), fn ($q) => $q->orderBy('payment_due_at'))
             ->when($status !== PaymentStatus::Submitted && ! $status->isHolding(), fn ($q) => $q->orderByDesc('updated_at'))
-            ->paginate(20)->withQueryString();
+            ->paginate(self::PER_PAGE)->withQueryString();
 
         $counts = Appointment::query()
             ->whereIn('payment_status', array_map(fn (PaymentStatus $s) => $s->value, self::TABS))

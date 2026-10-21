@@ -42,5 +42,6 @@
                 </tr>
             @endforeach
         </x-admin.table>
+        <x-admin.pagination :paginator="$admins" />
     </x-admin.card>
 </x-admin.layout>

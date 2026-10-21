@@ -33,7 +33,7 @@ class WalkInVisitController extends Controller
                     ->orWhereHas('items', fn ($items) => $items->whereLike('service_name', $like)));
             })
             ->latest('visited_at')
-            ->paginate(20)
+            ->paginate(self::PER_PAGE)
             ->withQueryString();
 
         return view('admin.appointments.walk-ins', compact('visits'));

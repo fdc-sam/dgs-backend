@@ -20,7 +20,7 @@ class AdminAccountController extends Controller
     {
         return view('admin.admin-accounts.index', [
             'admins' => User::query()->whereIn('role', [UserRole::SuperAdmin->value, UserRole::Admin->value])
-                ->orderByDesc('role')->orderBy('name')->get(),
+                ->orderByDesc('role')->orderBy('name')->paginate(self::PER_PAGE),
         ]);
     }
 

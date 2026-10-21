@@ -15,7 +15,7 @@ class AchievementController extends Controller
     public function index(): View
     {
         return view('admin.achievements.index', [
-            'achievements' => Achievement::query()->latest()->paginate(20),
+            'achievements' => Achievement::query()->latest()->paginate(self::PER_PAGE),
         ]);
     }
 

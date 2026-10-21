@@ -48,7 +48,7 @@ class AppointmentController extends Controller
                     ->orWhereHas('customer', fn ($c) => $c->whereLike('name', $like)->orWhereLike('email', $like)->orWhereLike('phone', $like)));
             })
             ->orderByDesc('appointment_date')->orderByDesc('start_time')
-            ->paginate(20)->withQueryString();
+            ->paginate(self::PER_PAGE)->withQueryString();
 
         return view('admin.appointments.index', [
             'appointments' => $appointments,

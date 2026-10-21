@@ -31,7 +31,7 @@ class PromotionController extends Controller
             ->when($request->query('state') === 'draft', fn ($q) => $q->where('status', PromotionStatus::Draft->value))
             ->when($request->query('state') === 'expired', fn ($q) => $q->where('end_at', '<', $now))
             ->latest('start_at')
-            ->paginate(20)->withQueryString();
+            ->paginate(self::PER_PAGE)->withQueryString();
 
         return view('admin.promotions.index', ['promotions' => $promotions]);
     }

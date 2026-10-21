@@ -26,7 +26,7 @@ class ProductController extends Controller
             })
             ->when($request->query('stock') === 'low', fn ($q) => $q->needsRestock())
             ->ordered()
-            ->paginate(25)->withQueryString();
+            ->paginate(self::PER_PAGE)->withQueryString();
 
         return view('admin.products.index', [
             'products' => $products,
@@ -51,7 +51,7 @@ class ProductController extends Controller
     {
         return view('admin.products.form', [
             'product' => $product->load(['services' => fn ($q) => $q->ordered()]),
-            'movements' => $product->stockMovements()->with(['user', 'source'])->paginate(15, pageName: 'history'),
+            'movements' => $product->stockMovements()->with(['user', 'source'])->paginate(self::PER_PAGE, pageName: 'history'),
         ]);
     }
 

@@ -33,7 +33,7 @@ class CustomerController extends Controller
             })
             ->when($request->query('status'), fn ($q, $s) => $q->where('status', $s))
             ->latest()
-            ->paginate(20)->withQueryString();
+            ->paginate(self::PER_PAGE)->withQueryString();
 
         return view('admin.customers.index', ['customers' => $customers]);
     }
@@ -47,7 +47,7 @@ class CustomerController extends Controller
 
         return view('admin.customers.show', [
             'customer' => $customer,
-            'appointments' => $customer->appointments()->with(['items', 'branch', 'staff.user'])->orderByDesc('starts_at')->paginate(10),
+            'appointments' => $customer->appointments()->with(['items', 'branch', 'staff.user'])->orderByDesc('starts_at')->paginate(self::PER_PAGE),
             'completedServices' => AppointmentItem::query()
                 ->whereHas('appointment', fn ($q) => $q->where('customer_id', $customer->id)->where('status', AppointmentStatus::Completed->value))
                 ->selectRaw('service_name, COUNT(*) as times, MAX(created_at) as last_at')
