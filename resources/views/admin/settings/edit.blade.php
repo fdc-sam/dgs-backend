@@ -4,6 +4,8 @@
 
     <form method="POST" action="{{ route('settings.update') }}" enctype="multipart/form-data" class="space-y-6">
         @csrf @method('PUT')
+        {{-- Test accounts see the shared setup read-only. --}}
+        <fieldset class="min-w-0 space-y-6" @cannot('change-setup') disabled @endcannot>
         <x-admin.card title="Business" subtitle="Shown to customers in the app. Enter official DGS details only.">
             <div class="grid gap-5 sm:grid-cols-2">
                 <x-admin.input name="salon_name" label="Business name" :value="$s['salon_name']" required />
@@ -82,6 +84,7 @@
             </div>
         </x-admin.card>
 
-        <div class="flex justify-end"><x-admin.button type="submit" icon="save">Save settings</x-admin.button></div>
+        <div class="flex justify-end">@can('change-setup')<x-admin.button type="submit" icon="save">Save settings</x-admin.button> @endcan</div>
+        </fieldset>
     </form>
 </x-admin.layout>

@@ -6,6 +6,8 @@
     <form method="POST" action="{{ $editing ? route('promotions.update', $promotion) : route('promotions.store') }}" enctype="multipart/form-data"
           x-data="{ type: @js(old('discount_type', $promotion->discount_type?->value)) }">
         @csrf @if ($editing) @method('PUT') @endif
+        {{-- Test accounts see the shared setup read-only. --}}
+        <fieldset class="min-w-0" @cannot('change-setup') disabled @endcannot>
         <div class="grid gap-6 lg:grid-cols-3">
             <div class="space-y-6 lg:col-span-2">
                 <x-admin.card title="Offer">
@@ -42,8 +44,9 @@
             </div>
         </div>
         <div class="mt-6 flex justify-end gap-2">
-            <x-admin.button :href="route('promotions.index')" variant="text">Cancel</x-admin.button>
-            <x-admin.button type="submit" icon="visibility">Save & preview</x-admin.button>
+            <x-admin.button :href="route('promotions.index')" variant="text">@can('change-setup') Cancel @else Back @endcan</x-admin.button>
+            @can('change-setup')<x-admin.button type="submit" icon="visibility">Save & preview</x-admin.button> @endcan
         </div>
+        </fieldset>
     </form>
 </x-admin.layout>

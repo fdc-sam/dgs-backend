@@ -24,6 +24,15 @@
 
         <div class="flex min-w-0 flex-1 flex-col lg:pl-72">
             <x-admin.topbar :title="$title" />
+            @if (auth()->user()->is_test)
+                {{-- Test accounts only ever see test data; say so on every page. --}}
+                <div class="border-b border-warning/30 bg-warning-container text-warning" role="note">
+                    <p class="mx-auto flex max-w-screen-2xl items-start gap-2.5 px-4 py-2.5 text-sm sm:items-center sm:px-6 lg:px-12">
+                        <span class="material-symbols-outlined shrink-0 icon-fill" aria-hidden="true">science</span>
+                        <span><strong class="font-semibold">Test account.</strong> You see test customers, bookings and reports only. The salon setup is view-only.</span>
+                    </p>
+                </div>
+            @endif
 
             <main id="main" class="mx-auto w-full max-w-screen-2xl flex-1 px-4 pb-[max(4rem,env(safe-area-inset-bottom))] pt-6 sm:px-6 sm:pt-8 lg:px-12 lg:pt-10">
                 <x-admin.flash />

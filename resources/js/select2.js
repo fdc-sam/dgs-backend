@@ -46,6 +46,8 @@ function enhance(select) {
         // Optional dropdowns with an empty choice ("All categories", "Any") get an × to go back to it.
         allowClear: Boolean(placeholder) && !select.required && !select.multiple,
         minimumResultsForSearch: select.options.length >= SEARCH_FROM ? 0 : Infinity,
+        // Also when a disabled <fieldset> holds it (view-only pages), which the select's own `disabled` doesn't show.
+        disabled: select.matches(':disabled'),
         // Inside a dialog the list must live in it, or the dialog's backdrop and focus handling get in the way.
         dropdownParent: modal ? $(modal) : $(document.body),
     });

@@ -27,6 +27,7 @@
             ['reports.index', 'Reports', 'monitoring', $manager, 'reports.*'],
             ['notifications.index', 'Notifications', 'notifications', true, 'notifications.*'],
             ['settings.edit', 'Settings', 'settings', $user->isSuperAdmin(), 'settings.*'],
+            ['admin-accounts.index', 'Admin accounts', 'admin_panel_settings', $user->isSuperAdmin(), 'admin-accounts.*'],
         ],
     ];
 @endphp
@@ -93,7 +94,7 @@
         @endif
         <span class="min-w-0 flex-1">
             <span class="block truncate text-sm font-semibold">{{ $user->name }}</span>
-            <span class="block truncate text-xs text-outline">{{ $user->role->label() }}</span>
+            <span class="block truncate text-xs text-outline">{{ $user->role->label() }}@if ($user->is_test) · Test account @endif</span>
         </span>
     </a>
 </aside>

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use App\Support\CustomerCode;
+use App\Support\TestMode;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -16,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -30,6 +32,7 @@ class User extends Authenticatable
     protected $attributes = [
         'role' => 'customer',
         'status' => 'active',
+        'is_test' => false,
     ];
 
     protected static function booted(): void
@@ -59,6 +62,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'role' => UserRole::class,
             'status' => UserStatus::class,
+            'is_test' => 'boolean',
         ];
     }
 
@@ -110,6 +114,21 @@ class User extends Authenticatable
         return $this->deviceTokens()->pluck('token')->all();
     }
 
+    /**
+     * Move the account to the test side (it then sees, and is seen by, test accounts only) or back to live.
+     * A customer's bookings and reviews move with them; walk-ins stay where the admin recorded them.
+     */
+    public function setTestAccount(bool $test): void
+    {
+        DB::transaction(function () use ($test) {
+            $this->forceFill(['is_test' => $test])->save();
+            if ($this->isCustomer()) {
+                Appointment::withoutGlobalScopes()->where('customer_id', $this->id)->update(['is_test' => $test]);
+                Review::withoutGlobalScopes()->where('customer_id', $this->id)->update(['is_test' => $test]);
+            }
+        });
+    }
+
     public function hasRole(UserRole ...$roles): bool
     {
         return in_array($this->role, $roles, true);
@@ -150,9 +169,13 @@ class User extends Authenticatable
         return $query->where('role', $role->value);
     }
 
+    /** Customers on the current test/live side (see TestMode); console code sees all of them. */
     public function scopeCustomers(Builder $query): Builder
     {
-        return $query->where('role', UserRole::Customer->value);
+        $side = TestMode::side();
+
+        return $query->where('role', UserRole::Customer->value)
+            ->when($side !== null, fn ($q) => $q->where($q->qualifyColumn('is_test'), $side));
     }
 
     /** Users who manage bookings and receive new-booking alerts. */

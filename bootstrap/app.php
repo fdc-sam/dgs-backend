@@ -4,7 +4,9 @@ use App\Exceptions\ApiException;
 use App\Http\Middleware\EnsureAdminAccess;
 use App\Http\Middleware\EnsureAdminApp;
 use App\Http\Middleware\EnsureCustomer;
+use App\Http\Middleware\EnsureLiveAccount;
 use App\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\StartTestModeRequest;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -32,10 +34,12 @@ return Application::configure(basePath: dirname(__DIR__))
             $middleware->trustProxies(at: $proxies === '*' ? '*' : explode(',', $proxies));
         }
         $middleware->append(SecurityHeaders::class);
+        $middleware->prepend(StartTestModeRequest::class);
         $middleware->alias([
             'customer' => EnsureCustomer::class,
             'admin' => EnsureAdminAccess::class,
             'admin.app' => EnsureAdminApp::class,
+            'live' => EnsureLiveAccount::class,
         ]);
         $middleware->redirectGuestsTo(fn (Request $request) => $request->is('api/*') ? null : route('login'));
         $middleware->redirectUsersTo(fn () => route('dashboard'));

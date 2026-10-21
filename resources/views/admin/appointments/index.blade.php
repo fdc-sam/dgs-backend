@@ -24,7 +24,7 @@
                         <td class="font-mono text-xs"><a href="{{ route('appointments.show', $a) }}" class="font-semibold text-primary hover:underline">{{ $a->appointment_number }}</a></td>
                         <td>
                             <p class="font-medium">{{ $a->customer->name }}</p>
-                            @can('manage')<p class="text-xs text-on-surface-variant">{{ $a->customer->phone }}</p>@endcan
+                            @can('manage')<p class="text-xs text-on-surface-variant">{{ $a->customer->phone }}</p> @endcan
                         </td>
                         <td class="max-w-48 truncate">{{ $a->items->pluck('service_name')->join(', ') }}</td>
                         <td class="whitespace-nowrap">{{ $a->branch->name }}</td>

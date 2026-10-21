@@ -145,11 +145,12 @@ class NotificationService
         $appointment->customer?->notify(new AppointmentNotification($appointment, $type, $title, $body));
     }
 
-    /** Managers plus (unless $includeStaff is false) the assigned staff member. */
+    /** Managers plus (unless $includeStaff is false) the assigned staff member — only those on the booking's test/live side. */
     private function toTeam(Appointment $appointment, NotificationType $type, string $title, string $body, bool $includeStaff = true): void
     {
-        $recipients = User::managers()->get();
-        if ($includeStaff && $staffUser = $appointment->staff?->user) {
+        $recipients = User::managers()->where('is_test', $appointment->is_test)->get();
+        $staffUser = $includeStaff ? $appointment->staff?->user : null;
+        if ($staffUser && $staffUser->is_test === $appointment->is_test) {
             $recipients->push($staffUser);
         }
 

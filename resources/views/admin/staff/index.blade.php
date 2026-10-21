@@ -1,6 +1,6 @@
 <x-admin.layout title="Staff">
     <x-admin.page-header title="Staff" subtitle="Stylists and therapists, their branches, services and schedules.">
-        <x-slot:actions><x-admin.button :href="route('staff.create')" icon="person_add">Add staff</x-admin.button></x-slot:actions>
+        @can('change-setup')<x-slot:actions><x-admin.button :href="route('staff.create')" icon="person_add">Add staff</x-admin.button></x-slot:actions> @endcan
     </x-admin.page-header>
 
     <x-admin.filter-bar :action="route('staff.index')">
@@ -10,7 +10,7 @@
 
     @if ($staff->isEmpty())
         <x-admin.card><x-admin.empty-state icon="badge" title="No staff yet" message="Add your team so customers can book them.">
-            <x-admin.button :href="route('staff.create')" icon="person_add">Add staff</x-admin.button>
+            @can('change-setup')<x-admin.button :href="route('staff.create')" icon="person_add">Add staff</x-admin.button> @endcan
         </x-admin.empty-state></x-admin.card>
     @else
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -30,6 +30,7 @@
                     </div>
                     <div class="mt-4 flex flex-wrap gap-1.5">
                         @foreach ($member->branches as $b)<x-admin.badge :tone="$b->pivot->is_primary ? 'primary' : 'neutral'" icon="storefront">{{ $b->name }}</x-admin.badge>@endforeach
+                        @if ($member->user?->is_test)<x-admin.badge tone="warning" icon="science">Test sign-in</x-admin.badge>@endif
                     </div>
                     <div class="mt-4 flex gap-6 text-sm text-on-surface-variant">
                         <span><strong class="text-on-surface">{{ $member->services_count }}</strong> services</span>

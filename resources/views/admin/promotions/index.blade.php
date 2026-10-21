@@ -1,6 +1,6 @@
 <x-admin.layout title="Promotions">
     <x-admin.page-header title="Promotions" subtitle="Offers shown in the app. Drafts stay hidden until published.">
-        <x-slot:actions><x-admin.button :href="route('promotions.create')" icon="add">New promotion</x-admin.button></x-slot:actions>
+        @can('change-setup')<x-slot:actions><x-admin.button :href="route('promotions.create')" icon="add">New promotion</x-admin.button></x-slot:actions> @endcan
     </x-admin.page-header>
 
     <div class="mb-4 flex flex-wrap gap-2" role="tablist">
@@ -13,7 +13,7 @@
     <x-admin.card :padding="false">
         @if ($promotions->isEmpty())
             <x-admin.empty-state icon="sell" title="No promotions" message="Create an offer to show it in the app.">
-                <x-admin.button :href="route('promotions.create')" icon="add">New promotion</x-admin.button>
+                @can('change-setup')<x-admin.button :href="route('promotions.create')" icon="add">New promotion</x-admin.button> @endcan
             </x-admin.empty-state>
         @else
             <x-admin.table :headers="['Promotion', 'Type', 'Valid', 'Services', 'Status', '>Actions']">
@@ -39,11 +39,11 @@
                         <td class="text-right">
                             <div class="flex justify-end gap-1">
                                 <x-admin.button :href="route('promotions.preview', $promo)" variant="text" size="sm">Preview</x-admin.button>
-                                <x-admin.button :href="route('promotions.edit', $promo)" variant="text" size="sm">Edit</x-admin.button>
-                                <form method="POST" action="{{ route('promotions.destroy', $promo) }}" data-confirm="Delete {{ $promo->name }}?">
+                                <x-admin.button :href="route('promotions.edit', $promo)" variant="text" size="sm">@can('change-setup') Edit @else View @endcan</x-admin.button>
+                                @can('change-setup')<form method="POST" action="{{ route('promotions.destroy', $promo) }}" data-confirm="Delete {{ $promo->name }}?">
                                     @csrf @method('DELETE')
                                     <x-admin.button type="submit" variant="danger-text" size="sm">Delete</x-admin.button>
-                                </form>
+                                </form> @endcan
                             </div>
                         </td>
                     </tr>

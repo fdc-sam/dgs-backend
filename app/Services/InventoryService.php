@@ -64,6 +64,7 @@ class InventoryService
     /**
      * A service was completed: record what each item's service used at today's unit costs, and take it off stock.
      * Safe to call again for the same item: stock is only taken once until the usage is released.
+     * Test bookings and walk-ins record the cost but leave the (shared, real) stock alone.
      *
      * @param  Collection<int, AppointmentItem|WalkInVisitItem>  $items
      */
@@ -73,8 +74,8 @@ class InventoryService
         foreach ($items as $item) {
             $item->update(['product_cost' => round(($item->service?->productCost() ?? 0) * $item->quantity, 2)]);
 
-            if ($this->usedBy($item)->isNotEmpty()) {
-                continue; // already taken off stock
+            if ($this->usedBy($item)->isNotEmpty() || $this->isTest($item)) {
+                continue; // already taken off stock, or a test visit
             }
             foreach ($item->service?->products ?? [] as $product) {
                 $used = round((float) $product->pivot->quantity * $item->quantity, 2);
@@ -139,6 +140,13 @@ class InventoryService
      *
      * @return \Illuminate\Support\Collection<string, float> product id => units
      */
+    private function isTest(AppointmentItem|WalkInVisitItem $item): bool
+    {
+        $parent = $item instanceof AppointmentItem ? $item->appointment()->withoutGlobalScopes()->first() : $item->visit()->withoutGlobalScopes()->first();
+
+        return (bool) $parent?->is_test;
+    }
+
     private function usedBy(Model $item): \Illuminate\Support\Collection
     {
         return StockMovement::query()

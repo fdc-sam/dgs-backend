@@ -29,6 +29,9 @@ class StaffAdminService
                 // Deactivating a profile also blocks admin-portal sign-in.
                 'status' => $data['status'] === 'active' ? UserStatus::Active : UserStatus::Inactive,
             ]);
+            if (isset($data['account_type'])) {
+                $user->is_test = $data['account_type'] === 'test';
+            }
             $passwordChanged = $user->exists && ! empty($data['password']);
             if (! empty($data['password'])) {
                 $user->password = $data['password'];

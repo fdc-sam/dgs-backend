@@ -1,6 +1,6 @@
 <x-admin.layout title="Services">
     <x-admin.page-header title="Services" subtitle="Prices, durations and where each service is offered.">
-        <x-slot:actions><x-admin.button :href="route('services.create')" icon="add">New service</x-admin.button></x-slot:actions>
+        @can('change-setup')<x-slot:actions><x-admin.button :href="route('services.create')" icon="add">New service</x-admin.button></x-slot:actions> @endcan
     </x-admin.page-header>
 
     <x-admin.filter-bar :action="route('services.index')">
@@ -12,7 +12,7 @@
     <x-admin.card :padding="false">
         @if ($services->isEmpty())
             <x-admin.empty-state icon="content_cut" title="No services found">
-                <x-admin.button :href="route('services.create')" icon="add">New service</x-admin.button>
+                @can('change-setup')<x-admin.button :href="route('services.create')" icon="add">New service</x-admin.button> @endcan
             </x-admin.empty-state>
         @else
             <x-admin.table :headers="['Service', 'Category', '>Price', 'Duration', 'Options', 'Branches', 'Staff', 'Status', '>Actions']">
@@ -43,11 +43,11 @@
                         <td><x-admin.badge :tone="$service->status->value === 'active' ? 'success' : 'neutral'">{{ $service->status->label() }}</x-admin.badge></td>
                         <td class="text-right">
                             <div class="flex justify-end gap-1">
-                                <x-admin.button :href="route('services.edit', $service)" variant="text" size="sm">Edit</x-admin.button>
-                                <form method="POST" action="{{ route('services.destroy', $service) }}" data-confirm="Delete {{ $service->name }}? Existing appointments are kept.">
+                                <x-admin.button :href="route('services.edit', $service)" variant="text" size="sm">@can('change-setup') Edit @else View @endcan</x-admin.button>
+                                @can('change-setup')<form method="POST" action="{{ route('services.destroy', $service) }}" data-confirm="Delete {{ $service->name }}? Existing appointments are kept.">
                                     @csrf @method('DELETE')
                                     <x-admin.button type="submit" variant="danger-text" size="sm">Delete</x-admin.button>
-                                </form>
+                                </form> @endcan
                             </div>
                         </td>
                     </tr>

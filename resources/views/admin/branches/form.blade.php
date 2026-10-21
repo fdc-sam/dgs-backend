@@ -4,7 +4,7 @@
 @endphp
 <x-admin.layout :title="$editing ? 'Edit branch' : 'New branch'">
     <x-admin.page-header :title="$editing ? $branch->name : 'New branch'" :back="route('branches.index')">
-        @if ($editing)
+        @if ($editing && auth()->user()->can('change-setup'))
             <x-slot:actions>
                 <form method="POST" action="{{ route('branches.destroy', $branch) }}" data-confirm="Delete {{ $branch->name }}?">
                     @csrf @method('DELETE')
@@ -16,6 +16,8 @@
 
     <form method="POST" action="{{ $editing ? route('branches.update', $branch) : route('branches.store') }}">
         @csrf @if ($editing) @method('PUT') @endif
+        {{-- Test accounts see the shared setup read-only. --}}
+        <fieldset class="min-w-0" @cannot('change-setup') disabled @endcannot>
         <div class="grid gap-6 lg:grid-cols-3">
             <x-admin.card title="Details" class="lg:col-span-2">
                 <div class="grid gap-5 sm:grid-cols-2">
@@ -53,25 +55,28 @@
             </x-admin.card>
         </div>
         <div class="mt-6 flex justify-end gap-2">
-            <x-admin.button :href="route('branches.index')" variant="text">Cancel</x-admin.button>
-            <x-admin.button type="submit" icon="save">{{ $editing ? 'Save changes' : 'Create branch' }}</x-admin.button>
+            <x-admin.button :href="route('branches.index')" variant="text">@can('change-setup') Cancel @else Back @endcan</x-admin.button>
+            @can('change-setup')<x-admin.button type="submit" icon="save">{{ $editing ? 'Save changes' : 'Create branch' }}</x-admin.button> @endcan
         </div>
+        </fieldset>
     </form>
 
     @if ($editing)
         <x-admin.card title="Closures & holidays" subtitle="The branch accepts no bookings on these dates." class="mt-6">
+            @can('change-setup')
             <form method="POST" action="{{ route('branches.closures.store', $branch) }}" class="mb-4 flex flex-wrap items-end gap-3">
                 @csrf
                 <x-admin.input name="date" type="date" label="Date" :min="now()->toDateString()" required class="w-full sm:w-44" />
                 <x-admin.input name="reason" label="Reason" placeholder="e.g. Holiday" class="w-full sm:w-64" />
                 <x-admin.button type="submit" variant="tonal" icon="add" class="max-sm:w-full">Add closure</x-admin.button>
             </form>
+            @endcan
             @forelse ($branch->closures as $closure)
                 <div class="flex items-center justify-between border-t border-outline-variant/50 py-2 text-sm">
                     <span><strong>{{ $closure->date->format('D, M j, Y') }}</strong> @if ($closure->reason) · {{ $closure->reason }} @endif</span>
-                    <form method="POST" action="{{ route('branches.closures.destroy', [$branch, $closure]) }}">@csrf @method('DELETE')
+                    @can('change-setup')<form method="POST" action="{{ route('branches.closures.destroy', [$branch, $closure]) }}">@csrf @method('DELETE')
                         <x-admin.button type="submit" variant="danger-text" size="sm">Remove</x-admin.button>
-                    </form>
+                    </form> @endcan
                 </div>
             @empty
                 <p class="text-sm text-on-surface-variant">No upcoming closures.</p>

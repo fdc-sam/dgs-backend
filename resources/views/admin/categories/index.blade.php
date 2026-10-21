@@ -1,12 +1,12 @@
 <x-admin.layout title="Categories">
     <x-admin.page-header title="Service categories" subtitle="Group services in the app's catalog.">
-        <x-slot:actions><x-admin.button :href="route('categories.create')" icon="add">New category</x-admin.button></x-slot:actions>
+        @can('change-setup')<x-slot:actions><x-admin.button :href="route('categories.create')" icon="add">New category</x-admin.button></x-slot:actions> @endcan
     </x-admin.page-header>
 
     <x-admin.card :padding="false">
         @if ($categories->isEmpty())
             <x-admin.empty-state icon="category" title="No categories yet" message="Create a category, then add services to it.">
-                <x-admin.button :href="route('categories.create')" icon="add">New category</x-admin.button>
+                @can('change-setup')<x-admin.button :href="route('categories.create')" icon="add">New category</x-admin.button> @endcan
             </x-admin.empty-state>
         @else
             <x-admin.table :headers="['Category', 'Services', 'Order', 'Status', '>Actions']">
@@ -23,11 +23,11 @@
                         <td><x-admin.badge :tone="$category->status->value === 'active' ? 'success' : 'neutral'">{{ $category->status->label() }}</x-admin.badge></td>
                         <td class="text-right">
                             <div class="flex justify-end gap-1">
-                                <x-admin.button :href="route('categories.edit', $category)" variant="text" size="sm">Edit</x-admin.button>
-                                <form method="POST" action="{{ route('categories.destroy', $category) }}" data-confirm="Delete {{ $category->name }}?">
+                                <x-admin.button :href="route('categories.edit', $category)" variant="text" size="sm">@can('change-setup') Edit @else View @endcan</x-admin.button>
+                                @can('change-setup')<form method="POST" action="{{ route('categories.destroy', $category) }}" data-confirm="Delete {{ $category->name }}?">
                                     @csrf @method('DELETE')
                                     <x-admin.button type="submit" variant="danger-text" size="sm">Delete</x-admin.button>
-                                </form>
+                                </form> @endcan
                             </div>
                         </td>
                     </tr>

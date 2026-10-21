@@ -8,7 +8,7 @@
 @endphp
 <x-admin.layout :title="$editing ? 'Edit staff' : 'Add staff'">
     <x-admin.page-header :title="$editing ? $user->name : 'Add staff member'" :back="route('staff.index')" :subtitle="$editing ? $staff->position : 'Creates a sign-in for the admin portal (staff role).'">
-        @if ($editing)
+        @if ($editing && auth()->user()->can('change-setup'))
             <x-slot:actions>
                 <form method="POST" action="{{ route('staff.destroy', $staff) }}" data-confirm="Remove {{ $user->name }}? Their sign-in will be disabled; past appointments are kept.">
                     @csrf @method('DELETE')
@@ -20,6 +20,8 @@
 
     <form method="POST" action="{{ $editing ? route('staff.update', $staff) : route('staff.store') }}" enctype="multipart/form-data">
         @csrf @if ($editing) @method('PUT') @endif
+        {{-- Test accounts see the shared setup read-only. --}}
+        <fieldset class="min-w-0" @cannot('change-setup') disabled @endcannot>
         <div class="grid gap-6 lg:grid-cols-3">
             <div class="space-y-6 lg:col-span-2">
                 <x-admin.card title="Account & profile">
@@ -87,6 +89,9 @@
 
             <div class="space-y-6">
                 <x-admin.card title="Photo"><x-admin.image-field name="photo" label="Profile photo" :current="$user?->profilePhotoUrl()" /></x-admin.card>
+                @can('super-admin')
+                    <x-admin.card title="Test or live" subtitle="A test stylist's sign-in shows only test bookings."><x-admin.account-type :test="(bool) $user?->is_test" /></x-admin.card>
+                @endcan
                 <x-admin.card title="Branches">
                     @foreach ($branches as $id => $name)
                         <div class="flex items-center justify-between gap-2">
@@ -99,13 +104,15 @@
             </div>
         </div>
         <div class="mt-6 flex justify-end gap-2">
-            <x-admin.button :href="route('staff.index')" variant="text">Cancel</x-admin.button>
-            <x-admin.button type="submit" icon="save">{{ $editing ? 'Save changes' : 'Create staff member' }}</x-admin.button>
+            <x-admin.button :href="route('staff.index')" variant="text">@can('change-setup') Cancel @else Back @endcan</x-admin.button>
+            @can('change-setup')<x-admin.button type="submit" icon="save">{{ $editing ? 'Save changes' : 'Create staff member' }}</x-admin.button> @endcan
         </div>
+        </fieldset>
     </form>
 
     @if ($editing)
         <x-admin.card title="Days off" subtitle="Leave, holidays or training. Blocks bookings on those dates." class="mt-6">
+            @can('change-setup')
             <form method="POST" action="{{ route('staff.days-off.store', $staff) }}" class="mb-4 flex flex-wrap items-end gap-3">
                 @csrf
                 <x-admin.input name="date" type="date" label="Date" :min="now()->toDateString()" required class="w-full sm:w-44" />
@@ -113,12 +120,13 @@
                 <x-admin.input name="reason" label="Reason" placeholder="Optional" class="w-full sm:w-64" />
                 <x-admin.button type="submit" variant="tonal" icon="add" class="max-sm:w-full">Add day off</x-admin.button>
             </form>
+            @endcan
             @forelse ($staff->daysOff as $off)
                 <div class="flex items-center justify-between border-t border-outline-variant/50 py-2 text-sm">
                     <span><strong>{{ $off->date->format('D, M j, Y') }}</strong> · {{ $off->branch?->name ?? 'All branches' }} @if ($off->reason) · {{ $off->reason }} @endif</span>
-                    <form method="POST" action="{{ route('staff.days-off.destroy', [$staff, $off]) }}">@csrf @method('DELETE')
+                    @can('change-setup')<form method="POST" action="{{ route('staff.days-off.destroy', [$staff, $off]) }}">@csrf @method('DELETE')
                         <x-admin.button type="submit" variant="danger-text" size="sm">Remove</x-admin.button>
-                    </form>
+                    </form> @endcan
                 </div>
             @empty
                 <p class="text-sm text-on-surface-variant">No days off scheduled.</p>

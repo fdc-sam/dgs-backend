@@ -67,6 +67,7 @@ class PaymentController extends Controller
     /** The receipt screenshot, streamed from the private disk to staff only. */
     public function proof(Payment $payment): StreamedResponse
     {
+        abort_unless($payment->appointment, 404); // the booking is on the other test/live side
         $this->authorize('reviewPayment', $payment->appointment);
         abort_unless($payment->proof_path && Storage::disk(FileUploadService::privateDisk())->exists($payment->proof_path), 404);
 

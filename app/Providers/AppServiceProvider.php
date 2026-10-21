@@ -19,6 +19,7 @@ use App\Models\User;
 use App\Policies\ProfilePolicy;
 use App\Services\SettingsService;
 use App\Support\FavoriteLookup;
+use App\Support\TestMode;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
@@ -27,6 +28,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -35,6 +37,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->scoped(FavoriteLookup::class);
+        $this->app->scoped(TestMode::class);
         $this->app->singleton(SettingsService::class);
     }
 
@@ -68,6 +71,12 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(User::class, ProfilePolicy::class);
         Gate::define('manage', fn (User $user) => $user->isManager() && $user->isActive());
         Gate::define('super-admin', fn (User $user) => $user->isSuperAdmin() && $user->isActive());
+        // Services, prices, staff, branches, stock, promotions, achievements and settings are shared by both sides:
+        // test accounts may look at them but not change them.
+        Gate::define('change-setup', fn (User $user) => $user->isManager() && $user->isActive() && ! $user->is_test);
+
+        // {customer} in admin web and admin app routes: a customer on the viewer's side only (User::customers()).
+        Route::bind('customer', fn (string $id) => User::customers()->findOrFail($id));
 
         // Shared chrome data for admin/guest layouts.
         View::composer(['admin.dashboard', 'components.admin.layout', 'components.admin.sidebar', 'components.admin.topbar', 'components.guest.layout'], function ($view) {
@@ -81,8 +90,8 @@ class AppServiceProvider extends ServiceProvider
             $view->with('paymentsToVerify', once(fn () => auth()->user()?->isManager()
                 ? Appointment::query()->where('payment_status', PaymentStatus::Submitted->value)->count() : 0));
         });
-        // Super admins can do everything.
-        Gate::before(fn (User $user) => $user->isSuperAdmin() && $user->isActive() ? true : null);
+        // Super admins can do everything, except change the shared setup from a test account.
+        Gate::before(fn (User $user, string $ability) => $user->isSuperAdmin() && $user->isActive() && $ability !== 'change-setup' ? true : null);
 
         Model::preventSilentlyDiscardingAttributes(! $this->app->isProduction());
         Model::preventAccessingMissingAttributes(! $this->app->isProduction());

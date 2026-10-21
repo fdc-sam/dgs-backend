@@ -2,7 +2,7 @@
 <x-admin.layout title="Preview promotion">
     <x-admin.page-header :title="'Preview: '.$promotion->name" :back="route('promotions.index')" subtitle="This is how the promotion appears in the mobile app.">
         <x-slot:actions>
-            <x-admin.button :href="route('promotions.edit', $promotion)" variant="outlined" icon="edit">Edit</x-admin.button>
+            <x-admin.button :href="route('promotions.edit', $promotion)" variant="outlined" icon="edit">@can('change-setup') Edit @else View @endcan</x-admin.button>
         </x-slot:actions>
     </x-admin.page-header>
 
@@ -32,7 +32,7 @@
             <x-admin.card title="Status">
                 <p class="text-sm">Current status: <strong>{{ $promotion->status->label() }}</strong>.
                     {{ $promotion->isCurrentlyActive() ? 'It is live in the app right now.' : ($promotion->start_at->isFuture() ? 'It will appear on '.$promotion->start_at->format('M j, Y g:i A').' once published.' : ($promotion->end_at->isPast() ? 'It has expired.' : 'It is hidden until published.')) }}</p>
-                @if ($promotion->status->value !== 'active')
+                @if ($promotion->status->value !== 'active' && auth()->user()->can('change-setup'))
                     <form method="POST" action="{{ route('promotions.publish', $promotion) }}" class="mt-4 space-y-3">
                         @csrf
                         <x-admin.checkbox name="notify" label="Send a push notification to all customers" hint="Only sent if the promotion is live now." />

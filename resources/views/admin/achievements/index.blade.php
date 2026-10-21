@@ -1,12 +1,12 @@
 <x-admin.layout title="Achievements">
     <x-admin.page-header title="Salon achievements" subtitle="Share milestones and memories with customers on the app home page.">
-        <x-slot:actions><x-admin.button :href="route('achievements.create')" icon="add">Add achievement</x-admin.button></x-slot:actions>
+        @can('change-setup')<x-slot:actions><x-admin.button :href="route('achievements.create')" icon="add">Add achievement</x-admin.button></x-slot:actions> @endcan
     </x-admin.page-header>
 
     <x-admin.card :padding="false">
         @if ($achievements->isEmpty())
             <x-admin.empty-state icon="emoji_events" title="No achievements yet" message="Add a photo, title, and story to feature it above offers in the app.">
-                <x-admin.button :href="route('achievements.create')" icon="add">Add achievement</x-admin.button>
+                @can('change-setup')<x-admin.button :href="route('achievements.create')" icon="add">Add achievement</x-admin.button> @endcan
             </x-admin.empty-state>
         @else
             <x-admin.table :headers="['Achievement', 'Added', '>Actions']">
@@ -21,11 +21,11 @@
                         <td class="whitespace-nowrap text-sm">{{ $achievement->created_at->format('M j, Y') }}</td>
                         <td class="text-right">
                             <div class="flex justify-end gap-1">
-                                <x-admin.button :href="route('achievements.edit', $achievement)" variant="text" size="sm">Edit</x-admin.button>
-                                <form method="POST" action="{{ route('achievements.destroy', $achievement) }}" data-confirm="Remove {{ $achievement->title }} from the app?">
+                                <x-admin.button :href="route('achievements.edit', $achievement)" variant="text" size="sm">@can('change-setup') Edit @else View @endcan</x-admin.button>
+                                @can('change-setup')<form method="POST" action="{{ route('achievements.destroy', $achievement) }}" data-confirm="Remove {{ $achievement->title }} from the app?">
                                     @csrf @method('DELETE')
                                     <x-admin.button type="submit" variant="danger-text" size="sm">Delete</x-admin.button>
-                                </form>
+                                </form> @endcan
                             </div>
                         </td>
                     </tr>

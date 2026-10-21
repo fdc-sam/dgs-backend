@@ -1,10 +1,10 @@
 <x-admin.layout title="Branches">
     <x-admin.page-header title="Branches" subtitle="Locations, contact details and opening hours.">
-        <x-slot:actions><x-admin.button :href="route('branches.create')" icon="add_business">New branch</x-admin.button></x-slot:actions>
+        @can('change-setup')<x-slot:actions><x-admin.button :href="route('branches.create')" icon="add_business">New branch</x-admin.button></x-slot:actions> @endcan
     </x-admin.page-header>
 
     @if ($branches->isEmpty())
-        <x-admin.card><x-admin.empty-state icon="storefront" title="No branches yet" message="Add your first salon location."><x-admin.button :href="route('branches.create')" icon="add_business">New branch</x-admin.button></x-admin.empty-state></x-admin.card>
+        <x-admin.card><x-admin.empty-state icon="storefront" title="No branches yet" message="Add your first salon location.">@can('change-setup')<x-admin.button :href="route('branches.create')" icon="add_business">New branch</x-admin.button> @endcan</x-admin.empty-state></x-admin.card>
     @else
         <div class="grid gap-4 md:grid-cols-2">
             @foreach ($branches as $branch)

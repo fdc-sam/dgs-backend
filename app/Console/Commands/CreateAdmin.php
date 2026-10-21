@@ -12,7 +12,8 @@ use Illuminate\Validation\Rules\Password;
 /** Bootstrap an admin account in production (demo seeders never run there). */
 class CreateAdmin extends Command
 {
-    protected $signature = 'dgs:create-admin {email} {--name=Administrator} {--role=super_admin : super_admin or admin}';
+    protected $signature = 'dgs:create-admin {email} {--name=Administrator} {--role=super_admin : super_admin or admin}
+        {--test : A test account: sees only test customers and their bookings}';
 
     protected $description = 'Create (or promote) an admin portal account';
 
@@ -46,9 +47,10 @@ class CreateAdmin extends Command
             'role' => $role,
             'status' => UserStatus::Active,
             'email_verified_at' => $user->email_verified_at ?? now(),
+            'is_test' => (bool) $this->option('test'),
         ])->save();
 
-        $this->info("{$role->label()} account ready: {$user->email}");
+        $this->info(($this->option('test') ? 'Test ' : '')."{$role->label()} account ready: {$user->email}");
 
         return self::SUCCESS;
     }

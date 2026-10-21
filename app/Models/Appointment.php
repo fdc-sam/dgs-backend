@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\AppointmentStatus;
 use App\Enums\PaymentStatus;
+use App\Models\Concerns\SeparatesTestData;
 use Carbon\CarbonImmutable;
 use Database\Factories\AppointmentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -26,7 +27,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class Appointment extends Model
 {
     /** @use HasFactory<AppointmentFactory> */
-    use HasFactory, HasUlids;
+    use HasFactory, HasUlids, SeparatesTestData;
 
     public const SOURCE_APP = 'app';
 
@@ -42,6 +43,7 @@ class Appointment extends Model
         return [
             'status' => AppointmentStatus::class,
             'appointment_date' => 'date:Y-m-d',
+            'is_test' => 'boolean',
             'starts_at' => 'datetime',
             'buffer_minutes' => 'integer',
             'subtotal' => 'decimal:2',
@@ -58,6 +60,12 @@ class Appointment extends Model
             'payment_reminded_at' => 'datetime',
             'paid_at' => 'datetime',
         ];
+    }
+
+    /** A customer's booking is on their side, whoever makes it (the app, or the admin app at the counter). */
+    protected function testFlagForNewRecord(): bool
+    {
+        return (bool) User::withTrashed()->whereKey($this->customer_id)->value('is_test');
     }
 
     public function customer(): BelongsTo

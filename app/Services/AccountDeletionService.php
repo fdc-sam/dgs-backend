@@ -7,6 +7,7 @@ use App\Enums\UserStatus;
 use App\Models\Appointment;
 use App\Models\ReviewImage;
 use App\Models\User;
+use App\Support\TestMode;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -52,6 +53,12 @@ class AccountDeletionService
     }
 
     public function delete(User $user): void
+    {
+        // On the customer's own side: a test customer deleting through the (live) website still finds their bookings.
+        TestMode::on((bool) $user->is_test, fn () => $this->deleteOnSide($user));
+    }
+
+    private function deleteOnSide(User $user): void
     {
         $upcoming = [AppointmentStatus::Pending->value, AppointmentStatus::Confirmed->value, AppointmentStatus::Rescheduled->value];
         $user->appointments()->whereIn('status', $upcoming)->get()->each(

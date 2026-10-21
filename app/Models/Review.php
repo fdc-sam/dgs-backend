@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ReviewStatus;
+use App\Models\Concerns\SeparatesTestData;
 use Database\Factories\ReviewFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -17,7 +18,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Review extends Model
 {
     /** @use HasFactory<ReviewFactory> */
-    use HasFactory, HasUlids, SoftDeletes;
+    use HasFactory, HasUlids, SeparatesTestData, SoftDeletes;
 
     protected $attributes = ['status' => 'pending'];
 
@@ -26,7 +27,14 @@ class Review extends Model
         return [
             'status' => ReviewStatus::class,
             'rating' => 'integer',
+            'is_test' => 'boolean',
         ];
+    }
+
+    /** A customer's booking is on their side, whoever makes it (the app, or the admin app at the counter). */
+    protected function testFlagForNewRecord(): bool
+    {
+        return (bool) User::withTrashed()->whereKey($this->customer_id)->value('is_test');
     }
 
     public function appointment(): BelongsTo

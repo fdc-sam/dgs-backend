@@ -29,6 +29,8 @@ class AdminUserResource extends JsonResource
             'email' => $user->email,
             'role' => $user->role->value,
             'role_label' => $user->role->label(),
+            // A test account sees only test customers and their bookings (the app may show a "Test" badge).
+            'is_test' => (bool) $user->is_test,
             'position' => $profile?->position,
             'profile_photo_url' => Fmt::url($user->profile_photo),
             'staff_profile_id' => $profile?->id,

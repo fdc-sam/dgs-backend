@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\WalkInVisit;
 use App\Support\Reports\DateRange;
 use App\Support\Reports\ReportTable;
+use App\Support\TestMode;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -19,6 +20,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * Business reporting. Sales revenue includes completed appointments and walk-in visits, dated by the
  * appointment date or walk-in completion date respectively. Booking counts include every status unless stated otherwise.
+ * Figures are for the viewer's test/live side: model queries are scoped automatically, raw ones call TestMode::constrain().
  */
 class ReportService
 {
@@ -231,6 +233,7 @@ class ReportService
     {
         $rows = DB::table('appointment_items')
             ->join('appointments', 'appointments.id', '=', 'appointment_items.appointment_id')
+            ->tap(fn ($q) => TestMode::constrain($q, 'appointments.is_test'))
             ->whereBetween('appointments.appointment_date', [$range->from->toDateString(), $range->to->toDateString()])
             ->when($branchId, fn ($q) => $q->where('appointments.branch_id', $branchId))
             ->groupBy('appointment_items.service_id', 'appointment_items.service_name')
@@ -244,6 +247,7 @@ class ReportService
         // Services done for walk-in guests, dated like the dashboard (when the visit was completed).
         $walkIns = DB::table('walk_in_visit_items')
             ->join('walk_in_visits', 'walk_in_visits.id', '=', 'walk_in_visit_items.walk_in_visit_id')
+            ->tap(fn ($q) => TestMode::constrain($q, 'walk_in_visits.is_test'))
             ->where('walk_in_visits.status', self::COMPLETED)
             ->whereBetween('walk_in_visits.completed_at', [$range->from->startOfDay(), $range->to->endOfDay()])
             ->when($branchId, fn ($q) => $q->where('walk_in_visits.branch_id', $branchId))
@@ -252,6 +256,7 @@ class ReportService
             ->get();
 
         $ratings = DB::table('reviews')->whereNull('deleted_at')->where('status', ReviewStatus::Approved->value)
+            ->tap(fn ($q) => TestMode::constrain($q, 'reviews.is_test'))
             ->groupBy('service_id')->selectRaw('service_id, AVG(rating) as rating')->pluck('rating', 'service_id');
 
         $byService = [];
@@ -308,6 +313,7 @@ class ReportService
         // Walk-in services are assigned per item; count the visits each stylist worked on and what their services earned.
         $walkIns = DB::table('walk_in_visit_items')
             ->join('walk_in_visits', 'walk_in_visits.id', '=', 'walk_in_visit_items.walk_in_visit_id')
+            ->tap(fn ($q) => TestMode::constrain($q, 'walk_in_visits.is_test'))
             ->whereNotNull('walk_in_visit_items.staff_profile_id')
             ->where('walk_in_visits.status', self::COMPLETED)
             ->whereBetween('walk_in_visits.completed_at', [$range->from->startOfDay(), $range->to->endOfDay()])
@@ -319,6 +325,7 @@ class ReportService
 
         $ratings = DB::table('reviews')
             ->join('appointments', 'appointments.id', '=', 'reviews.appointment_id')
+            ->tap(fn ($q) => TestMode::constrain($q, 'reviews.is_test'))
             ->whereNull('reviews.deleted_at')->where('reviews.status', ReviewStatus::Approved->value)
             ->groupBy('appointments.staff_profile_id')
             ->selectRaw('appointments.staff_profile_id, AVG(reviews.rating) as rating')
@@ -410,6 +417,7 @@ class ReportService
     {
         return DB::table('appointment_items')
             ->join('appointments', 'appointments.id', '=', 'appointment_items.appointment_id')
+            ->tap(fn ($q) => TestMode::constrain($q, 'appointments.is_test'))
             ->whereBetween('appointments.appointment_date', [$from->toDateString(), $to->toDateString()])
             ->when($branchId, fn ($q) => $q->where('appointments.branch_id', $branchId))
             ->whereNotIn('appointments.status', [AppointmentStatus::Cancelled->value])
@@ -429,6 +437,7 @@ class ReportService
     {
         $appointments = DB::table('appointment_items')
             ->join('appointments', 'appointments.id', '=', 'appointment_items.appointment_id')
+            ->tap(fn ($q) => TestMode::constrain($q, 'appointments.is_test'))
             ->where('appointments.status', self::COMPLETED)
             ->when($branchId, fn ($q) => $q->where('appointments.branch_id', $branchId))
             ->whereBetween('appointments.appointment_date', [$from->toDateString(), $to->toDateString()])
@@ -437,6 +446,7 @@ class ReportService
 
         $walkIns = DB::table('walk_in_visit_items')
             ->join('walk_in_visits', 'walk_in_visits.id', '=', 'walk_in_visit_items.walk_in_visit_id')
+            ->tap(fn ($q) => TestMode::constrain($q, 'walk_in_visits.is_test'))
             ->where('walk_in_visits.status', self::COMPLETED)
             ->when($branchId, fn ($q) => $q->where('walk_in_visits.branch_id', $branchId))
             ->whereBetween('walk_in_visits.completed_at', [$from->startOfDay(), $to->endOfDay()])

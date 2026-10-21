@@ -1,7 +1,7 @@
 @php use App\Support\Fmt; @endphp
 <x-admin.layout title="Inventory">
     <x-admin.page-header title="Inventory" subtitle="Products used in services and what each unit costs. Their cost is taken off revenue to give net revenue.">
-        <x-slot:actions><x-admin.button :href="route('products.create')" icon="add">New product</x-admin.button></x-slot:actions>
+        @can('change-setup')<x-slot:actions><x-admin.button :href="route('products.create')" icon="add">New product</x-admin.button></x-slot:actions> @endcan
     </x-admin.page-header>
 
     @if ($uncounted > 0)
@@ -25,7 +25,7 @@
         @if ($products->isEmpty())
             <x-admin.empty-state icon="inventory_2" :title="request('search') ? 'No products found' : 'No products yet'"
                                  message="Add the products your services use, like hair color or treatment, with what one unit costs.">
-                <x-admin.button :href="route('products.create')" icon="add">New product</x-admin.button>
+                @can('change-setup')<x-admin.button :href="route('products.create')" icon="add">New product</x-admin.button> @endcan
             </x-admin.empty-state>
         @else
             <div x-data="{ target: { name: '', unit: '', stock: '', restock: '', count: '' } }">
@@ -67,14 +67,16 @@
                         <td class="text-right">
                             <div class="flex justify-end gap-1">
                                 @php $target = ['name' => $product->name, 'unit' => $product->unit, 'stock' => Fmt::quantity($product->stock_quantity), 'restock' => route('products.restock', $product), 'count' => route('products.count', $product)]; @endphp
+                                @can('change-setup')
                                 <x-admin.button variant="tonal" size="sm" icon="add" @click="target = {{ \Illuminate\Support\Js::from($target) }}; $dispatch('open-modal', 'restock')">Add stock</x-admin.button>
                                 <x-admin.button variant="text" size="sm" @click="target = {{ \Illuminate\Support\Js::from($target) }}; $dispatch('open-modal', 'count')">Count</x-admin.button>
-                                <x-admin.button :href="route('products.edit', $product)" variant="text" size="sm">Edit</x-admin.button>
-                                <form method="POST" action="{{ route('products.destroy', $product) }}"
+                                @endcan
+                                <x-admin.button :href="route('products.edit', $product)" variant="text" size="sm">@can('change-setup') Edit @else View @endcan</x-admin.button>
+                                @can('change-setup')<form method="POST" action="{{ route('products.destroy', $product) }}"
                                       data-confirm="Delete {{ $product->name }}?{{ $product->services->isNotEmpty() ? ' It will be removed from '.$product->services->count().' '.\Illuminate\Support\Str::plural('service', $product->services->count()).'.' : '' }} Completed visits keep their recorded costs.">
                                     @csrf @method('DELETE')
                                     <x-admin.button type="submit" variant="danger-text" size="sm">Delete</x-admin.button>
-                                </form>
+                                </form> @endcan
                             </div>
                         </td>
                     </tr>

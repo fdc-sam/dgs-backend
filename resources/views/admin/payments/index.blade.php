@@ -5,7 +5,7 @@
     @unless ($enabled)
         <div class="mb-4 flex items-start gap-3 rounded-card border border-warning/40 bg-warning-container px-4 py-3 text-sm text-warning" role="status">
             <span class="material-symbols-outlined" aria-hidden="true">info</span>
-            <p>No booking asks for a GCash deposit yet. Add a downpayment QR to a service (Services → Edit → GCash downpayment)@can('super-admin'), or turn on the salon-wide deposit in <a href="{{ route('settings.edit') }}#payments" class="font-semibold underline">Settings</a>@endcan.</p>
+            <p>No booking asks for a GCash deposit yet. Add a downpayment QR to a service (Services → Edit → GCash downpayment)@can('super-admin'), or turn on the salon-wide deposit in <a href="{{ route('settings.edit') }}#payments" class="font-semibold underline">Settings</a> @endcan.</p>
         </div>
     @endunless
 

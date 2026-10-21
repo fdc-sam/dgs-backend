@@ -87,4 +87,24 @@ class CustomerController extends Controller
 
         return back()->with('success', 'Customer status updated.');
     }
+
+    /** Super admins put a customer on the test side (seen only by test accounts) or back on live. */
+    public function updateAccountType(Request $request, User $customer, AuditLogger $audit): RedirectResponse
+    {
+        $this->authorize('super-admin');
+        $data = $request->validate(['account_type' => ['required', Rule::in(['live', 'test'])]]);
+        $test = $data['account_type'] === 'test';
+        if ($customer->is_test === $test) {
+            return back();
+        }
+
+        $customer->setTestAccount($test);
+        $audit->log('customer.account_type', $customer, ['is_test' => ! $test], ['is_test' => $test]);
+
+        // The customer is on the other side now, so this admin can no longer open their page.
+        $side = $test ? 'test' : 'live';
+
+        return redirect()->route('customers.index')
+            ->with('success', "{$customer->name} is now a {$side} account. Only {$side} accounts can see them and their bookings.");
+    }
 }

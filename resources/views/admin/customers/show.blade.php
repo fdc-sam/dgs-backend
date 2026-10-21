@@ -59,6 +59,16 @@
         </div>
 
         <div class="space-y-6">
+            @can('super-admin')
+                <x-admin.card title="Test or live">
+                    <form method="POST" action="{{ route('customers.account-type', $customer) }}" class="space-y-4"
+                          data-confirm="Move {{ $customer->name }} to the other side? They and their bookings will no longer show for your account.">
+                        @csrf
+                        <x-admin.account-type :test="$customer->is_test" />
+                        <x-admin.button type="submit" variant="tonal" icon="save" class="w-full">Save account type</x-admin.button>
+                    </form>
+                </x-admin.card>
+            @endcan
             <x-admin.card title="Customer QR code">
                 <div class="flex flex-col items-center gap-3 text-center">
                     <img src="{{ route('customers.qr', ['customer' => $customer, 'size' => 480]) }}" alt="QR code for {{ $customer->name }}"

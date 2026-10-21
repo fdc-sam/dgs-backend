@@ -62,28 +62,33 @@ Route::middleware(['auth', 'auth.session', 'admin'])->group(function () {
         Route::put('walk-ins/{walkInVisit}/items/{item}', [Admin\WalkInVisitController::class, 'updateItem'])->name('walk-ins.items.update');
         Route::delete('walk-ins/{walkInVisit}/items/{item}', [Admin\WalkInVisitController::class, 'destroyItem'])->name('walk-ins.items.destroy');
         Route::post('walk-ins/{walkInVisit}/complete', [Admin\WalkInVisitController::class, 'complete'])->name('walk-ins.complete');
-        Route::resource('services', Admin\ServiceController::class)->except('show');
-        Route::resource('categories', Admin\CategoryController::class)->except('show');
-        Route::resource('products', Admin\ProductController::class)->except('show');
-        Route::post('products/{product}/restock', [Admin\ProductController::class, 'restock'])->name('products.restock');
-        Route::post('products/{product}/count', [Admin\ProductController::class, 'count'])->name('products.count');
-        Route::resource('promotions', Admin\PromotionController::class)->except('show');
-        Route::get('promotions/{promotion}/preview', [Admin\PromotionController::class, 'preview'])->name('promotions.preview');
-        Route::post('promotions/{promotion}/publish', [Admin\PromotionController::class, 'publish'])->name('promotions.publish');
-        Route::resource('achievements', Admin\AchievementController::class)->except('show');
+
+        // Shared salon setup: test accounts can open these pages but not change them.
+        Route::middleware('live')->group(function () {
+            Route::resource('services', Admin\ServiceController::class)->except('show');
+            Route::resource('categories', Admin\CategoryController::class)->except('show');
+            Route::resource('products', Admin\ProductController::class)->except('show');
+            Route::post('products/{product}/restock', [Admin\ProductController::class, 'restock'])->name('products.restock');
+            Route::post('products/{product}/count', [Admin\ProductController::class, 'count'])->name('products.count');
+            Route::resource('promotions', Admin\PromotionController::class)->except('show');
+            Route::get('promotions/{promotion}/preview', [Admin\PromotionController::class, 'preview'])->name('promotions.preview');
+            Route::post('promotions/{promotion}/publish', [Admin\PromotionController::class, 'publish'])->name('promotions.publish');
+            Route::resource('achievements', Admin\AchievementController::class)->except('show');
+
+            Route::resource('staff', Admin\StaffController::class)->except('show')->parameters(['staff' => 'staff']);
+            Route::post('staff/{staff}/days-off', [Admin\StaffController::class, 'storeDayOff'])->name('staff.days-off.store');
+            Route::delete('staff/{staff}/days-off/{dayOff}', [Admin\StaffController::class, 'destroyDayOff'])->name('staff.days-off.destroy');
+
+            Route::resource('branches', Admin\BranchController::class)->except('show');
+            Route::post('branches/{branch}/closures', [Admin\BranchController::class, 'storeClosure'])->name('branches.closures.store');
+            Route::delete('branches/{branch}/closures/{closure}', [Admin\BranchController::class, 'destroyClosure'])->name('branches.closures.destroy');
+        });
 
         Route::get('customers', [Admin\CustomerController::class, 'index'])->name('customers.index');
         Route::get('customers/{customer}', [Admin\CustomerController::class, 'show'])->name('customers.show');
         Route::get('customers/{customer}/qr', [Admin\CustomerController::class, 'qr'])->name('customers.qr');
         Route::post('customers/{customer}/status', [Admin\CustomerController::class, 'updateStatus'])->name('customers.status');
-
-        Route::resource('staff', Admin\StaffController::class)->except('show')->parameters(['staff' => 'staff']);
-        Route::post('staff/{staff}/days-off', [Admin\StaffController::class, 'storeDayOff'])->name('staff.days-off.store');
-        Route::delete('staff/{staff}/days-off/{dayOff}', [Admin\StaffController::class, 'destroyDayOff'])->name('staff.days-off.destroy');
-
-        Route::resource('branches', Admin\BranchController::class)->except('show');
-        Route::post('branches/{branch}/closures', [Admin\BranchController::class, 'storeClosure'])->name('branches.closures.store');
-        Route::delete('branches/{branch}/closures/{closure}', [Admin\BranchController::class, 'destroyClosure'])->name('branches.closures.destroy');
+        Route::post('customers/{customer}/account-type', [Admin\CustomerController::class, 'updateAccountType'])->name('customers.account-type');
 
         Route::get('reviews', [Admin\ReviewController::class, 'index'])->name('reviews.index');
         Route::post('reviews/{review}/approve', [Admin\ReviewController::class, 'approve'])->name('reviews.approve');
@@ -97,8 +102,11 @@ Route::middleware(['auth', 'auth.session', 'admin'])->group(function () {
         Route::post('notifications/broadcast', [Admin\NotificationController::class, 'broadcast'])->name('notifications.broadcast');
     });
 
-    Route::middleware('can:super-admin')->group(function () {
+    Route::middleware(['can:super-admin', 'live'])->group(function () {
         Route::get('settings', [Admin\SettingsController::class, 'edit'])->name('settings.edit');
         Route::put('settings', [Admin\SettingsController::class, 'update'])->name('settings.update');
+
+        Route::get('admin-accounts', [Admin\AdminAccountController::class, 'index'])->name('admin-accounts.index');
+        Route::put('admin-accounts/{user}/account-type', [Admin\AdminAccountController::class, 'updateAccountType'])->name('admin-accounts.account-type');
     });
 });

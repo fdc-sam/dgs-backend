@@ -32,6 +32,8 @@ class StaffRequest extends AdminRequest
             'employee_code' => ['nullable', 'string', 'max:64', Rule::unique('staff_profiles', 'employee_code')->ignore($this->route('staff'))],
             'hire_date' => ['nullable', 'date'],
             'status' => ['required', Rule::enum(RecordStatus::class)],
+            // Test staff sign in to see test bookings only; super admins decide (others' input is dropped).
+            'account_type' => [Rule::excludeIf(! $this->user()?->isSuperAdmin()), 'nullable', Rule::in(['live', 'test'])],
             'photo' => $this->imageRules(),
 
             'branches' => ['required', 'array', 'min:1'],

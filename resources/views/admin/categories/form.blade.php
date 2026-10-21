@@ -4,6 +4,8 @@
 
     <form method="POST" action="{{ $editing ? route('categories.update', $category) : route('categories.store') }}" enctype="multipart/form-data" class="max-w-3xl">
         @csrf @if ($editing) @method('PUT') @endif
+        {{-- Test accounts see the shared setup read-only. --}}
+        <fieldset class="min-w-0" @cannot('change-setup') disabled @endcannot>
         <x-admin.card>
             <div class="grid gap-5 sm:grid-cols-2">
                 <x-admin.input name="name" label="Name" :value="$category->name" required class="sm:col-span-2" />
@@ -15,8 +17,9 @@
             </div>
         </x-admin.card>
         <div class="mt-6 flex justify-end gap-2">
-            <x-admin.button :href="route('categories.index')" variant="text">Cancel</x-admin.button>
-            <x-admin.button type="submit" icon="save">{{ $editing ? 'Save changes' : 'Create category' }}</x-admin.button>
+            <x-admin.button :href="route('categories.index')" variant="text">@can('change-setup') Cancel @else Back @endcan</x-admin.button>
+            @can('change-setup')<x-admin.button type="submit" icon="save">{{ $editing ? 'Save changes' : 'Create category' }}</x-admin.button> @endcan
         </div>
+        </fieldset>
     </form>
 </x-admin.layout>

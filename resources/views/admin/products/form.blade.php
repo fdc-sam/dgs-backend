@@ -11,6 +11,8 @@
 
     <form method="POST" action="{{ $editing ? route('products.update', $product) : route('products.store') }}" class="max-w-3xl">
         @csrf @if ($editing) @method('PUT') @endif
+        {{-- Test accounts see the shared setup read-only. --}}
+        <fieldset class="min-w-0" @cannot('change-setup') disabled @endcannot>
         <x-admin.card>
             <div class="grid gap-5 sm:grid-cols-2">
                 <x-admin.input name="name" label="Product name" :value="$product->name" required class="sm:col-span-2" placeholder="e.g. Hair color" />
@@ -42,10 +44,10 @@
                             <x-admin.badge tone="warning" class="mt-1">Low · alert at {{ Fmt::quantity($product->reorder_level) }} {{ $product->unit }}</x-admin.badge>
                         @endif
                     </div>
-                    <div class="flex flex-wrap gap-2 max-sm:w-full max-sm:[&>*]:flex-1">
+                    @can('change-setup')<div class="flex flex-wrap gap-2 max-sm:w-full max-sm:[&>*]:flex-1">
                         <x-admin.button variant="tonal" icon="add" @click="$dispatch('open-modal', 'restock')">Add stock</x-admin.button>
                         <x-admin.button variant="outlined" icon="inventory" @click="$dispatch('open-modal', 'count')">Count stock</x-admin.button>
-                    </div>
+                    </div> @endcan
                 </div>
                 <p class="mt-3 text-xs text-on-surface-variant">Each completed appointment or walk-in takes off what its service uses (set under Services → Products used).</p>
             </x-admin.card>
@@ -97,9 +99,10 @@
         @endif
 
         <div class="mt-6 flex justify-end gap-2">
-            <x-admin.button :href="route('products.index')" variant="text">Cancel</x-admin.button>
-            <x-admin.button type="submit" icon="save">{{ $editing ? 'Save changes' : 'Add product' }}</x-admin.button>
+            <x-admin.button :href="route('products.index')" variant="text">@can('change-setup') Cancel @else Back @endcan</x-admin.button>
+            @can('change-setup')<x-admin.button type="submit" icon="save">{{ $editing ? 'Save changes' : 'Add product' }}</x-admin.button> @endcan
         </div>
+        </fieldset>
     </form>
 
     @if ($editing)

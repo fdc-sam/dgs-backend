@@ -6,6 +6,8 @@
 
     <form method="POST" action="{{ $editing ? route('achievements.update', $achievement) : route('achievements.store') }}" enctype="multipart/form-data" class="max-w-3xl">
         @csrf @if ($editing) @method('PUT') @endif
+        {{-- Test accounts see the shared setup read-only. --}}
+        <fieldset class="min-w-0" @cannot('change-setup') disabled @endcannot>
         <x-admin.card title="Achievement details" subtitle="Use a landscape photo and a short story about this salon milestone.">
             <div class="grid gap-5">
                 <x-admin.image-field label="Achievement image (landscape works best)" :current="$achievement->image ? \App\Support\Fmt::url($achievement->image) : null" />
@@ -14,8 +16,9 @@
             </div>
         </x-admin.card>
         <div class="mt-6 flex justify-end gap-2">
-            <x-admin.button :href="route('achievements.index')" variant="text">Cancel</x-admin.button>
-            <x-admin.button type="submit" icon="save">{{ $editing ? 'Save changes' : 'Add achievement' }}</x-admin.button>
+            <x-admin.button :href="route('achievements.index')" variant="text">@can('change-setup') Cancel @else Back @endcan</x-admin.button>
+            @can('change-setup')<x-admin.button type="submit" icon="save">{{ $editing ? 'Save changes' : 'Add achievement' }}</x-admin.button> @endcan
         </div>
+        </fieldset>
     </form>
 </x-admin.layout>
