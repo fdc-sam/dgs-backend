@@ -29,15 +29,18 @@
             <x-admin.empty-state icon="payments" :title="$status === PaymentStatus::Submitted ? 'No receipts to check' : 'Nothing here'"
                                  :message="$status === PaymentStatus::Submitted ? 'New GCash receipts from customers will appear here.' : null" />
         @else
-            <x-admin.table :headers="['Appointment #', 'Customer', 'Appointment', '>Deposit', 'Ref No.', $status->isHolding() ? 'Pay by' : 'Updated', 'Status', '>Actions']">
+            <x-admin.table :headers="['Booking', 'Customer', '>Deposit', 'Ref No.', $status->isHolding() ? 'Pay by' : 'Updated', 'Status', '>Actions']">
                 @foreach ($appointments as $a)
                     <tr>
-                        <td class="font-mono text-xs"><a href="{{ route('appointments.show', $a) }}" class="font-semibold text-primary hover:underline">{{ $a->appointment_number }}</a></td>
+                        {{-- The booking number, its date and its branch share a cell so the table fits a laptop screen. --}}
+                        <td class="whitespace-nowrap">
+                            <a href="{{ route('appointments.show', $a) }}" class="font-mono text-[0.6875rem] font-semibold tracking-tight text-primary hover:underline">{{ $a->appointment_number }}</a>
+                            <p class="text-xs text-on-surface-variant">{{ $a->startsAt()->format('M j, g:i A') }} · {{ $a->branch->name }}</p>
+                        </td>
                         <td>
                             <p class="font-medium">{{ $a->customer->name }}</p>
                             <p class="text-xs text-on-surface-variant">{{ $a->customer->phone }}</p>
                         </td>
-                        <td class="whitespace-nowrap">{{ $a->startsAt()->format('M j, g:i A') }}<p class="text-xs text-on-surface-variant">{{ $a->branch->name }}</p></td>
                         <td class="whitespace-nowrap text-right font-medium">₱{{ number_format($a->deposit_amount, 2) }}
                             @if ((float) $a->amount_paid > 0 && (float) $a->amount_paid !== (float) $a->deposit_amount)
                                 <p class="text-xs font-normal text-on-surface-variant">received ₱{{ number_format($a->amount_paid, 2) }}</p>

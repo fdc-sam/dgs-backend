@@ -120,8 +120,8 @@
     .label { @apply mb-1.5 block text-sm font-medium text-on-surface-variant; }
 
     .table-base { @apply w-full text-left text-sm; }
-    .table-base thead th { @apply whitespace-nowrap border-b border-outline-variant bg-white px-5 py-3.5 text-xs font-medium uppercase tracking-[0.08em] text-outline; }
-    .table-base tbody td { @apply border-b border-outline-variant/80 px-5 py-4 align-middle; }
+    .table-base thead th { @apply whitespace-nowrap border-b border-outline-variant bg-white px-4 py-3.5 text-xs font-medium uppercase tracking-[0.08em] text-outline 2xl:px-5; }
+    .table-base tbody td { @apply border-b border-outline-variant/80 px-4 py-4 align-middle 2xl:px-5; }
     .table-base tbody tr { @apply transition-colors hover:bg-surface-container/70; }
 
     /* Sidebar links: grey line icons; the active one is a near-black pill with a gold icon. */
@@ -168,6 +168,23 @@
     .table-stack tbody td[data-cell='actions'] > div > :has(.text-danger) :is(a, button) { margin-left: -0.75rem; }
     .table-stack tbody tr[data-row='summary'] { @apply flex items-baseline justify-between gap-4 py-3; }
     .table-stack tbody tr[data-row='summary'] td:last-child { @apply shrink-0 text-right; }
+}
+
+/*
+ | Desktop: a table wider than its card (.is-scrollable, set in app.js) keeps its Actions column pinned to the right edge,
+ | with a soft shadow where the rest scrolls under it, so Edit / Delete never scroll out of reach.
+ */
+@media (width >= 48rem) {
+    .table-scroll.is-scrollable [data-cell='actions'] {
+        position: sticky;
+        right: 0;
+        z-index: 1;
+        background-color: white;
+        box-shadow: -12px 0 12px -12px rgb(24 24 27 / 0.22);
+    }
+    .table-scroll.is-scrollable tbody tr:hover td[data-cell='actions'] {
+        background-color: color-mix(in oklab, var(--color-surface-container) 70%, white);
+    }
 }
 
 /*

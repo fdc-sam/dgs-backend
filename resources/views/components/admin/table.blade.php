@@ -1,6 +1,6 @@
 @props(['headers' => [], 'stack' => true, 'wide' => []])
 {{-- stack: on phones each row becomes a card (see .table-stack in app.css); wide: headers whose cells take a whole line there. --}}
-<div {{ $attributes->class(['overflow-x-auto']) }}>
+<div {{ $attributes->class(['table-scroll overflow-x-auto']) }}>
     <table @class(['table-base', 'table-stack' => $stack])>
         @if ($headers)
             <thead>

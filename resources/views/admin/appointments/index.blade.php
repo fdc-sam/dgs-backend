@@ -18,19 +18,26 @@
         @if ($appointments->isEmpty())
             <x-admin.empty-state icon="event_busy" title="No appointments found" message="Try adjusting the filters." />
         @else
-            <x-admin.table :headers="['Appointment #', 'Customer', 'Service', 'Branch', 'Staff', 'Date', 'Time', '>Total', 'Status', '>Actions']">
+            <x-admin.table :headers="['Booking', 'Customer', 'Service', 'When', '>Total', 'Status', '>Actions']">
                 @foreach ($appointments as $a)
                     <tr>
-                        <td class="font-mono text-xs"><a href="{{ route('appointments.show', $a) }}" class="font-semibold text-primary hover:underline">{{ $a->appointment_number }}</a></td>
+                        {{-- Related details share a cell (number + branch, service + stylist, date + time) so the table fits a laptop screen. --}}
+                        <td class="min-w-36">
+                            <a href="{{ route('appointments.show', $a) }}" class="whitespace-nowrap font-mono text-[0.6875rem] font-semibold tracking-tight text-primary hover:underline">{{ $a->appointment_number }}</a>
+                            <p class="text-xs text-on-surface-variant">{{ $a->branch->name }}</p>
+                        </td>
                         <td>
                             <p class="font-medium">{{ $a->customer->name }}</p>
                             @can('manage')<p class="text-xs text-on-surface-variant">{{ $a->customer->phone }}</p> @endcan
                         </td>
-                        <td class="max-w-48 truncate">{{ $a->items->pluck('service_name')->join(', ') }}</td>
-                        <td class="whitespace-nowrap">{{ $a->branch->name }}</td>
-                        <td class="whitespace-nowrap">{{ $a->staff?->user?->name ?? '—' }}</td>
-                        <td class="whitespace-nowrap">{{ $a->appointment_date->format('M j, Y') }}</td>
-                        <td class="whitespace-nowrap">{{ $a->startsAt()->format('g:i A') }}</td>
+                        <td>
+                            <p class="max-w-48 truncate" title="{{ $a->items->pluck('service_name')->join(', ') }}">{{ $a->items->pluck('service_name')->join(', ') }}</p>
+                            <p class="max-w-48 truncate text-xs text-on-surface-variant">{{ $a->staff?->user?->name ?? '—' }}</p>
+                        </td>
+                        <td class="whitespace-nowrap">
+                            {{ $a->appointment_date->format('M j, Y') }}
+                            <p class="text-xs text-on-surface-variant">{{ $a->startsAt()->format('g:i A') }}</p>
+                        </td>
                         <td class="whitespace-nowrap text-right font-medium">₱{{ number_format($a->total_amount, 2) }}</td>
                         <td>
                             <x-admin.status-badge :status="$a->status" />

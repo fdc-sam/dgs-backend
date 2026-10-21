@@ -28,14 +28,14 @@
                 // Days/rows with nothing to report are greyed out so the ones with activity stand out.
                 $isZero = fn ($v) => is_int($v) || is_float($v) ? (float) $v == 0.0 : false;
             @endphp
-            {{-- Report columns are figures to compare, so phones scroll them sideways with the first column pinned. --}}
+            {{-- Report columns are figures to compare, so a wide report scrolls sideways with its first column pinned. --}}
             <div class="overflow-x-auto overscroll-x-contain">
                 <table class="table-base">
                     <thead>
                         <tr>
                             @foreach ($table->columns as $key => $heading)
                                 {{-- Long headings wrap onto two lines instead of squeezing the first column. --}}
-                                <th scope="col" @class(['align-bottom', 'whitespace-nowrap max-sm:sticky max-sm:left-0 max-sm:z-10 max-sm:shadow-[1px_0_0_var(--color-outline-variant)]' => $loop->first, '!whitespace-normal min-w-24 max-w-36 text-right leading-snug' => ! $loop->first])>{{ $table->heading($key) }}</th>
+                                <th scope="col" @class(['align-bottom', 'whitespace-nowrap sticky left-0 z-10 shadow-[1px_0_0_var(--color-outline-variant)]' => $loop->first, '!whitespace-normal min-w-24 max-w-36 text-right leading-snug' => ! $loop->first])>{{ $table->heading($key) }}</th>
                             @endforeach
                         </tr>
                     </thead>
@@ -46,7 +46,7 @@
                                 @foreach (array_keys($table->columns) as $key)
                                     <td @class([
                                         '!py-2.5 whitespace-nowrap',
-                                        'max-sm:sticky max-sm:left-0 max-sm:z-10 max-sm:bg-white max-sm:shadow-[1px_0_0_var(--color-outline-variant)]' => $loop->first,
+                                        'sticky left-0 z-10 bg-white shadow-[1px_0_0_var(--color-outline-variant)]' => $loop->first,
                                         'font-medium' => $loop->first && ! $empty,
                                         'text-on-surface-variant' => $loop->first && $empty,
                                         'text-right tabular-nums' => ! $loop->first,
@@ -60,7 +60,7 @@
                         <tfoot>
                             <tr class="border-t-2 border-outline-variant bg-surface-container font-semibold">
                                 @foreach (array_keys($table->columns) as $key)
-                                    <td @class(['px-4 py-3 whitespace-nowrap', 'max-sm:sticky max-sm:left-0 max-sm:z-10 max-sm:bg-surface-container max-sm:shadow-[1px_0_0_var(--color-outline-variant)]' => $loop->first, 'text-right tabular-nums' => ! $loop->first])>{{ $loop->first ? $table->totals[$key] : ($table->totals[$key] === null ? '' : $table->format($key, $table->totals[$key])) }}</td>
+                                    <td @class(['px-4 py-3 whitespace-nowrap', 'sticky left-0 z-10 bg-surface-container shadow-[1px_0_0_var(--color-outline-variant)]' => $loop->first, 'text-right tabular-nums' => ! $loop->first])>{{ $loop->first ? $table->totals[$key] : ($table->totals[$key] === null ? '' : $table->format($key, $table->totals[$key])) }}</td>
                                 @endforeach
                             </tr>
                         </tfoot>

@@ -78,7 +78,18 @@ function labelTableCells() {
 }
 
 document.addEventListener('DOMContentLoaded', renderCharts);
+/** Mark tables that are wider than their card (.is-scrollable): app.css then pins their Actions column. */
+function watchTableOverflow() {
+    const update = (wrapper) => wrapper.classList.toggle('is-scrollable', wrapper.scrollWidth > wrapper.clientWidth + 1);
+    const observer = new ResizeObserver((entries) => entries.forEach((entry) => update(entry.target)));
+    document.querySelectorAll('.table-scroll').forEach((wrapper) => {
+        update(wrapper);
+        observer.observe(wrapper);
+    });
+}
+
 document.addEventListener('DOMContentLoaded', labelTableCells);
+document.addEventListener('DOMContentLoaded', watchTableOverflow);
 Alpine.start();
 // After Alpine, so x-model has already chosen each select's value when Select2 reads it.
 startSelect2();

@@ -10,13 +10,17 @@
         @if ($customers->isEmpty())
             <x-admin.empty-state icon="groups" title="No customers found" />
         @else
-            <x-admin.table :headers="['Customer', 'Phone', 'Bookings', 'Completed', '>Lifetime value', 'Last visit', 'Joined', 'Status']">
+            <x-admin.table :headers="['Customer', 'Bookings', '>Lifetime value', 'Last visit', 'Joined', 'Status']">
                 @foreach ($customers as $c)
                     <tr>
-                        <td><a href="{{ route('customers.show', $c) }}" class="font-medium text-primary hover:underline">{{ $c->name }}</a><p class="text-xs text-on-surface-variant">{{ $c->email }}</p></td>
-                        <td class="whitespace-nowrap">{{ $c->phone ?? '—' }}</td>
-                        <td>{{ $c->appointments_count }}</td>
-                        <td>{{ $c->completed_count }}</td>
+                        <td>
+                            <a href="{{ route('customers.show', $c) }}" class="font-medium text-primary hover:underline">{{ $c->name }}</a>
+                            <p class="text-xs text-on-surface-variant">{{ $c->email }}@if ($c->phone) · <span class="whitespace-nowrap">{{ $c->phone }}</span>@endif</p>
+                        </td>
+                        <td class="whitespace-nowrap">
+                            {{ $c->appointments_count }}
+                            <p class="text-xs text-on-surface-variant">{{ $c->completed_count }} completed</p>
+                        </td>
                         <td class="text-right">₱{{ number_format($c->lifetime_value ?? 0, 2) }}</td>
                         <td class="whitespace-nowrap">{{ $c->last_visit ? \Carbon\Carbon::parse($c->last_visit)->format('M j, Y') : '—' }}</td>
                         <td class="whitespace-nowrap">{{ $c->created_at->format('M j, Y') }}</td>

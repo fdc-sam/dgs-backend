@@ -16,17 +16,19 @@
                 @can('change-setup')<x-admin.button :href="route('promotions.create')" icon="add">New promotion</x-admin.button> @endcan
             </x-admin.empty-state>
         @else
-            <x-admin.table :headers="['Promotion', 'Type', 'Valid', 'Services', 'Status', '>Actions']">
+            <x-admin.table :headers="['Promotion', 'Valid', 'Services', 'Status', '>Actions']">
                 @foreach ($promotions as $promo)
                     @php $live = $promo->isCurrentlyActive(); $expired = $promo->end_at->isPast(); @endphp
                     <tr>
                         <td>
                             <div class="flex items-center gap-3">
                                 @if ($promo->image)<img src="{{ \App\Support\Fmt::url($promo->image) }}" alt="" class="h-10 w-16 rounded-lg object-cover">@else<span class="flex h-10 w-16 items-center justify-center rounded-lg bg-gold-soft text-primary"><span class="material-symbols-outlined" aria-hidden="true">sell</span></span>@endif
-                                <p class="font-medium">{{ $promo->name }}</p>
+                                <div class="min-w-0">
+                                    <p class="font-medium">{{ $promo->name }}</p>
+                                    <p class="text-xs text-on-surface-variant">{{ $promo->discount_type->label() }}</p>
+                                </div>
                             </div>
                         </td>
-                        <td>{{ $promo->discount_type->label() }}</td>
                         <td class="whitespace-nowrap text-sm">{{ $promo->start_at->format('M j') }} – {{ $promo->end_at->format('M j, Y') }}</td>
                         <td>{{ $promo->services_count ?: 'All' }}</td>
                         <td>

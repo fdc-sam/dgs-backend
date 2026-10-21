@@ -14,19 +14,21 @@
         @if ($reviews->isEmpty())
             <x-admin.empty-state icon="reviews" title="No reviews here" message="Reviews appear after customers rate completed appointments." />
         @else
-            <x-admin.table :headers="['Customer', 'Service', 'Rating', 'Review', 'Date', 'Status', '>Actions']" :wide="['Review']">
+            <x-admin.table :headers="['Customer', 'Service', 'Review', 'Status', '>Actions']" :wide="['Review']">
                 @foreach ($reviews as $r)
                     <tr>
-                        <td class="whitespace-nowrap font-medium">{{ $r->customer?->name }}</td>
+                        <td class="whitespace-nowrap">
+                            <p class="font-medium">{{ $r->customer?->name }}</p>
+                            <p class="text-xs text-on-surface-variant">{{ $r->created_at->format('M j, Y') }}</p>
+                        </td>
                         <td>{{ $r->service?->name ?? '—' }}<p class="text-xs text-on-surface-variant">{{ $r->appointment?->staff?->user?->name }}</p></td>
-                        <td class="whitespace-nowrap text-gold" aria-label="{{ $r->rating }} out of 5">{{ str_repeat('★', $r->rating) }}<span class="text-outline-variant">{{ str_repeat('★', 5 - $r->rating) }}</span></td>
-                        <td class="max-w-md">
+                        <td class="max-w-sm">
+                            <p class="whitespace-nowrap text-gold" aria-label="{{ $r->rating }} out of 5">{{ str_repeat('★', $r->rating) }}<span class="text-outline-variant">{{ str_repeat('★', 5 - $r->rating) }}</span></p>
                             <p class="text-sm">{{ $r->review ?: '—' }}</p>
                             @if ($r->images->isNotEmpty())
                                 <div class="mt-2 flex gap-2">@foreach ($r->images as $img)<a href="{{ $img->url() }}" target="_blank" rel="noopener"><img src="{{ $img->url() }}" alt="Review photo" class="h-12 w-12 rounded-lg object-cover"></a>@endforeach</div>
                             @endif
                         </td>
-                        <td class="whitespace-nowrap">{{ $r->created_at->format('M j, Y') }}</td>
                         <td><x-admin.badge :tone="['approved' => 'success', 'rejected' => 'danger'][$r->status->value] ?? 'warning'">{{ $r->status->label() }}</x-admin.badge></td>
                         <td class="text-right">
                             <div class="flex justify-end gap-1">

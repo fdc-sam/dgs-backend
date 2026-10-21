@@ -1,11 +1,17 @@
 <x-admin.layout title="Admin accounts">
-    <x-admin.page-header title="Admin accounts" subtitle="Who can sign in to the admin portal and the admin app, and which of them are test accounts." />
+    <x-admin.page-header title="Admin accounts" subtitle="Who can sign in to the admin portal and the admin app, and which of them are test accounts.">
+        @can('change-setup')
+            <x-slot:actions>
+                <x-admin.button :href="route('admin-accounts.create')" icon="person_add">New admin</x-admin.button>
+            </x-slot:actions>
+        @endcan
+    </x-admin.page-header>
 
     <div class="mb-6 flex items-start gap-3 rounded-card border border-outline-variant bg-white px-5 py-4 text-sm text-on-surface-variant">
         <span class="material-symbols-outlined shrink-0 text-gold-strong" aria-hidden="true">science</span>
         <p>A <strong class="text-on-surface">test account</strong> sees only test customers, their bookings, payments, reviews and the walk-ins it
             records, and live accounts never see that data. Test accounts can view the salon setup but not change it.
-            Mark customers on their page and stylists on their staff page. New admins: <code class="rounded bg-surface-container px-1.5 py-0.5 text-xs">php artisan dgs:create-admin email --role=admin --test</code></p>
+            Mark customers on their page and stylists on their staff page.</p>
     </div>
 
     <x-admin.card :padding="false">

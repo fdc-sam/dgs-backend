@@ -107,6 +107,8 @@ Route::middleware(['auth', 'auth.session', 'admin'])->group(function () {
         Route::put('settings', [Admin\SettingsController::class, 'update'])->name('settings.update');
 
         Route::get('admin-accounts', [Admin\AdminAccountController::class, 'index'])->name('admin-accounts.index');
+        Route::get('admin-accounts/create', [Admin\AdminAccountController::class, 'create'])->name('admin-accounts.create');
+        Route::post('admin-accounts', [Admin\AdminAccountController::class, 'store'])->name('admin-accounts.store');
         Route::put('admin-accounts/{user}/account-type', [Admin\AdminAccountController::class, 'updateAccountType'])->name('admin-accounts.account-type');
     });
 });

@@ -17,6 +17,7 @@ use App\Support\Reports\DateRange;
 use App\Support\TestMode;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
@@ -231,6 +232,35 @@ class TestAccountsTest extends TestCase
 
         $this->actingAs($this->testAdmin);
         $this->get('/admin-accounts')->assertForbidden();
+    }
+
+    public function test_super_admin_adds_admin_accounts(): void
+    {
+        $form = ['name' => 'Tess Tester', 'email' => ' Tess@Example.com ', 'role' => 'admin', 'account_type' => 'test',
+            'password' => 'secret123', 'password_confirmation' => 'secret123'];
+
+        $this->actingAs(User::factory()->superAdmin()->create());
+        $this->get('/admin-accounts')->assertOk()->assertSee('New admin');
+        $this->get('/admin-accounts/create')->assertOk()->assertSee('Create admin');
+        $this->post('/admin-accounts', [...$form, 'password_confirmation' => 'different1'])->assertSessionHasErrors('password');
+        $this->post('/admin-accounts', [...$form, 'password' => 'short', 'password_confirmation' => 'short'])->assertSessionHasErrors('password');
+        $this->post('/admin-accounts', $form)->assertRedirect('/admin-accounts')->assertSessionHas('success');
+
+        $tess = User::where('email', 'tess@example.com')->sole();
+        $this->assertSame('admin', $tess->role->value);
+        $this->assertTrue($tess->is_test);
+        $this->assertTrue($tess->isActive());
+        $this->assertNotNull($tess->email_verified_at);
+        $this->assertTrue(Hash::check('secret123', $tess->password));
+        $this->post('/admin-accounts', [...$form, 'email' => 'tess@example.com'])->assertSessionHasErrors('email');
+
+        // Only live super admins: plain admins are refused, test super admins see the page without the button.
+        $this->actingAs($this->liveAdmin);
+        $this->get('/admin-accounts/create')->assertForbidden();
+        $this->actingAs($this->onTestSide(User::factory()->superAdmin()->create()));
+        $this->get('/admin-accounts')->assertOk()->assertDontSee('New admin');
+        $this->post('/admin-accounts', [...$form, 'email' => 'other@example.com'])->assertSessionHas('error');
+        $this->assertDatabaseMissing('users', ['email' => 'other@example.com']);
     }
 
     public function test_staff_form_sets_a_test_sign_in_for_super_admins_only(): void

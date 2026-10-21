@@ -7,7 +7,7 @@
                       data-confirm="Change this customer's account status? Suspended customers are signed out of the app.">
                     @csrf
                     <x-admin.select name="status" :options="['active' => 'Active', 'inactive' => 'Inactive', 'suspended' => 'Suspended']" :value="$customer->status->value" aria-label="Account status" class="w-40" />
-                    <x-admin.button type="submit" variant="tonal">Update status</x-admin.button>
+                    <x-admin.button type="submit">Update status</x-admin.button>
                 </form>
             @endcan
         </x-slot:actions>
@@ -27,14 +27,19 @@
                 @if ($appointments->isEmpty())
                     <x-admin.empty-state icon="event" title="No appointments yet" />
                 @else
-                    <x-admin.table :headers="['Appointment #', 'Date', 'Services', 'Branch', '>Total', 'Status']">
+                    <x-admin.table :headers="['Booking', 'When', 'Services', '>Total', 'Status']">
                         @foreach ($appointments as $a)
                             <tr>
-                                <td class="font-mono text-xs"><a href="{{ route('appointments.show', $a) }}" class="font-semibold text-primary hover:underline">{{ $a->appointment_number }}</a></td>
-                                <td class="whitespace-nowrap">{{ $a->startsAt()->format('M j, Y g:i A') }}</td>
+                                <td class="min-w-36">
+                                    <a href="{{ route('appointments.show', $a) }}" class="whitespace-nowrap font-mono text-[0.6875rem] font-semibold tracking-tight text-primary hover:underline">{{ $a->appointment_number }}</a>
+                                    <p class="text-xs text-on-surface-variant">{{ $a->branch->name }}</p>
+                                </td>
+                                <td class="whitespace-nowrap">
+                                    {{ $a->startsAt()->format('M j, Y') }}
+                                    <p class="text-xs text-on-surface-variant">{{ $a->startsAt()->format('g:i A') }}</p>
+                                </td>
                                 <td>{{ $a->items->pluck('service_name')->join(', ') }}</td>
-                                <td>{{ $a->branch->name }}</td>
-                                <td class="text-right">₱{{ number_format($a->total_amount, 2) }}</td>
+                                <td class="whitespace-nowrap text-right">₱{{ number_format($a->total_amount, 2) }}</td>
                                 <td><x-admin.status-badge :status="$a->status" /></td>
                             </tr>
                         @endforeach

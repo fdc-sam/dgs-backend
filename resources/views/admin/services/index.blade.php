@@ -15,19 +15,19 @@
                 @can('change-setup')<x-admin.button :href="route('services.create')" icon="add">New service</x-admin.button> @endcan
             </x-admin.empty-state>
         @else
-            <x-admin.table :headers="['Service', 'Category', '>Price', 'Duration', 'Options', 'Branches', 'Staff', 'Status', '>Actions']">
+            <x-admin.table :headers="['Service', '>Price', 'Duration', 'Offered', 'Status', '>Actions']">
                 @foreach ($services as $service)
                     <tr>
                         <td>
                             <div class="flex items-center gap-3">
                                 @if ($service->image)<img src="{{ \App\Support\Fmt::url($service->image) }}" alt="" class="h-10 w-10 rounded-xl object-cover">@else<span class="flex h-10 w-10 items-center justify-center rounded-xl bg-gold-soft text-primary"><span class="material-symbols-outlined" aria-hidden="true">content_cut</span></span>@endif
-                                <div>
+                                <div class="min-w-0">
                                     <p class="font-medium">{{ $service->name }} @if ($service->is_featured)<x-admin.badge tone="primary" icon="star" class="ml-1">Featured</x-admin.badge>@endif</p>
-                                    <p class="max-w-xs truncate text-xs text-on-surface-variant">{{ $service->short_description }}</p>
+                                    {{-- Category leads the second line, so it needs no column of its own. --}}
+                                    <p class="max-w-56 truncate text-xs text-on-surface-variant" title="{{ $service->short_description }}"><span class="font-medium text-on-surface">{{ $service->category?->name }}</span>@if ($service->short_description) · {{ $service->short_description }}@endif</p>
                                 </div>
                             </div>
                         </td>
-                        <td>{{ $service->category?->name }}</td>
                         <td class="text-right font-medium">₱{{ number_format($service->regular_price, 2) }}
                             @if ($service->ownDeposit())
                                 <p class="text-xs font-normal text-on-surface-variant" title="GCash downpayment QR">₱{{ number_format($service->deposit_amount, 2) }} downpayment</p>
@@ -37,9 +37,10 @@
                             @endif
                         </td>
                         <td class="whitespace-nowrap">{{ $service->duration_minutes }} min <span class="text-xs text-on-surface-variant">+{{ $service->buffer_minutes }}</span></td>
-                        <td>{{ $service->variants_count ?: '—' }}</td>
-                        <td>{{ $service->branches_count }}</td>
-                        <td>{{ $service->staff_count }}</td>
+                        <td class="whitespace-nowrap">
+                            {{ trans_choice(':count branch|:count branches', $service->branches_count) }} · {{ $service->staff_count }} staff
+                            @if ($service->variants_count)<p class="text-xs text-on-surface-variant">{{ trans_choice(':count option|:count options', $service->variants_count) }}</p>@endif
+                        </td>
                         <td><x-admin.badge :tone="$service->status->value === 'active' ? 'success' : 'neutral'">{{ $service->status->label() }}</x-admin.badge></td>
                         <td class="text-right">
                             <div class="flex justify-end gap-1">
