@@ -11,13 +11,13 @@
     @include('admin.reports._range', ['action' => route('reports.show', $report)])
 
     @if ($table->summary)
-        <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
             @foreach ($table->summary as $label => $value)<x-admin.stat :label="$label" :value="$value" icon="insights" tone="gold" />@endforeach
         </div>
     @endif
 
     @if ($table->chart && count($table->chart['labels']))
-        <x-admin.card class="mb-6"><div class="h-72"><canvas data-chart='@json($table->chart)' role="img" aria-label="{{ $table->title }} chart"></canvas></div></x-admin.card>
+        <x-admin.card class="mb-6"><div class="h-56 sm:h-72"><canvas data-chart='@json($table->chart)' role="img" aria-label="{{ $table->title }} chart"></canvas></div></x-admin.card>
     @endif
 
     <x-admin.card :padding="false">
@@ -28,13 +28,14 @@
                 // Days/rows with nothing to report are greyed out so the ones with activity stand out.
                 $isZero = fn ($v) => is_int($v) || is_float($v) ? (float) $v == 0.0 : false;
             @endphp
-            <div class="overflow-x-auto">
+            {{-- Report columns are figures to compare, so phones scroll them sideways with the first column pinned. --}}
+            <div class="overflow-x-auto overscroll-x-contain">
                 <table class="table-base">
                     <thead>
                         <tr>
                             @foreach ($table->columns as $key => $heading)
                                 {{-- Long headings wrap onto two lines instead of squeezing the first column. --}}
-                                <th scope="col" @class(['align-bottom', 'whitespace-nowrap' => $loop->first, '!whitespace-normal min-w-24 max-w-36 text-right leading-snug' => ! $loop->first])>{{ $table->heading($key) }}</th>
+                                <th scope="col" @class(['align-bottom', 'whitespace-nowrap max-sm:sticky max-sm:left-0 max-sm:z-10 max-sm:shadow-[1px_0_0_var(--color-outline-variant)]' => $loop->first, '!whitespace-normal min-w-24 max-w-36 text-right leading-snug' => ! $loop->first])>{{ $table->heading($key) }}</th>
                             @endforeach
                         </tr>
                     </thead>
@@ -45,6 +46,7 @@
                                 @foreach (array_keys($table->columns) as $key)
                                     <td @class([
                                         '!py-2.5 whitespace-nowrap',
+                                        'max-sm:sticky max-sm:left-0 max-sm:z-10 max-sm:bg-white max-sm:shadow-[1px_0_0_var(--color-outline-variant)]' => $loop->first,
                                         'font-medium' => $loop->first && ! $empty,
                                         'text-on-surface-variant' => $loop->first && $empty,
                                         'text-right tabular-nums' => ! $loop->first,
@@ -58,7 +60,7 @@
                         <tfoot>
                             <tr class="border-t-2 border-outline-variant bg-surface-container font-semibold">
                                 @foreach (array_keys($table->columns) as $key)
-                                    <td @class(['px-4 py-3 whitespace-nowrap', 'text-right tabular-nums' => ! $loop->first])>{{ $loop->first ? $table->totals[$key] : ($table->totals[$key] === null ? '' : $table->format($key, $table->totals[$key])) }}</td>
+                                    <td @class(['px-4 py-3 whitespace-nowrap', 'max-sm:sticky max-sm:left-0 max-sm:z-10 max-sm:bg-surface-container max-sm:shadow-[1px_0_0_var(--color-outline-variant)]' => $loop->first, 'text-right tabular-nums' => ! $loop->first])>{{ $loop->first ? $table->totals[$key] : ($table->totals[$key] === null ? '' : $table->format($key, $table->totals[$key])) }}</td>
                                 @endforeach
                             </tr>
                         </tfoot>

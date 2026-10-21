@@ -5,7 +5,7 @@
         </x-slot:actions>
     </x-admin.page-header>
 
-    <x-admin.filter-bar :action="route('walk-ins.index')">
+    <x-admin.filter-bar :action="route('walk-ins.index')" :collapse="false">
         <x-admin.input name="search" label="Search" :value="request('search')" placeholder="Guest name, phone or service" class="w-full sm:w-72" />
     </x-admin.filter-bar>
 

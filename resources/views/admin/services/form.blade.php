@@ -102,15 +102,17 @@
                 </x-admin.card>
 
                 <x-admin.card title="Branches" subtitle="Where this service can be booked. Leave the price blank to use the regular price." :padding="false">
-                    <x-admin.table :headers="['Offered', 'Branch', 'Branch price (optional)']">
+                    <x-admin.table :headers="['Offered at', 'Branch price (optional)']" :wide="['Branch price (optional)']">
                         @foreach ($branches as $branch)
                             @php $pivot = $assignedBranches->get($branch->id)?->pivot; $enabled = old("branches.{$branch->id}.enabled", $pivot ? true : ! $editing); @endphp
                             <tr>
-                                <td class="w-24">
+                                <td>
                                     <input type="hidden" name="branches[{{ $branch->id }}][enabled]" value="0">
-                                    <input type="checkbox" id="b_{{ $branch->id }}" name="branches[{{ $branch->id }}][enabled]" value="1" @checked($enabled) class="h-5 w-5 accent-[var(--color-primary)]">
+                                    <label class="flex min-h-11 cursor-pointer items-center gap-3 font-medium">
+                                        <input type="checkbox" id="b_{{ $branch->id }}" name="branches[{{ $branch->id }}][enabled]" value="1" @checked($enabled) class="h-5 w-5 shrink-0 accent-[var(--color-primary)]">
+                                        {{ $branch->name }}
+                                    </label>
                                 </td>
-                                <td><label for="b_{{ $branch->id }}" class="font-medium">{{ $branch->name }}</label></td>
                                 <td class="w-56"><x-admin.input :name="'branches['.$branch->id.'][custom_price]'" type="number" step="0.01" min="0" prefix="₱" :value="$pivot?->custom_price" aria-label="Price at {{ $branch->name }}" /></td>
                             </tr>
                         @endforeach

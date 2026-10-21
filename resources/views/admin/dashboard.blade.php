@@ -24,9 +24,9 @@
     </x-admin.page-header>
 
     {{-- Filters: branch + period. Either one reloads the dashboard. --}}
-    <div class="-mt-3 mb-10 flex flex-wrap items-center gap-3">
+    <div class="mb-8 flex flex-wrap items-center gap-3 sm:-mt-3 sm:mb-10">
         @unless ($isStaff)
-            <form method="GET" action="{{ route('dashboard') }}" class="relative w-60" x-data>
+            <form method="GET" action="{{ route('dashboard') }}" class="relative w-full sm:w-60" x-data>
                 <input type="hidden" name="period" value="{{ $stats['period'] }}">
                 <span class="material-symbols-outlined pointer-events-none absolute top-1/2 left-3.5 z-10 -translate-y-1/2 text-xl text-outline" style="font-variation-settings: 'wght' 300" aria-hidden="true">storefront</span>
                 <select name="branch_id" aria-label="Branch" data-no-placeholder data-container-class="select2-with-icon" @change="$el.form.submit()">
@@ -37,11 +37,11 @@
                 </select>
             </form>
         @endunless
-        <nav class="inline-flex rounded-full bg-surface-container-high p-1" aria-label="Period">
+        <nav class="flex rounded-full bg-surface-container-high p-1 max-sm:w-full sm:inline-flex" aria-label="Period">
             @foreach (\App\Services\ReportService::PERIODS as $key => $periodLabel)
                 @php $active = $stats['period'] === $key; @endphp
                 <a href="{{ route('dashboard', array_filter(['period' => $key, 'branch_id' => $stats['branch_id']])) }}" @if ($active) aria-current="true" @endif
-                   @class(['inline-flex min-h-9 items-center gap-2 rounded-full px-5 text-sm font-medium transition',
+                   @class(['inline-flex min-h-9 items-center justify-center gap-2 rounded-full px-5 text-sm font-medium transition max-sm:flex-1',
                            'bg-white text-on-surface shadow-e1' => $active, 'text-on-surface-variant hover:text-on-surface' => ! $active])>
                     @if ($active)<span class="h-1.5 w-1.5 rounded-full bg-gold" aria-hidden="true"></span>@endif{{ $periodLabel }}
                 </a>
@@ -54,7 +54,7 @@
 
     {{-- Snapshot --}}
     <x-admin.section-label title="Business snapshot" :hint="$label.' at a glance · '.($isStaff ? 'your appointments' : ($branchName ?? 'all branches'))" />
-    <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
         <x-admin.stat :label="'Appointments · '.$label" :value="$stats['appointments_count']" icon="today" :hint="$hint" :href="route('appointments.index', $range)" />
         <x-admin.stat label="Pending confirmation" :value="$stats['pending_count']" icon="pending_actions" :tone="$stats['pending_count'] ? 'warning' : 'primary'" hint="Upcoming"
                       :href="route('appointments.index', array_filter(['status' => 'pending', 'branch_id' => $stats['branch_id']]))" />
@@ -69,7 +69,7 @@
     {{-- Business health (managers): money figures, then the trend. --}}
     @unless ($isStaff)
         <x-admin.section-label class="mt-12" title="Business health" :hint="'Completed services · '.strtolower($label)" :href="route('reports.index')" link="Reports" />
-        <div class="rounded-card border border-outline-variant bg-white p-6">
+        <div class="rounded-card border border-outline-variant bg-white p-4 sm:p-6">
             @php
                 $tiles = [
                     ['Gross revenue · '.$label, $peso($stats['revenue']), $hint, null],
@@ -78,17 +78,17 @@
                     ['Average per visit', $peso($stats['average_ticket']), $label.' · gross', null],
                 ];
             @endphp
-            <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
                 @foreach ($tiles as [$tileLabel, $tileValue, $tileHint, $tileTone])
-                    <div class="rounded-2xl border border-outline-variant bg-surface/60 p-5">
-                        <p class="text-sm text-on-surface-variant">{{ $tileLabel }}</p>
-                        <p @class(['mt-1.5 truncate text-[1.625rem] font-bold leading-9 tracking-tight', $tileTone])>{{ $tileValue }}</p>
-                        <p class="mt-1 truncate text-sm text-on-surface-variant">{{ $tileHint }}</p>
+                    <div class="rounded-2xl border border-outline-variant bg-surface/60 p-3.5 sm:p-5">
+                        <p class="line-clamp-2 min-h-10 text-[0.8125rem] leading-5 text-on-surface-variant sm:min-h-0 sm:text-sm">{{ $tileLabel }}</p>
+                        <p @class(['mt-1 truncate text-lg font-bold leading-7 tracking-tight sm:mt-1.5 sm:text-[1.625rem] sm:leading-9', $tileTone])>{{ $tileValue }}</p>
+                        <p class="mt-1 truncate text-xs text-on-surface-variant sm:text-sm" title="{{ $tileHint }}">{{ $tileHint }}</p>
                     </div>
                 @endforeach
             </div>
-            <p class="mt-5 flex items-start gap-2 text-sm text-outline">
-                <span class="material-symbols-outlined text-base" aria-hidden="true">info</span>
+            <p class="mt-4 flex items-start gap-2 text-[0.8125rem] text-outline sm:mt-5 sm:text-sm">
+                <span class="material-symbols-outlined shrink-0 text-base" aria-hidden="true">info</span>
                 Net revenue is what completed services were charged minus the products they used (Inventory) — not accounting profit. Full breakdowns are in Reports.
             </p>
         </div>
@@ -96,7 +96,7 @@
 
     <x-admin.card title="Revenue trend · 14 days" :subtitle="$isStaff ? 'Completed services' : 'Completed services · net is after product cost'" class="mt-6">
         <x-slot:actions><span class="text-sm font-semibold">{{ $peso($stats['revenue']) }} <span class="font-normal text-on-surface-variant">{{ strtolower($label) }}</span></span></x-slot:actions>
-        <div class="h-72"><canvas data-chart='@json($stats['revenue_chart'])' aria-label="Revenue chart for the last 14 days" role="img"></canvas></div>
+        <div class="h-56 sm:h-72"><canvas data-chart='@json($stats['revenue_chart'])' aria-label="Revenue chart for the last 14 days" role="img"></canvas></div>
     </x-admin.card>
 
     {{-- Needs your attention (managers) --}}
@@ -104,14 +104,14 @@
         <x-admin.section-label class="mt-12" title="Needs your attention" hint="Sorted by urgency · tap to act" />
         <div class="overflow-hidden rounded-card border border-outline-variant bg-white">
             @forelse ($attention as $row)
-                <a href="{{ $row['href'] }}" class="group relative flex items-center gap-4 border-b border-outline-variant px-6 py-4 last:border-0 hover:bg-surface-container/70">
+                <a href="{{ $row['href'] }}" class="group relative flex items-center gap-3 border-b border-outline-variant px-5 py-4 last:border-0 hover:bg-surface-container/70 sm:gap-4 sm:px-6">
                     <span class="absolute inset-y-3 left-0 w-1 rounded-r-full {{ $loop->first ? 'bg-danger' : 'bg-gold' }}" aria-hidden="true"></span>
                     <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-container text-on-surface">
                         <span class="material-symbols-outlined" style="font-variation-settings: 'wght' 300" aria-hidden="true">{{ $row['icon'] }}</span>
                     </span>
                     <span class="min-w-0 flex-1">
                         <span class="block font-semibold">{{ $row['count'] }} {{ $row['title'] }}</span>
-                        <span class="block truncate text-sm text-on-surface-variant">{{ $row['text'] }}</span>
+                        <span class="block text-sm text-on-surface-variant sm:truncate">{{ $row['text'] }}</span>
                     </span>
                     <span class="material-symbols-outlined text-outline transition group-hover:translate-x-0.5 group-hover:text-on-surface" aria-hidden="true">chevron_right</span>
                 </a>
@@ -127,8 +127,8 @@
         <x-admin.card title="Today's appointments" class="xl:col-span-2" :padding="false">
             <x-slot:actions><x-admin.button :href="route('appointments.index', ['date' => now()->toDateString()])" variant="text" size="sm">View all</x-admin.button></x-slot:actions>
             @forelse ($stats['today'] as $a)
-                <a href="{{ route('appointments.show', $a) }}" class="flex items-center gap-4 border-b border-outline-variant px-6 py-3.5 last:border-0 hover:bg-surface-container/70">
-                    <div class="w-16 shrink-0 text-center">
+                <a href="{{ route('appointments.show', $a) }}" class="flex items-center gap-3 border-b border-outline-variant px-5 py-3.5 last:border-0 hover:bg-surface-container/70 sm:gap-4 sm:px-6">
+                    <div class="w-12 shrink-0 text-center sm:w-16">
                         <p class="text-sm font-semibold">{{ \Carbon\Carbon::parse($a->start_time)->format('g:i') }}</p>
                         <p class="text-xs text-on-surface-variant">{{ \Carbon\Carbon::parse($a->start_time)->format('A') }}</p>
                     </div>
@@ -161,8 +161,8 @@
             <x-admin.card title="Completed walk-ins today" class="xl:col-span-2" :padding="false">
                 <x-slot:actions><x-admin.button :href="route('walk-ins.index')" variant="text" size="sm">View all walk-ins</x-admin.button></x-slot:actions>
                 @forelse ($stats['completed_walk_ins_today'] as $visit)
-                    <a href="{{ route('walk-ins.show', $visit) }}" class="flex items-center gap-4 border-b border-outline-variant px-6 py-3.5 last:border-0 hover:bg-surface-container/70">
-                        <div class="w-16 shrink-0 text-center">
+                    <a href="{{ route('walk-ins.show', $visit) }}" class="flex items-center gap-3 border-b border-outline-variant px-5 py-3.5 last:border-0 hover:bg-surface-container/70 sm:gap-4 sm:px-6">
+                        <div class="w-12 shrink-0 text-center sm:w-16">
                             <p class="text-sm font-semibold">{{ $visit->completed_at->format('g:i') }}</p>
                             <p class="text-xs text-on-surface-variant">{{ $visit->completed_at->format('A') }}</p>
                         </div>
@@ -180,7 +180,7 @@
 
         <x-admin.card title="Recent bookings" :padding="false" :class="$isStaff ? 'xl:col-span-3' : ''">
             @forelse ($stats['recent'] as $a)
-                <a href="{{ route('appointments.show', $a) }}" class="block border-b border-outline-variant px-6 py-3.5 last:border-0 hover:bg-surface-container/70">
+                <a href="{{ route('appointments.show', $a) }}" class="block border-b border-outline-variant px-5 py-3.5 last:border-0 hover:bg-surface-container/70 sm:px-6">
                     <div class="flex items-center justify-between gap-2">
                         <p class="truncate text-sm font-medium">{{ $a->customer->name }}</p>
                         <x-admin.status-badge :status="$a->status" />

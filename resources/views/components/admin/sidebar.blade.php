@@ -38,15 +38,21 @@
 {{-- Mobile scrim --}}
 <div x-show="nav" x-cloak x-transition.opacity class="fixed inset-0 z-30 bg-on-surface/40 lg:hidden" @click="nav = false" aria-hidden="true"></div>
 
-<aside class="fixed inset-y-0 left-0 z-40 flex w-72 -translate-x-full flex-col border-r border-outline-variant bg-white transition-transform lg:translate-x-0"
-       :class="nav && 'translate-x-0'" aria-label="Main navigation">
-    <a href="{{ route('dashboard') }}" class="flex items-center gap-3 px-6 pb-5 pt-6">
-        <img src="{{ $logoUrl }}" alt="" class="h-11 w-11 rounded-xl bg-white object-contain p-0.5 ring-1 ring-outline-variant">
-        <span class="min-w-0">
-            <span class="block truncate text-lg font-bold leading-tight tracking-tight">{{ $salonName }}</span>
-            <span class="block text-xs text-outline">Admin portal</span>
-        </span>
-    </a>
+<aside class="fixed inset-y-0 left-0 z-40 flex w-72 max-w-[85vw] -translate-x-full flex-col border-r border-outline-variant bg-white pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] transition-transform duration-300 ease-out lg:translate-x-0"
+       :class="nav && 'translate-x-0 shadow-e2'" aria-label="Main navigation">
+    <div class="flex items-center gap-2 pr-3 lg:pr-0">
+        <a href="{{ route('dashboard') }}" class="flex min-w-0 flex-1 items-center gap-3 px-6 pb-5 pt-6 max-lg:pl-5">
+            <img src="{{ $logoUrl }}" alt="" class="h-11 w-11 rounded-xl bg-white object-contain p-0.5 ring-1 ring-outline-variant">
+            <span class="min-w-0">
+                <span class="block truncate text-lg font-bold leading-tight tracking-tight">{{ $salonName }}</span>
+                <span class="block text-xs text-outline">Admin portal</span>
+            </span>
+        </a>
+        <button type="button" class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container lg:hidden"
+                @click="nav = false" aria-label="Close navigation">
+            <span class="material-symbols-outlined" aria-hidden="true">close</span>
+        </button>
+    </div>
 
     <nav class="flex-1 space-y-6 overflow-y-auto px-4 pb-6 pt-2">
         @foreach ($sections as $section => $links)

@@ -47,16 +47,18 @@
                                         <input type="checkbox" name="schedule[{{ $i }}][is_working]" value="1" x-model="on" class="h-5 w-5 accent-[var(--color-primary)]"> {{ $day }}
                                     </label>
                                     <template x-if="on">
-                                        <div class="flex flex-1 flex-wrap items-center gap-2">
-                                            <select name="schedule[{{ $i }}][branch_id]" class="field w-44" aria-label="{{ $day }} branch">
+                                        {{-- Phones: branch, then hours and break as labelled start/end pairs. --}}
+                                        <div class="flex flex-1 flex-wrap items-center gap-2 max-sm:grid max-sm:basis-full max-sm:grid-cols-2">
+                                            <select name="schedule[{{ $i }}][branch_id]" class="field w-44 max-sm:col-span-2 max-sm:w-full" aria-label="{{ $day }} branch">
                                                 @foreach ($branches as $id => $name)<option value="{{ $id }}" @selected(old("schedule.$i.branch_id", $row?->branch_id) === $id)>{{ $name }}</option>@endforeach
                                             </select>
-                                            <input type="time" name="schedule[{{ $i }}][start_time]" value="{{ old("schedule.$i.start_time", substr($row?->start_time ?? '09:00', 0, 5)) }}" class="field w-32" aria-label="{{ $day }} start">
-                                            <span class="text-sm text-on-surface-variant">to</span>
-                                            <input type="time" name="schedule[{{ $i }}][end_time]" value="{{ old("schedule.$i.end_time", substr($row?->end_time ?? '18:00', 0, 5)) }}" class="field w-32" aria-label="{{ $day }} end">
-                                            <span class="ml-2 text-sm text-on-surface-variant">Break</span>
-                                            <input type="time" name="schedule[{{ $i }}][break_start]" value="{{ old("schedule.$i.break_start", substr($row?->break_start ?? ($editing ? '' : '12:00'), 0, 5)) }}" class="field w-32" aria-label="{{ $day }} break start">
-                                            <input type="time" name="schedule[{{ $i }}][break_end]" value="{{ old("schedule.$i.break_end", substr($row?->break_end ?? ($editing ? '' : '13:00'), 0, 5)) }}" class="field w-32" aria-label="{{ $day }} break end">
+                                            <span class="col-span-2 -mb-1 mt-1 text-xs font-medium text-on-surface-variant sm:hidden" aria-hidden="true">Hours</span>
+                                            <input type="time" name="schedule[{{ $i }}][start_time]" value="{{ old("schedule.$i.start_time", substr($row?->start_time ?? '09:00', 0, 5)) }}" class="field w-32 max-sm:w-full max-sm:px-3" aria-label="{{ $day }} start">
+                                            <span class="text-sm text-on-surface-variant max-sm:hidden">to</span>
+                                            <input type="time" name="schedule[{{ $i }}][end_time]" value="{{ old("schedule.$i.end_time", substr($row?->end_time ?? '18:00', 0, 5)) }}" class="field w-32 max-sm:w-full max-sm:px-3" aria-label="{{ $day }} end">
+                                            <span class="ml-2 text-sm text-on-surface-variant max-sm:col-span-2 max-sm:-mb-1 max-sm:ml-0 max-sm:mt-1 max-sm:text-xs max-sm:font-medium">Break</span>
+                                            <input type="time" name="schedule[{{ $i }}][break_start]" value="{{ old("schedule.$i.break_start", substr($row?->break_start ?? ($editing ? '' : '12:00'), 0, 5)) }}" class="field w-32 max-sm:w-full max-sm:px-3" aria-label="{{ $day }} break start">
+                                            <input type="time" name="schedule[{{ $i }}][break_end]" value="{{ old("schedule.$i.break_end", substr($row?->break_end ?? ($editing ? '' : '13:00'), 0, 5)) }}" class="field w-32 max-sm:w-full max-sm:px-3" aria-label="{{ $day }} break end">
                                         </div>
                                     </template>
                                     <span x-show="!on" class="text-sm text-on-surface-variant">Day off</span>
@@ -106,10 +108,10 @@
         <x-admin.card title="Days off" subtitle="Leave, holidays or training. Blocks bookings on those dates." class="mt-6">
             <form method="POST" action="{{ route('staff.days-off.store', $staff) }}" class="mb-4 flex flex-wrap items-end gap-3">
                 @csrf
-                <x-admin.input name="date" type="date" label="Date" :min="now()->toDateString()" required class="w-44" />
-                <x-admin.select name="branch_id" label="Branch" :options="$staff->branches->pluck('name', 'id')" placeholder="All branches" class="w-48" />
-                <x-admin.input name="reason" label="Reason" placeholder="Optional" class="w-64" />
-                <x-admin.button type="submit" variant="tonal" icon="add">Add day off</x-admin.button>
+                <x-admin.input name="date" type="date" label="Date" :min="now()->toDateString()" required class="w-full sm:w-44" />
+                <x-admin.select name="branch_id" label="Branch" :options="$staff->branches->pluck('name', 'id')" placeholder="All branches" class="w-full sm:w-48" />
+                <x-admin.input name="reason" label="Reason" placeholder="Optional" class="w-full sm:w-64" />
+                <x-admin.button type="submit" variant="tonal" icon="add" class="max-sm:w-full">Add day off</x-admin.button>
             </form>
             @forelse ($staff->daysOff as $off)
                 <div class="flex items-center justify-between border-t border-outline-variant/50 py-2 text-sm">

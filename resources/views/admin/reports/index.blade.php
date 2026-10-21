@@ -11,7 +11,7 @@
     <x-admin.page-header title="Reports" subtitle="Gross revenue = completed appointments (after discounts) and completed walk-ins. Net revenue = gross minus product cost from Inventory." />
     @include('admin.reports._range', ['action' => route('reports.index')])
 
-    <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         @foreach ($sales->summary as $label => $value)<x-admin.stat :label="$label" :value="$value" icon="payments" tone="gold" />@endforeach
         @foreach ($appointments->summary as $label => $value)<x-admin.stat :label="$label" :value="$value" icon="event_note" tone="info" />@endforeach
     </div>

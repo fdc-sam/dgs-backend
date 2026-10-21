@@ -13,7 +13,7 @@
         </x-slot:actions>
     </x-admin.page-header>
 
-    <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+    <div class="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-5">
         <x-admin.stat label="Bookings" :value="$stats['total']" icon="event" />
         <x-admin.stat label="Completed" :value="$stats['completed']" icon="task_alt" tone="success" />
         <x-admin.stat label="Cancelled" :value="$stats['cancelled']" icon="event_busy" tone="warning" />

@@ -54,7 +54,31 @@ function renderCharts() {
     });
 }
 
+/** Phones show x-admin.table rows as cards (.table-stack in app.css); each cell is labelled with its column header. */
+function labelTableCells() {
+    document.querySelectorAll('table.table-stack').forEach((table) => {
+        const headers = Array.from(table.tHead?.rows[0]?.cells ?? []);
+        Array.from(table.tBodies).flatMap((body) => Array.from(body.rows)).forEach((row) => {
+            // A row with a spanning cell (Subtotal …, Day off) is a summary line: label and value side by side, no headers.
+            if (Array.from(row.cells).some((cell) => cell.colSpan > 1)) {
+                row.dataset.row ??= 'summary';
+                return;
+            }
+            let column = 0;
+            Array.from(row.cells).forEach((cell) => {
+                const header = headers[column];
+                if (header) {
+                    cell.dataset.label ??= header.textContent.trim();
+                    if (header.dataset.cell) cell.dataset.cell ??= header.dataset.cell;
+                }
+                column += cell.colSpan;
+            });
+        });
+    });
+}
+
 document.addEventListener('DOMContentLoaded', renderCharts);
+document.addEventListener('DOMContentLoaded', labelTableCells);
 Alpine.start();
 // After Alpine, so x-model has already chosen each select's value when Select2 reads it.
 startSelect2();

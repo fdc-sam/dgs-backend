@@ -12,6 +12,9 @@
         'danger' => 'border-danger bg-danger-container/70 text-danger line-through',
         default => 'border-warning bg-warning-container text-warning',
     };
+    $dot = fn ($a) => match ($a->status->color()) {
+        'success' => 'bg-success', 'info' => 'bg-info', 'danger' => 'bg-danger', default => 'bg-warning',
+    };
     $title = match ($view) {
         'day' => $date->format('l, F j, Y'),
         'week' => $from->format('M j').' – '.$to->format('M j, Y'),
@@ -21,20 +24,20 @@
 <x-admin.layout title="Calendar">
     <x-admin.page-header title="Calendar" :subtitle="$title">
         <x-slot:actions>
-            <div class="inline-flex rounded-full border border-outline-variant bg-white p-1" role="group" aria-label="Calendar view">
+            <div class="inline-flex rounded-full border border-outline-variant bg-white p-1 max-sm:flex-1" role="group" aria-label="Calendar view">
                 @foreach (['day' => 'Day', 'week' => 'Week', 'month' => 'Month'] as $key => $label)
-                    <a href="{{ $query(['view' => $key]) }}" @class(['min-h-9 rounded-full px-4 py-2 text-sm font-medium', 'bg-primary text-on-primary' => $view === $key, 'hover:bg-surface-container' => $view !== $key]) @if ($view === $key) aria-current="page" @endif>{{ $label }}</a>
+                    <a href="{{ $query(['view' => $key]) }}" @class(['min-h-9 rounded-full px-4 py-2 text-center text-sm font-medium max-sm:flex-1 max-sm:px-2', 'bg-primary text-on-primary' => $view === $key, 'hover:bg-surface-container' => $view !== $key]) @if ($view === $key) aria-current="page" @endif>{{ $label }}</a>
                 @endforeach
             </div>
-            <div class="inline-flex items-center gap-1">
-                <x-admin.button :href="$query(['date' => $prev->toDateString()])" variant="text" icon="chevron_left" aria-label="Previous" />
+            <div class="inline-flex items-center gap-1 max-sm:gap-0">
+                <x-admin.button :href="$query(['date' => $prev->toDateString()])" variant="text" icon="chevron_left" aria-label="Previous" class="max-sm:px-2.5" />
                 <x-admin.button :href="$query(['date' => now()->toDateString()])" variant="outlined" size="sm">Today</x-admin.button>
-                <x-admin.button :href="$query(['date' => $next->toDateString()])" variant="text" icon="chevron_right" aria-label="Next" />
+                <x-admin.button :href="$query(['date' => $next->toDateString()])" variant="text" icon="chevron_right" aria-label="Next" class="max-sm:px-2.5" />
             </div>
         </x-slot:actions>
     </x-admin.page-header>
 
-    <x-admin.filter-bar :action="route('calendar')">
+    <x-admin.filter-bar :action="route('calendar')" :except="['view', 'date']">
         <input type="hidden" name="view" value="{{ $view }}"><input type="hidden" name="date" value="{{ $date->toDateString() }}">
         <x-admin.select name="branch_id" label="Branch" :options="$branches" :value="request('branch_id')" placeholder="All branches" class="w-52" />
         @if ($staff->isNotEmpty())
@@ -46,21 +49,29 @@
     @if ($view === 'month')
         <x-admin.card :padding="false" class="overflow-hidden">
             <div class="grid grid-cols-7 border-b border-outline-variant bg-surface-container text-center text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
-                @foreach (['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as $d)<div class="py-2">{{ $d }}</div>@endforeach
+                @foreach (['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as $d)<div class="py-2"><span class="md:hidden">{{ mb_substr($d, 0, 1) }}</span><span class="max-md:hidden">{{ $d }}</span></div>@endforeach
             </div>
             <div class="grid grid-cols-7">
                 @for ($day = $from; $day->lte($to); $day = $day->addDay())
                     @php $items = $byDay[$day->toDateString()] ?? collect(); @endphp
-                    <div @class(['min-h-28 border-b border-r border-outline-variant/60 p-1.5', 'bg-surface-dim/50 text-outline' => $day->month !== $date->month])>
+                    <div @class(['relative min-h-16 border-b border-r border-outline-variant/60 p-1 text-center md:min-h-28 md:p-1.5 md:text-left', 'bg-surface-dim/50 text-outline' => $day->month !== $date->month])>
+                        {{-- Phones: the whole cell opens the day; bookings show as coloured dots. --}}
+                        <a href="{{ $query(['view' => 'day', 'date' => $day->toDateString()]) }}" class="absolute inset-0 md:hidden" aria-label="{{ $day->format('l, F j') }}: {{ trans_choice(':count booking|:count bookings', $items->count()) }}"></a>
                         <a href="{{ $query(['view' => 'day', 'date' => $day->toDateString()]) }}"
                            @class(['mb-1 inline-flex h-7 w-7 items-center justify-center rounded-full text-sm', 'bg-primary font-semibold text-on-primary' => $day->isToday(), 'hover:bg-surface-container-high' => ! $day->isToday()])>{{ $day->day }}</a>
+                        @if ($items->isNotEmpty())
+                            <div class="flex flex-wrap justify-center gap-0.5 md:hidden" aria-hidden="true">
+                                @foreach ($items->take(4) as $a)<span class="h-1.5 w-1.5 rounded-full {{ $dot($a) }}"></span>@endforeach
+                            </div>
+                            @if ($items->count() > 4)<p class="text-[0.625rem] leading-3 text-on-surface-variant md:hidden" aria-hidden="true">+{{ $items->count() - 4 }}</p>@endif
+                        @endif
                         @foreach ($items->take(3) as $a)
-                            <a href="{{ route('appointments.show', $a) }}" class="mb-0.5 block truncate rounded-md border-l-4 px-1.5 py-0.5 text-xs {{ $tone($a) }}" title="{{ $a->customer->name }} — {{ $a->items->pluck('service_name')->join(', ') }}">
+                            <a href="{{ route('appointments.show', $a) }}" class="mb-0.5 block truncate rounded-md border-l-4 px-1.5 py-0.5 text-xs max-md:hidden {{ $tone($a) }}" title="{{ $a->customer->name }} — {{ $a->items->pluck('service_name')->join(', ') }}">
                                 {{ $a->startsAt()->format('g:i') }} {{ $a->customer->name }}
                             </a>
                         @endforeach
                         @if ($items->count() > 3)
-                            <a href="{{ $query(['view' => 'day', 'date' => $day->toDateString()]) }}" class="block px-1.5 text-xs font-medium text-primary">+{{ $items->count() - 3 }} more</a>
+                            <a href="{{ $query(['view' => 'day', 'date' => $day->toDateString()]) }}" class="block px-1.5 text-xs font-medium text-primary max-md:hidden">+{{ $items->count() - 3 }} more</a>
                         @endif
                     </div>
                 @endfor
@@ -73,7 +84,40 @@
                 : collect(range(0, 6))->map(fn ($i) => ['key' => $from->addDays($i)->toDateString(), 'label' => $from->addDays($i)->format('D j'), 'sub' => null, 'today' => $from->addDays($i)->isToday(), 'items' => $byDay[$from->addDays($i)->toDateString()] ?? collect()]);
             $laneMap = $view === 'day' ? [] : $lanes;
         @endphp
-        <x-admin.card :padding="false" class="overflow-hidden">
+        {{-- Phones: an agenda list in place of the time grid. --}}
+        <div class="space-y-5 md:hidden">
+            @foreach ($view === 'day' ? [$date] : collect(range(0, 6))->map(fn ($i) => $from->addDays($i)) as $day)
+                @php $dayItems = ($byDay[$day->toDateString()] ?? collect())->sortBy('start_time'); @endphp
+                <section aria-labelledby="agenda-{{ $day->toDateString() }}">
+                    <div class="mb-2 flex items-center gap-2 px-1">
+                        <h2 id="agenda-{{ $day->toDateString() }}" @class(['text-sm font-semibold', 'text-on-surface-variant' => ! $day->isToday()])>{{ $day->format('l, M j') }}</h2>
+                        @if ($day->isToday())<span class="rounded-full bg-gold px-2 py-0.5 text-[0.6875rem] font-semibold text-on-surface">Today</span>@endif
+                        <span class="ml-auto text-xs text-outline">{{ trans_choice(':count booking|:count bookings', $dayItems->count()) }}</span>
+                    </div>
+                    <div class="overflow-hidden rounded-card border border-outline-variant bg-white">
+                        @forelse ($dayItems as $a)
+                            <a href="{{ route('appointments.show', $a) }}" class="flex items-center gap-3 border-b border-outline-variant px-4 py-3 last:border-0 active:bg-surface-container/70">
+                                <div class="w-12 shrink-0">
+                                    <p class="text-sm font-semibold">{{ $a->startsAt()->format('g:i') }}</p>
+                                    <p class="text-xs text-on-surface-variant">{{ $a->startsAt()->format('A') }}</p>
+                                </div>
+                                <span class="w-1 self-stretch rounded-full {{ $dot($a) }}" aria-hidden="true"></span>
+                                <div class="min-w-0 flex-1">
+                                    <p @class(['truncate font-medium', 'line-through' => $a->status->color() === 'danger'])>{{ $a->customer->name }}</p>
+                                    <p class="truncate text-sm text-on-surface-variant">{{ $a->items->pluck('service_name')->join(', ') }}</p>
+                                    <p class="truncate text-xs text-outline">{{ $a->startsAt()->format('g:i') }}–{{ $a->endsAt()->format('g:i A') }}@if ($a->staff?->user?->name) · {{ $a->staff->user->name }}@endif</p>
+                                </div>
+                                <x-admin.status-badge :status="$a->status" />
+                            </a>
+                        @empty
+                            <p class="px-4 py-3.5 text-sm text-outline">No bookings</p>
+                        @endforelse
+                    </div>
+                </section>
+            @endforeach
+        </div>
+
+        <x-admin.card :padding="false" class="overflow-hidden max-md:hidden">
             @if ($columns->isEmpty())
                 <x-admin.empty-state icon="badge" title="No staff to show" message="Add staff to this branch to see their day." />
             @else

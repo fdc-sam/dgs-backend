@@ -36,7 +36,8 @@ function enhance(select) {
 
     // data-no-placeholder: the empty option ("All branches") is a normal choice, not a grey placeholder.
     const placeholder = select.dataset.noPlaceholder !== undefined ? undefined : select.querySelector('option[value=""]')?.textContent.trim();
-    const widthClasses = Array.from(select.classList).filter((c) => /^(\w+:)?(w|min-w|max-w)-/.test(c));
+    // Sizing and grid placement on the <select> (w-44, max-sm:w-full, max-sm:col-span-2) move to the box that replaces it.
+    const layoutClasses = Array.from(select.classList).filter((c) => /^([\w-]+:)*(w|min-w|max-w|col-span)-/.test(c));
     const modal = select.closest('[role="dialog"]');
 
     $(select).select2({
@@ -50,10 +51,10 @@ function enhance(select) {
     });
 
     const container = select.nextElementSibling;
-    if (widthClasses.length) {
+    if (layoutClasses.some((c) => /^([\w-]+:)*(w|min-w|max-w)-/.test(c))) {
         container.style.width = '';
-        container.classList.add(...widthClasses);
     }
+    container.classList.add(...layoutClasses);
     container.classList.toggle('select2-error', select.classList.contains('field-error'));
     // data-container-class: extra classes for the Select2 box, e.g. room for a leading icon.
     container.classList.add(...(select.dataset.containerClass ?? '').split(' ').filter(Boolean));

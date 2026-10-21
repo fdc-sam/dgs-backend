@@ -9,16 +9,17 @@
         </div>
     @endunless
 
-    <div class="mb-6 flex flex-wrap gap-x-7 border-b border-outline-variant" role="tablist">
+    {{-- Phones: the divider is an inset shadow, since the scrolling row would clip tabs that overlap a border. --}}
+    <div class="scroll-row mb-6 flex gap-x-7 border-b border-outline-variant max-sm:border-b-0 max-sm:shadow-[inset_0_-1px_0_var(--color-outline-variant)] sm:flex-wrap" role="tablist">
         @foreach ($tabs as $tab)
             <a href="{{ route('payments.index', ['status' => $tab->value]) }}" role="tab" @if ($status === $tab) aria-selected="true" @endif
-               @class(['-mb-px inline-flex items-center gap-2 border-b-2 pb-3 pt-1 text-[0.9375rem] font-medium transition-colors', 'border-gold text-on-surface' => $status === $tab, 'border-transparent text-on-surface-variant hover:text-on-surface' => $status !== $tab])>
+               @class(['-mb-px inline-flex shrink-0 max-sm:mb-0 items-center gap-2 whitespace-nowrap border-b-2 pb-3 pt-1 text-[0.9375rem] font-medium transition-colors', 'border-gold text-on-surface' => $status === $tab, 'border-transparent text-on-surface-variant hover:text-on-surface' => $status !== $tab])>
                 {{ $tab->label() }} <span class="text-xs opacity-70">{{ $counts[$tab->value] ?? 0 }}</span>
             </a>
         @endforeach
     </div>
 
-    <x-admin.filter-bar :action="route('payments.index')">
+    <x-admin.filter-bar :action="route('payments.index')" :collapse="false">
         <input type="hidden" name="status" value="{{ $status->value }}">
         <x-admin.input name="search" label="Search" :value="request('search')" placeholder="Booking #, Ref No., customer" class="w-full sm:w-72" />
     </x-admin.filter-bar>

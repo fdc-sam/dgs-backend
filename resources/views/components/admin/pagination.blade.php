@@ -1,6 +1,6 @@
 @props(['paginator'])
 @if ($paginator->hasPages())
-    <nav class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 text-sm" aria-label="Pagination">
+    <nav class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 text-sm max-md:border-t max-md:border-outline-variant" aria-label="Pagination">
         <p class="text-on-surface-variant">
             Showing <span class="font-medium text-on-surface">{{ $paginator->firstItem() }}</span>–<span class="font-medium text-on-surface">{{ $paginator->lastItem() }}</span>
             of <span class="font-medium text-on-surface">{{ number_format($paginator->total()) }}</span>

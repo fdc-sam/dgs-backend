@@ -1,10 +1,10 @@
 <x-admin.layout title="Reviews">
     <x-admin.page-header title="Reviews" subtitle="Approved reviews appear publicly in the app." />
 
-    <div class="mb-4 flex flex-wrap gap-2" role="tablist">
+    <div class="scroll-row mb-4 flex gap-2 sm:flex-wrap" role="tablist">
         @foreach (['pending' => 'Pending', 'approved' => 'Approved', 'rejected' => 'Rejected', 'all' => 'All'] as $key => $label)
             <a href="{{ route('reviews.index', ['status' => $key]) }}" role="tab" @if ($status === $key) aria-selected="true" @endif
-               @class(['inline-flex min-h-10 items-center gap-2 rounded-full px-4 text-sm font-medium', 'bg-secondary-container text-on-secondary-container' => $status === $key, 'border border-outline-variant hover:bg-surface-container' => $status !== $key])>
+               @class(['inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-medium', 'bg-secondary-container text-on-secondary-container' => $status === $key, 'border border-outline-variant hover:bg-surface-container' => $status !== $key])>
                 {{ $label }} @if ($key !== 'all')<span class="text-xs opacity-70">{{ $counts[$key] ?? 0 }}</span>@endif
             </a>
         @endforeach
@@ -14,7 +14,7 @@
         @if ($reviews->isEmpty())
             <x-admin.empty-state icon="reviews" title="No reviews here" message="Reviews appear after customers rate completed appointments." />
         @else
-            <x-admin.table :headers="['Customer', 'Service', 'Rating', 'Review', 'Date', 'Status', '>Actions']">
+            <x-admin.table :headers="['Customer', 'Service', 'Rating', 'Review', 'Date', 'Status', '>Actions']" :wide="['Review']">
                 @foreach ($reviews as $r)
                     <tr>
                         <td class="whitespace-nowrap font-medium">{{ $r->customer?->name }}</td>

@@ -96,6 +96,8 @@
     body { @apply bg-surface text-on-surface; }
     [x-cloak] { display: none !important; }
     :focus-visible { @apply outline-2 outline-offset-2 outline-primary; }
+    /* Grid items may shrink below their content, so a wide table or long line can't push a phone page sideways. */
+    .theme-admin .grid > * { min-width: 0; }
 }
 
 @layer components {
@@ -107,8 +109,9 @@
     }
     .icon-fill { font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24; }
 
+    /* 16px text on phones: iOS Safari zooms the page into any smaller field on focus. */
     .field {
-        @apply block w-full rounded-field border border-outline-variant bg-white px-3.5 py-2.5 text-sm text-on-surface
+        @apply block w-full rounded-field border border-outline-variant bg-white px-3.5 py-2.5 text-base text-on-surface sm:text-sm
             placeholder:text-outline shadow-none transition
             focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none
             disabled:bg-surface-dim disabled:text-on-surface-variant;
@@ -129,6 +132,53 @@
 
     /* Small uppercase section label, e.g. "BUSINESS SNAPSHOT". */
     .eyebrow { @apply text-xs font-semibold uppercase tracking-[0.12em] text-outline; }
+
+    /* Tabs / chips that swipe sideways on phones instead of wrapping; edge to edge past the page gutter. */
+    .scroll-row { @apply -mx-4 overflow-x-auto overscroll-x-contain px-4 sm:mx-0 sm:overflow-visible sm:px-0; scrollbar-width: none; }
+    .scroll-row::-webkit-scrollbar { display: none; }
+}
+
+/*
+ | Phones (< md): an x-admin.table (.table-stack) becomes a list of cards. The first cell is the card's title; the
+ | rest sit two per line under their column header (data-label, copied from <th> in app.js). data-cell="wide" and
+ | the Actions cell take a whole line. Unlayered so it beats the cells' own utilities (text-right, whitespace-nowrap,
+ | max-w-*, truncate).
+ */
+@media (width < 48rem) {
+    .table-stack, .table-stack tbody { display: block; }
+    .table-stack thead { display: none; }
+    .table-stack tbody tr { @apply grid grid-cols-2 gap-x-4 gap-y-3 px-5 py-4; border-bottom: 1px solid color-mix(in oklab, var(--color-outline-variant) 80%, transparent); }
+    .table-stack tbody tr:last-child { border-bottom: 0; }
+    .table-stack tbody td { @apply block w-auto min-w-0 max-w-none border-0 p-0 text-left whitespace-normal; }
+    .table-stack tbody td[data-label]::before {
+        content: attr(data-label);
+        @apply mb-0.5 block text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-outline;
+    }
+    .table-stack tbody td:first-child,
+    .table-stack tbody td[data-cell] { grid-column: 1 / -1; }
+    .table-stack tbody td:first-child::before,
+    .table-stack tbody td[data-cell='actions']::before { content: none; }
+    .table-stack tbody td:first-child { @apply text-[0.9375rem]; }
+    .table-stack tbody td[data-cell='actions'] { @apply border-t border-outline-variant/70 pt-3; }
+    .table-stack tbody td[data-cell='actions'] > div { flex-wrap: wrap; }
+    /* Room for four actions on one line; a destructive one (Delete) sits apart on the left. */
+    .table-stack tbody td[data-cell='actions'] :is(a, button) { padding-inline: 0.75rem; }
+    .table-stack tbody td[data-cell='actions'] .material-symbols-outlined { display: none; }
+    .table-stack tbody td[data-cell='actions'] > div > :has(.text-danger) { order: -1; margin-right: auto; }
+    .table-stack tbody td[data-cell='actions'] > div > :has(.text-danger) :is(a, button) { margin-left: -0.75rem; }
+    .table-stack tbody tr[data-row='summary'] { @apply flex items-baseline justify-between gap-4 py-3; }
+    .table-stack tbody tr[data-row='summary'] td:last-child { @apply shrink-0 text-right; }
+}
+
+/*
+ | Phones (< sm): x-admin.filter-bar folds its fields behind a "Filters" toggle and lays them out two per line,
+ | text searches and checkboxes on a line of their own. Unlayered so it beats the fields' desktop widths (w-40…).
+ */
+@media (width < 40rem) {
+    .filter-fields > * { width: auto; }
+    .filter-fields > :has(input[type='text'], input[type='search'], input[type='checkbox']),
+    .filter-fields > .filter-actions { grid-column: 1 / -1; }
+    .filter-bar-inline .filter-fields > :not(.filter-actions) { flex: 1 1 0%; }
 }
 
 /*
@@ -165,14 +215,14 @@ body .select2-container--default .select2-selection--multiple .select2-selection
 body .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
     @apply static rounded-full border-0 px-1.5 text-on-secondary-container hover:bg-primary/10;
 }
-body .select2-container .select2-search--inline .select2-search__field { @apply m-0 h-7 px-1 font-sans text-sm; }
+body .select2-container .select2-search--inline .select2-search__field { @apply m-0 h-7 px-1 font-sans text-base sm:text-sm; }
 
 body .select2-dropdown { @apply z-[60] overflow-hidden rounded-field border border-outline-variant bg-white shadow-e2; }
 body .select2-container--open .select2-dropdown--below { @apply mt-1 rounded-field border-t; }
 body .select2-container--open .select2-dropdown--above { @apply mb-1 rounded-field border-b; }
 body .select2-search--dropdown { @apply p-2; }
 body .select2-container--default .select2-search--dropdown .select2-search__field {
-    @apply rounded-full border border-outline-variant px-3.5 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20;
+    @apply rounded-full border border-outline-variant px-3.5 py-2 text-base outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 sm:text-sm;
 }
 body .select2-results__option { @apply px-3.5 py-2.5; }
 body .select2-container--default .select2-results > .select2-results__options { @apply max-h-72; }

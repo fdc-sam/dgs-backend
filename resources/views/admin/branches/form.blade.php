@@ -42,9 +42,9 @@
                                 <span x-show="!open" class="ml-auto text-xs text-outline">Closed</span>
                             </label>
                             <div x-show="open" class="mt-1 flex items-center gap-2">
-                                <input type="time" name="hours[{{ $i }}][opening_time]" value="{{ old("hours.$i.opening_time", $h['opening_time']) }}" class="field py-2" aria-label="{{ $day }} opening">
+                                <input type="time" name="hours[{{ $i }}][opening_time]" value="{{ old("hours.$i.opening_time", $h['opening_time']) }}" class="field min-w-0 py-2 max-sm:px-3" aria-label="{{ $day }} opening">
                                 <span class="text-xs text-on-surface-variant">to</span>
-                                <input type="time" name="hours[{{ $i }}][closing_time]" value="{{ old("hours.$i.closing_time", $h['closing_time']) }}" class="field py-2" aria-label="{{ $day }} closing">
+                                <input type="time" name="hours[{{ $i }}][closing_time]" value="{{ old("hours.$i.closing_time", $h['closing_time']) }}" class="field min-w-0 py-2 max-sm:px-3" aria-label="{{ $day }} closing">
                             </div>
                             @error("hours.$i.closing_time")<p class="mt-1 text-xs font-medium text-danger">{{ $message }}</p>@enderror
                         </div>
@@ -62,9 +62,9 @@
         <x-admin.card title="Closures & holidays" subtitle="The branch accepts no bookings on these dates." class="mt-6">
             <form method="POST" action="{{ route('branches.closures.store', $branch) }}" class="mb-4 flex flex-wrap items-end gap-3">
                 @csrf
-                <x-admin.input name="date" type="date" label="Date" :min="now()->toDateString()" required class="w-44" />
-                <x-admin.input name="reason" label="Reason" placeholder="e.g. Holiday" class="w-64" />
-                <x-admin.button type="submit" variant="tonal" icon="add">Add closure</x-admin.button>
+                <x-admin.input name="date" type="date" label="Date" :min="now()->toDateString()" required class="w-full sm:w-44" />
+                <x-admin.input name="reason" label="Reason" placeholder="e.g. Holiday" class="w-full sm:w-64" />
+                <x-admin.button type="submit" variant="tonal" icon="add" class="max-sm:w-full">Add closure</x-admin.button>
             </form>
             @forelse ($branch->closures as $closure)
                 <div class="flex items-center justify-between border-t border-outline-variant/50 py-2 text-sm">
