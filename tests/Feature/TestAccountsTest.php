@@ -209,7 +209,7 @@ class TestAccountsTest extends TestCase
         $this->post("/customers/{$this->liveCustomer->id}/account-type", ['account_type' => 'test'])->assertForbidden();
 
         $this->actingAs(User::factory()->superAdmin()->create());
-        $this->get("/customers/{$this->liveCustomer->id}")->assertOk()->assertSee('Test or live');
+        $this->get("/customers/{$this->liveCustomer->id}")->assertOk()->assertSee('Test or live')->assertSee('Update status');
         $this->post("/customers/{$this->liveCustomer->id}/account-type", ['account_type' => 'test'])
             ->assertRedirect('/customers')->assertSessionHas('success');
 

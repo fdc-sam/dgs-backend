@@ -7,7 +7,7 @@
                       data-confirm="Change this customer's account status? Suspended customers are signed out of the app.">
                     @csrf
                     <x-admin.select name="status" :options="['active' => 'Active', 'inactive' => 'Inactive', 'suspended' => 'Suspended']" :value="$customer->status->value" aria-label="Account status" class="w-40" />
-                    <x-admin.button type="submit" variant="tonal">Update</x-admin.button>
+                    <x-admin.button type="submit" variant="tonal">Update status</x-admin.button>
                 </form>
             @endcan
         </x-slot:actions>
@@ -60,12 +60,25 @@
 
         <div class="space-y-6">
             @can('super-admin')
-                <x-admin.card title="Test or live">
-                    <form method="POST" action="{{ route('customers.account-type', $customer) }}" class="space-y-4"
-                          data-confirm="Move {{ $customer->name }} to the other side? They and their bookings will no longer show for your account.">
+                <x-admin.card title="Test or live" subtitle="Saves as soon as you pick one.">
+                    {{-- Picking the other option saves it after its own confirm; cancelling puts the choice back. --}}
+                    <form method="POST" action="{{ route('customers.account-type', $customer) }}"
+                          x-data="{
+                              saved: @js($customer->is_test ? 'test' : 'live'),
+                              messages: @js([
+                                  'test' => "Make {$customer->name} a test account? They and their bookings move to the test side, and only test accounts will see them.",
+                                  'live' => "Make {$customer->name} a live account? They and their bookings move to the live side, and only live accounts will see them.",
+                              ]),
+                              pick(event) {
+                                  const side = event.target.value;
+                                  if (side === this.saved) return;
+                                  if (window.confirm(this.messages[side])) this.$root.submit();
+                                  else this.$root.querySelector(`input[value=${this.saved}]`).checked = true;
+                              },
+                          }" @change="pick($event)">
                         @csrf
                         <x-admin.account-type :test="$customer->is_test" />
-                        <x-admin.button type="submit" variant="tonal" icon="save" class="w-full">Save account type</x-admin.button>
+                        <noscript><x-admin.button type="submit" variant="tonal" icon="save" class="mt-4 w-full">Save account type</x-admin.button></noscript>
                     </form>
                 </x-admin.card>
             @endcan
