@@ -9,10 +9,12 @@ use App\Http\Requests\Api\ForgotPasswordRequest;
 use App\Http\Requests\Api\LoginRequest;
 use App\Http\Requests\Api\RegisterRequest;
 use App\Http\Requests\Api\ResetPasswordRequest;
+use App\Http\Requests\Api\UpdateLoyaltyCardRequest;
 use App\Http\Requests\Api\UpdateProfilePhotoRequest;
 use App\Http\Requests\Api\UpdateProfileRequest;
 use App\Http\Resources\UserResource;
 use App\Services\AccountDeletionService;
+use App\Services\AuditLogger;
 use App\Services\AuthService;
 use App\Services\CustomerQrService;
 use Illuminate\Http\JsonResponse;
@@ -61,6 +63,28 @@ class AuthController extends ApiController
         $this->authorize('update', $request->user());
 
         return $this->ok(new UserResource($this->auth->updateProfile($request->user(), $request->validated())), 'Profile updated.');
+    }
+
+    /** Links the loyalty card the customer bought at the salon (the number printed on it). */
+    public function updateLoyaltyCard(UpdateLoyaltyCardRequest $request, AuditLogger $audit): JsonResponse
+    {
+        $user = $request->user();
+        $old = $user->loyalty_number;
+        $user->forceFill(['loyalty_number' => $request->validated('loyalty_number')])->save();
+        $audit->log('customer.loyalty_number', $user, ['loyalty_number' => $old], ['loyalty_number' => $user->loyalty_number]);
+
+        return $this->ok(new UserResource($user->load('customerProfile')), 'Loyalty card saved.');
+    }
+
+    public function removeLoyaltyCard(Request $request, AuditLogger $audit): JsonResponse
+    {
+        $user = $request->user();
+        if ($user->loyalty_number !== null) {
+            $audit->log('customer.loyalty_number', $user, ['loyalty_number' => $user->loyalty_number], ['loyalty_number' => null]);
+            $user->forceFill(['loyalty_number' => null])->save();
+        }
+
+        return $this->ok(new UserResource($user->load('customerProfile')), 'Loyalty card removed.');
     }
 
     public function updatePhoto(UpdateProfilePhotoRequest $request): JsonResponse

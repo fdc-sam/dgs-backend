@@ -32,6 +32,7 @@ class AdminCustomerResource extends JsonResource
             'email' => $this->when($manager, $customer->email),
             'phone' => $this->when($manager, $customer->phone),
             'qr_code' => $this->when($manager, $customer->qr_code),
+            'loyalty_number' => $this->when($manager, $customer->loyalty_number),
             'birthday' => $this->when($manager, $profile?->date_of_birth?->toDateString()),
             'internal_notes' => $this->when($manager, $profile?->notes),
             'stats' => $this->when($manager, fn () => $this->stats($customer)),

@@ -33,6 +33,8 @@ class User extends Authenticatable
         'role' => 'customer',
         'status' => 'active',
         'is_test' => false,
+        // Set on new models too, so a just-registered customer's profile can show "no card yet".
+        'loyalty_number' => null,
     ];
 
     protected static function booted(): void

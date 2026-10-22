@@ -14,7 +14,7 @@
         ['count' => $lowStockCount, 'icon' => 'inventory_2', 'title' => 'products low or out of stock', 'text' => 'At or below their restock alert.', 'href' => route('products.index', ['stock' => 'low'])],
     ], fn ($row) => $row['count'] > 0);
 @endphp
-<x-admin.layout title="Dashboard">
+<x-admin.layout title="Dashboard" live="appointments">
     <x-admin.page-header title="Dashboard" :subtitle="$greeting">
         @can('manage')
             <x-slot:actions>

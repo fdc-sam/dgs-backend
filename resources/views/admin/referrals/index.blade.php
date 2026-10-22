@@ -1,5 +1,5 @@
 @php use App\Enums\ReferralStatus; use App\Support\Fmt; @endphp
-<x-admin.layout title="Referrals">
+<x-admin.layout title="Referrals" live="referrals">
     <x-admin.page-header title="Referrals" subtitle="People customers referred. Accept them, mark them in progress while the person gets their service, then complete them by sending the referrer's reward to their GCash. The referrer is notified at every step." />
 
     <div class="scroll-row mb-4 flex gap-2 sm:flex-wrap" role="tablist">

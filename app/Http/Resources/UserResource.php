@@ -22,6 +22,8 @@ class UserResource extends JsonResource
             'role' => $this->role->value,
             'status' => $this->status->value,
             'profile_photo_url' => Fmt::url($this->profile_photo),
+            // The number on the salon loyalty card the customer linked (digits only), or null.
+            'loyalty_number' => $this->loyalty_number,
             'email_verified_at' => Fmt::iso($this->email_verified_at),
             'profile' => $profile ? [
                 'date_of_birth' => $profile->date_of_birth?->toDateString(),

@@ -1,4 +1,4 @@
-<x-admin.layout title="Appointments">
+<x-admin.layout title="Appointments" live="appointments">
     <x-admin.page-header title="Appointments" subtitle="Search, filter and manage every booking." />
 
     <x-admin.filter-bar :action="route('appointments.index')">

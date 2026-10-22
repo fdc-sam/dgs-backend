@@ -53,4 +53,10 @@ return [
         'mimes' => ['jpg', 'jpeg', 'png', 'webp'],
         'max_dimension' => 1600,
     ],
+
+    // Loyalty cards the salon sells: the number printed on the card (digits only, spaces and dashes ignored).
+    'loyalty' => [
+        'min_digits' => (int) env('LOYALTY_MIN_DIGITS', 8),
+        'max_digits' => (int) env('LOYALTY_MAX_DIGITS', 20),
+    ],
 ];

@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
     <title>{{ $title ? $title.' · ' : '' }}{{ $salonName }}</title>
-    <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
+    <link rel="icon" type="image/png" href="{{ \App\Support\Fmt::versionedAsset('favicon.png') }}">
     @include('partials.share-meta')
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400..500,0..1,0&display=block">
     @vite(['resources/css/app.css', 'resources/js/app.js'])

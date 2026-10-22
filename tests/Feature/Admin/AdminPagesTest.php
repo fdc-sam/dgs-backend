@@ -29,6 +29,15 @@ class AdminPagesTest extends TestCase
         $this->get('/login')->assertOk()->assertSee('Welcome back');
     }
 
+    public function test_the_logo_and_icon_urls_change_when_the_files_do(): void
+    {
+        // A replaced logo keeps its file name; the version stops browsers showing the copy they cached.
+        $version = filemtime(public_path('images/dgs-logo-256.png'));
+        $this->get('/login')->assertOk()
+            ->assertSee(asset('images/dgs-logo-256.png').'?v='.$version, false)
+            ->assertSee(asset('favicon.png').'?v='.filemtime(public_path('favicon.png')), false);
+    }
+
     public function test_lists_show_ten_rows_per_page(): void
     {
         $this->actingAs(User::factory()->superAdmin()->create());

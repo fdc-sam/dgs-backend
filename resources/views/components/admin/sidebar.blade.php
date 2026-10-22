@@ -69,17 +69,17 @@
                                 <a href="{{ route($link[0]) }}" @class(['nav-link', 'nav-link-active' => $active]) @if ($active) aria-current="page" @endif>
                                     <span class="material-symbols-outlined nav-icon" aria-hidden="true">{{ $link[2] }}</span>
                                     <span class="flex-1">{{ $link[1] }}</span>
-                                    @if ($link[0] === 'notifications.index' && $unreadCount > 0)
-                                        <span class="rounded-full bg-gold px-2 py-0.5 text-xs font-semibold text-on-surface">{{ $unreadCount > 99 ? '99+' : $unreadCount }}</span>
+                                    @if ($link[0] === 'notifications.index')
+                                        <span data-live-badge="unread" data-live-count @if ($unreadCount <= 0) hidden @endif class="rounded-full bg-gold px-2 py-0.5 text-xs font-semibold text-on-surface">{{ $unreadCount > 99 ? '99+' : $unreadCount }}</span>
                                     @endif
                                     @if ($link[0] === 'products.index' && $lowStockCount > 0)
                                         <span class="rounded-full bg-warning-container px-2 py-0.5 text-xs font-semibold text-warning" title="Low or out of stock" aria-label="{{ $lowStockCount }} low or out of stock">{{ $lowStockCount > 99 ? '99+' : $lowStockCount }}</span>
                                     @endif
-                                    @if ($link[0] === 'referrals.index' && $newReferrals > 0)
-                                        <span class="rounded-full bg-gold px-2 py-0.5 text-xs font-semibold text-on-surface" aria-label="{{ $newReferrals }} new">{{ $newReferrals > 99 ? '99+' : $newReferrals }}</span>
+                                    @if ($link[0] === 'referrals.index')
+                                        <span data-live-badge="new_referrals" data-live-count @if ($newReferrals <= 0) hidden @endif class="rounded-full bg-gold px-2 py-0.5 text-xs font-semibold text-on-surface" title="New referrals">{{ $newReferrals > 99 ? '99+' : $newReferrals }}</span>
                                     @endif
-                                    @if ($link[0] === 'payments.index' && $paymentsToVerify > 0)
-                                        <span class="rounded-full bg-gold px-2 py-0.5 text-xs font-semibold text-on-surface" aria-label="{{ $paymentsToVerify }} to verify">{{ $paymentsToVerify > 99 ? '99+' : $paymentsToVerify }}</span>
+                                    @if ($link[0] === 'payments.index')
+                                        <span data-live-badge="payments_to_verify" data-live-count @if ($paymentsToVerify <= 0) hidden @endif class="rounded-full bg-gold px-2 py-0.5 text-xs font-semibold text-on-surface" title="Payments to verify">{{ $paymentsToVerify > 99 ? '99+' : $paymentsToVerify }}</span>
                                     @endif
                                 </a>
                             </li>

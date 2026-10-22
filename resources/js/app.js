@@ -2,11 +2,13 @@ import Alpine from 'alpinejs';
 import collapse from '@alpinejs/collapse';
 import Chart from 'chart.js/auto';
 import { startSelect2 } from './select2';
+import adminLive from './live';
 
 window.Alpine = Alpine;
 window.Chart = Chart;
 
 Alpine.plugin(collapse);
+Alpine.data('adminLive', adminLive);
 
 /** Confirm-before-submit for destructive or state-changing forms: <form data-confirm="Cancel this booking?"> */
 document.addEventListener('submit', (event) => {

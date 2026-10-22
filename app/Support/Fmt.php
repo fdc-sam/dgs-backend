@@ -25,6 +25,17 @@ final class Fmt
         return $value?->format(DATE_ATOM);
     }
 
+    /**
+     * A file in public/ with its modification time appended ("/favicon.png?v=1792…"), so browsers fetch a replaced
+     * logo or icon right away instead of showing the copy they cached under the same name.
+     */
+    public static function versionedAsset(string $path): string
+    {
+        $modified = @filemtime(public_path($path));
+
+        return asset($path).($modified ? '?v='.$modified : '');
+    }
+
     public static function url(?string $path): ?string
     {
         if (! $path) {

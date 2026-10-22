@@ -11,7 +11,7 @@
     @if (filled($s['google_site_verification'] ?? null))
         <meta name="google-site-verification" content="{{ $s['google_site_verification'] }}">
     @endif
-    <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
+    <link rel="icon" type="image/png" href="{{ \App\Support\Fmt::versionedAsset('favicon.png') }}">
     @include('partials.share-meta')
     <meta name="theme-color" content="#F0B800">
     @if ($jsonLd)

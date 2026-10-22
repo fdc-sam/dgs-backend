@@ -2,7 +2,7 @@
     <x-admin.page-header title="Customers" subtitle="Everyone who has registered in the app." />
 
     <x-admin.filter-bar :action="route('customers.index')">
-        <x-admin.input name="search" label="Search" :value="request('search')" placeholder="Name, email, phone or QR code" class="w-72" />
+        <x-admin.input name="search" label="Search" :value="request('search')" placeholder="Name, email, phone, QR code or loyalty card" class="w-72" />
         <x-admin.select name="status" label="Status" :options="['active' => 'Active', 'inactive' => 'Inactive', 'suspended' => 'Suspended']" :value="request('status')" placeholder="Any" class="w-40" />
     </x-admin.filter-bar>
 

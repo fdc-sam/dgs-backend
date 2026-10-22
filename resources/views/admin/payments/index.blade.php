@@ -1,5 +1,5 @@
 @php use App\Enums\PaymentStatus; @endphp
-<x-admin.layout title="Payments">
+<x-admin.layout title="Payments" live="appointments">
     <x-admin.page-header title="Payments" subtitle="GCash deposits. Check each receipt against the salon's GCash transaction history before approving." />
 
     @unless ($enabled)

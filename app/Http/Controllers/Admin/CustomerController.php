@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\CustomerQrService;
 use App\Support\CustomerCode;
+use App\Support\LoyaltyNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -28,8 +29,11 @@ class CustomerController extends Controller
                 $like = '%'.addcslashes($term, '%_\\').'%';
                 // A scanned or typed QR code (any case, with or without dashes) finds its owner exactly.
                 $code = CustomerCode::normalize($term);
+                // So does a loyalty card number, typed with or without spaces.
+                $card = LoyaltyNumber::normalize($term);
                 $q->where(fn ($q) => $q->whereLike('name', $like)->orWhereLike('email', $like)->orWhereLike('phone', $like)
-                    ->when($code, fn ($q) => $q->orWhere('qr_code', $code)));
+                    ->when($code, fn ($q) => $q->orWhere('qr_code', $code))
+                    ->when(ctype_digit($card), fn ($q) => $q->orWhere('loyalty_number', $card)));
             })
             ->when($request->query('status'), fn ($q, $s) => $q->where('status', $s))
             ->latest()
@@ -70,6 +74,29 @@ class CustomerController extends Controller
         $this->authorize('view', $customer);
 
         return $qr->response($customer, $request, download: $request->boolean('download'));
+    }
+
+    /** Link, change or clear the customer's loyalty card, e.g. when they buy one at the counter. Empty clears it. */
+    public function updateLoyaltyCard(Request $request, User $customer, AuditLogger $audit): RedirectResponse
+    {
+        abort_unless($customer->isCustomer(), 404);
+        $this->authorize('update', $customer);
+        $request->merge(['loyalty_number' => LoyaltyNumber::normalize($request->input('loyalty_number'))]);
+        $data = $request->validate(['loyalty_number' => $request->filled('loyalty_number') ? LoyaltyNumber::rules($customer) : ['nullable']],
+            LoyaltyNumber::messages());
+
+        $old = $customer->loyalty_number;
+        $customer->forceFill(['loyalty_number' => $data['loyalty_number'] ?: null])->save();
+        $audit->log('customer.loyalty_number', $customer, ['loyalty_number' => $old], ['loyalty_number' => $customer->loyalty_number]);
+
+        return back()->with('success', $customer->loyalty_number
+            ? "Loyalty card {$this->cardNumber($customer)} linked to {$customer->name}."
+            : "Loyalty card removed from {$customer->name}.");
+    }
+
+    private function cardNumber(User $customer): string
+    {
+        return LoyaltyNumber::format($customer->loyalty_number) ?? '';
     }
 
     public function updateStatus(Request $request, User $customer, AuditLogger $audit): RedirectResponse

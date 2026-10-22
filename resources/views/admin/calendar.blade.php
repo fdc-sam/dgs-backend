@@ -21,7 +21,7 @@
         'month' => $date->format('F Y'),
     };
 @endphp
-<x-admin.layout title="Calendar">
+<x-admin.layout title="Calendar" live="appointments">
     <x-admin.page-header title="Calendar" :subtitle="$title">
         <x-slot:actions>
             <div class="inline-flex rounded-full border border-outline-variant bg-white p-1 max-sm:flex-1" role="group" aria-label="Calendar view">

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Setting;
+use App\Support\Fmt;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
@@ -92,7 +93,7 @@ class SettingsService
     {
         $path = $this->get('salon_logo');
 
-        return $path ? Storage::disk(FileUploadService::publicDisk())->url($path) : asset('images/dgs-logo-256.png');
+        return $path ? Storage::disk(FileUploadService::publicDisk())->url($path) : Fmt::versionedAsset('images/dgs-logo-256.png');
     }
 
     /** @return list<int> minutes before start at which reminders go out */

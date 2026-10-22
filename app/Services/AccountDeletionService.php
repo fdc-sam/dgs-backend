@@ -91,6 +91,7 @@ class AccountDeletionService
                 'remember_token' => null,
                 'profile_photo' => null,
                 'qr_code' => null,
+                'loyalty_number' => null,
                 'status' => UserStatus::Inactive,
             ])->save();
             $user->delete();

@@ -78,7 +78,7 @@
                     </div>
                 </div>
                 <div class="mx-auto hidden w-full max-w-xs md:block">
-                    <img src="{{ asset('images/dgs-logo-512.png') }}" alt="{{ $name }} logo" width="512" height="512" class="w-full rounded-[2rem] bg-white p-6 shadow-e2">
+                    <img src="{{ \App\Support\Fmt::versionedAsset('images/dgs-logo-512.png') }}" alt="{{ $name }} logo" width="512" height="512" class="w-full rounded-[2rem] bg-white p-6 shadow-e2">
                 </div>
             </div>
         </section>

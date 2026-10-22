@@ -27,6 +27,7 @@ Route::middleware(['auth', 'auth.session', 'admin'])->group(function () {
     Route::post('logout', [Admin\AuthController::class, 'destroy'])->name('logout');
 
     Route::get('dashboard', Admin\DashboardController::class)->name('dashboard');
+    Route::get('live', Admin\LiveStatusController::class)->name('live');
     Route::get('calendar', Admin\CalendarController::class)->name('calendar');
 
     Route::get('appointments', [Admin\AppointmentController::class, 'index'])->name('appointments.index');
@@ -88,6 +89,7 @@ Route::middleware(['auth', 'auth.session', 'admin'])->group(function () {
         Route::get('customers/{customer}', [Admin\CustomerController::class, 'show'])->name('customers.show');
         Route::get('customers/{customer}/qr', [Admin\CustomerController::class, 'qr'])->name('customers.qr');
         Route::post('customers/{customer}/status', [Admin\CustomerController::class, 'updateStatus'])->name('customers.status');
+        Route::post('customers/{customer}/loyalty-card', [Admin\CustomerController::class, 'updateLoyaltyCard'])->name('customers.loyalty-card');
         Route::post('customers/{customer}/account-type', [Admin\CustomerController::class, 'updateAccountType'])->name('customers.account-type');
 
         Route::get('referrals', [Admin\ReferralController::class, 'index'])->name('referrals.index');

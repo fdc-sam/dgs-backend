@@ -188,7 +188,7 @@ class PublicSiteController extends Controller
             'name' => $s['salon_name'],
             'url' => url('/'),
             'logo' => $data['logoUrl'],
-            'image' => asset('images/og-share.png'),
+            'image' => Fmt::versionedAsset('images/og-share.png'),
             'description' => $data['seo']['description'],
             'telephone' => $s['salon_phone'] ?: null,
             'email' => $s['salon_email'] ?: null,

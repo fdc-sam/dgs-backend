@@ -6,8 +6,8 @@
 <meta property="og:title" content="{{ $shareTitle ?? $salonName }}">
 <meta property="og:description" content="{{ $shareDescription }}">
 <meta property="og:url" content="{{ url()->current() }}">
-<meta property="og:image" content="{{ asset('images/og-share.png') }}">
-<meta property="og:image:secure_url" content="{{ asset('images/og-share.png') }}">
+<meta property="og:image" content="{{ \App\Support\Fmt::versionedAsset('images/og-share.png') }}">
+<meta property="og:image:secure_url" content="{{ \App\Support\Fmt::versionedAsset('images/og-share.png') }}">
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -15,5 +15,5 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="{{ $shareTitle ?? $salonName }}">
 <meta name="twitter:description" content="{{ $shareDescription }}">
-<meta name="twitter:image" content="{{ asset('images/og-share.png') }}">
-<link rel="apple-touch-icon" href="{{ asset('images/dgs-logo-256.png') }}">
+<meta name="twitter:image" content="{{ \App\Support\Fmt::versionedAsset('images/og-share.png') }}">
+<link rel="apple-touch-icon" href="{{ \App\Support\Fmt::versionedAsset('images/dgs-logo-256.png') }}">

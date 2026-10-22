@@ -10,6 +10,7 @@ use App\Http\Resources\AppointmentResource;
 use App\Models\Appointment;
 use App\Models\User;
 use App\Support\CustomerCode;
+use App\Support\LoyaltyNumber;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -25,11 +26,14 @@ class CustomerController extends ApiController
         $data = $request->validate(['code' => ['required', 'string', 'max:64']]);
 
         $code = CustomerCode::normalize($data['code']);
-        if (! $code) {
+        // Or the number on the customer's loyalty card.
+        $card = LoyaltyNumber::normalize($data['code']);
+        if (! $code && ! ctype_digit($card)) {
             throw ApiException::validation('That is not a DGS customer code.', ['code' => ['That is not a DGS customer code.']]);
         }
 
-        $customer = User::customers()->where('qr_code', $code)->with('customerProfile')->first()
+        $customer = User::customers()->when($code, fn ($q) => $q->where('qr_code', $code), fn ($q) => $q->where('loyalty_number', $card))
+            ->with('customerProfile')->first()
             ?? throw ApiException::notFound('No customer found for this code.');
 
         return $this->ok($this->payload($request, $customer));
