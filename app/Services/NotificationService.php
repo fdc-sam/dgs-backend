@@ -119,17 +119,22 @@ class NotificationService
             "We refunded your deposit for {$appointment->appointment_number} to your GCash account.");
     }
 
-    /** Tells the referrer that someone they referred completed a service, was not eligible, or earned them a reward. */
+    /** Tells the referrer where their referral stands: accepted, in progress, completed with the GCash reward, or not eligible. */
     public function referralUpdated(Referral $referral): void
     {
         $name = $referral->name;
+        $note = $referral->admin_note ? " {$referral->admin_note}" : '';
         [$title, $body] = match ($referral->status) {
-            ReferralStatus::Completed => ['Your referral visited us',
-                "{$name} completed a service at DGS. Your referral reward will be sent to your GCash number soon."],
-            ReferralStatus::Rewarded => ['Referral reward sent',
-                "We sent {$this->peso($referral->reward_amount)} to your GCash number for referring {$name}. Reference no. {$referral->reward_reference}."],
+            ReferralStatus::Accepted => ['Referral accepted',
+                "We accepted your referral of {$name}. We will reach out to them soon."],
+            ReferralStatus::InProgress => ['Referral in progress',
+                "Your referral of {$name} is now in progress for {$referral->services->pluck('name')->join(', ', ' and ')}. We will let you know once it is complete."],
+            ReferralStatus::Completed => ['Referral successful!',
+                "Your referral of {$name} was successful. We sent {$this->peso($referral->reward_amount)} to your GCash number"
+                .($referral->referrer?->phone ? " {$referral->referrer->phone}" : '').'. Please check your GCash.'
+                .($referral->reward_reference ? " Reference no. {$referral->reward_reference}." : '').$note],
             ReferralStatus::Declined => ['Referral not eligible',
-                "Your referral of {$name} is not eligible for a reward.".($referral->admin_note ? " {$referral->admin_note}" : '')],
+                "Your referral of {$name} is not eligible for a reward.{$note}"],
             default => [null, null],
         };
         if ($title === null) {

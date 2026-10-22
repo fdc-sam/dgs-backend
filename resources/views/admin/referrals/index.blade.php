@@ -1,6 +1,6 @@
 @php use App\Enums\ReferralStatus; use App\Support\Fmt; @endphp
 <x-admin.layout title="Referrals">
-    <x-admin.page-header title="Referrals" subtitle="People customers referred. Once a referred person completes a service, send the referrer's reward to their GCash number." />
+    <x-admin.page-header title="Referrals" subtitle="People customers referred. Accept them, mark them in progress while the person gets their service, then complete them by sending the referrer's reward to their GCash. The referrer is notified at every step." />
 
     <div class="scroll-row mb-4 flex gap-2 sm:flex-wrap" role="tablist">
         @foreach ([...array_combine(ReferralStatus::values(), array_map(fn ($s) => $s->label(), ReferralStatus::cases())), 'all' => 'All'] as $key => $label)
@@ -16,7 +16,7 @@
         <x-admin.input name="search" label="Search" :value="request('search')" placeholder="Name or number of either person" class="w-72" />
     </x-admin.filter-bar>
 
-    <div x-data="{ target: { name: '', referrer: '', gcash: '', status: '', reward: '' } }">
+    <div x-data="{ copied: false, target: { name: '', services: '', referrer: '', email: '', gcash: '', status: '', complete: '' } }">
         <x-admin.card :padding="false">
             @if ($referrals->isEmpty())
                 <x-admin.empty-state icon="group_add" title="No referrals here" message="Customers add referrals from Profile → My referrals in the app." />
@@ -26,8 +26,9 @@
                         @php
                             $visit = $visits[$r->phone] ?? ['customer' => null, 'completed' => 0];
                             $referrer = $r->referrer;
-                            $target = ['name' => $r->name, 'referrer' => $referrer?->name, 'gcash' => $referrer?->phone ?? '—',
-                                'status' => route('referrals.status', $r), 'reward' => route('referrals.reward', $r)];
+                            $target = ['name' => $r->name, 'services' => $r->services->pluck('name')->join(', '),
+                                'referrer' => $referrer?->name, 'email' => $referrer?->email, 'gcash' => $referrer?->phone ?? '—',
+                                'status' => route('referrals.status', $r), 'complete' => route('referrals.complete', $r)];
                         @endphp
                         <tr>
                             <td class="whitespace-nowrap">
@@ -58,27 +59,27 @@
                                 @endif
                             </td>
                             <td>
-                                <x-admin.badge :tone="['pending' => 'warning', 'contacted' => 'info', 'completed' => 'primary', 'rewarded' => 'success', 'declined' => 'danger'][$r->status->value]">{{ $r->status->label() }}</x-admin.badge>
-                                @if ($r->status === ReferralStatus::Rewarded)
-                                    <p class="mt-1 whitespace-nowrap text-xs text-on-surface-variant">{{ Fmt::peso($r->reward_amount) }} · Ref {{ $r->reward_reference }}</p>
+                                <x-admin.badge :tone="['pending' => 'warning', 'accepted' => 'info', 'in_progress' => 'primary', 'completed' => 'success', 'declined' => 'danger'][$r->status->value]">{{ $r->status->label() }}</x-admin.badge>
+                                @if ($r->status === ReferralStatus::Completed)
+                                    <p class="mt-1 whitespace-nowrap text-xs text-on-surface-variant">{{ Fmt::peso($r->reward_amount) }} sent to GCash @if ($r->reward_reference)· Ref {{ $r->reward_reference }}@endif</p>
                                     <p class="text-xs text-on-surface-variant">{{ $r->rewarded_at?->format('M j, Y') }}</p>
                                 @endif
                                 @if ($r->admin_note)<p class="mt-1 max-w-[14rem] text-xs text-on-surface-variant">{{ $r->admin_note }}</p>@endif
                             </td>
                             <td class="text-right">
                                 <div class="flex flex-wrap justify-end gap-1">
-                                    @if ($r->status === ReferralStatus::Completed)
-                                        <x-admin.button variant="tonal" size="sm" icon="payments" @click="target = {{ \Illuminate\Support\Js::from($target) }}; $dispatch('open-modal', 'referral-reward')">Send reward</x-admin.button>
-                                    @endif
                                     @if ($r->status === ReferralStatus::Pending)
-                                        <form method="POST" action="{{ route('referrals.status', $r) }}">@csrf<input type="hidden" name="status" value="contacted">
-                                            <x-admin.button type="submit" variant="text" size="sm">Contacted</x-admin.button></form>
+                                        <form method="POST" action="{{ route('referrals.status', $r) }}">@csrf<input type="hidden" name="status" value="accepted">
+                                            <x-admin.button type="submit" variant="tonal" size="sm" icon="check">Accept</x-admin.button></form>
                                     @endif
-                                    @if (in_array($r->status, [ReferralStatus::Pending, ReferralStatus::Contacted], true))
-                                        <form method="POST" action="{{ route('referrals.status', $r) }}">@csrf<input type="hidden" name="status" value="completed">
-                                            <x-admin.button type="submit" variant="tonal" size="sm" icon="check">Service completed</x-admin.button></form>
+                                    @if ($r->status === ReferralStatus::Accepted)
+                                        <form method="POST" action="{{ route('referrals.status', $r) }}">@csrf<input type="hidden" name="status" value="in_progress">
+                                            <x-admin.button type="submit" variant="tonal" size="sm" icon="autorenew">In progress</x-admin.button></form>
                                     @endif
-                                    @if (in_array($r->status, [ReferralStatus::Pending, ReferralStatus::Contacted, ReferralStatus::Completed], true))
+                                    @if ($r->status === ReferralStatus::InProgress)
+                                        <x-admin.button size="sm" icon="payments" @click="target = {{ \Illuminate\Support\Js::from($target) }}; copied = false; $dispatch('open-modal', 'referral-complete')">Complete</x-admin.button>
+                                    @endif
+                                    @if (in_array($r->status, [ReferralStatus::Pending, ReferralStatus::Accepted, ReferralStatus::InProgress], true))
                                         <x-admin.button variant="danger-text" size="sm" @click="target = {{ \Illuminate\Support\Js::from($target) }}; $dispatch('open-modal', 'referral-decline')">Not eligible</x-admin.button>
                                     @endif
                                     @if ($r->status === ReferralStatus::Declined)
@@ -94,26 +95,42 @@
             @endif
         </x-admin.card>
 
-        <x-admin.modal name="referral-reward" title="Send referral reward">
-            <form method="POST" :action="target.reward" class="space-y-4">
+        <x-admin.modal name="referral-complete" title="Complete referral" max-width="max-w-xl">
+            <form method="POST" :action="target.complete" class="space-y-4">
                 @csrf
                 <p class="text-sm text-on-surface-variant">
-                    Send the reward for referring <span class="font-semibold text-on-surface" x-text="target.name"></span> to
-                    <span class="font-semibold text-on-surface" x-text="target.referrer"></span>'s GCash number, then record it here.
+                    Send the referral reward to the referrer's GCash first, then enter the amount you sent. They are notified in the app that the referral was successful and to check their GCash.
                 </p>
+
                 <div class="rounded-card bg-surface-container px-4 py-3">
-                    <p class="text-xs text-on-surface-variant">GCash number</p>
-                    <p class="text-lg font-semibold tracking-wide" x-text="target.gcash"></p>
+                    <p class="eyebrow">Referrer</p>
+                    <p class="mt-1 font-semibold" x-text="target.referrer"></p>
+                    <p class="text-sm text-on-surface-variant" x-text="target.email" x-show="target.email"></p>
+                    <div class="mt-3 flex flex-wrap items-end justify-between gap-2">
+                        <div>
+                            <p class="text-xs text-on-surface-variant">GCash number</p>
+                            <p class="text-xl font-semibold tracking-wide" x-text="target.gcash"></p>
+                        </div>
+                        <x-admin.button variant="text" size="sm" icon="content_copy"
+                                        @click="navigator.clipboard?.writeText(target.gcash); copied = true; setTimeout(() => copied = false, 2000)">
+                            <span x-text="copied ? 'Copied' : 'Copy number'"></span>
+                        </x-admin.button>
+                    </div>
                 </div>
+
+                <div class="rounded-card border border-outline-variant px-4 py-3 text-sm">
+                    <p class="eyebrow">Referral</p>
+                    <p class="mt-1"><span class="font-medium" x-text="target.name"></span> <span class="text-on-surface-variant" x-show="target.services">· <span x-text="target.services"></span></span></p>
+                </div>
+
                 <div class="grid gap-4 sm:grid-cols-2">
-                    <x-admin.input name="amount" id="reward_amount" type="number" step="0.01" min="1" max="100000" label="Amount sent" prefix="₱" required />
-                    <x-admin.input name="reference" id="reward_reference" label="GCash reference no." required />
+                    <x-admin.input name="amount" id="complete_amount" type="number" step="0.01" min="1" max="100000" label="Amount sent to GCash" prefix="₱" required />
+                    <x-admin.input name="reference" id="complete_reference" label="GCash reference no. (optional)" />
                 </div>
-                <x-admin.input name="note" id="reward_note" label="Note for the customer (optional)" />
-                <p class="text-xs text-on-surface-variant">The customer is notified in the app with the amount and reference number.</p>
+                <x-admin.input name="note" id="complete_note" label="Message to the referrer (optional)" placeholder="e.g. Thank you for recommending us!" />
                 <div class="flex justify-end gap-2">
-                    <x-admin.button variant="text" @click="$dispatch('close-modal', 'referral-reward')">Close</x-admin.button>
-                    <x-admin.button type="submit" icon="payments">Record reward</x-admin.button>
+                    <x-admin.button variant="text" @click="$dispatch('close-modal', 'referral-complete')">Close</x-admin.button>
+                    <x-admin.button type="submit" icon="send">Complete and notify</x-admin.button>
                 </div>
             </form>
         </x-admin.modal>

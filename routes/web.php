@@ -92,7 +92,7 @@ Route::middleware(['auth', 'auth.session', 'admin'])->group(function () {
 
         Route::get('referrals', [Admin\ReferralController::class, 'index'])->name('referrals.index');
         Route::post('referrals/{referral}/status', [Admin\ReferralController::class, 'status'])->name('referrals.status');
-        Route::post('referrals/{referral}/reward', [Admin\ReferralController::class, 'reward'])->name('referrals.reward');
+        Route::post('referrals/{referral}/complete', [Admin\ReferralController::class, 'complete'])->name('referrals.complete');
 
         Route::get('reviews', [Admin\ReviewController::class, 'index'])->name('reviews.index');
         Route::post('reviews/{review}/approve', [Admin\ReviewController::class, 'approve'])->name('reviews.approve');

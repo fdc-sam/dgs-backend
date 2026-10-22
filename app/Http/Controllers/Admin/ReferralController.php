@@ -46,30 +46,34 @@ class ReferralController extends Controller
             'status' => ['required', Rule::in(array_map(fn ($s) => $s->value, ReferralStatus::manual()))],
             'note' => ['nullable', 'string', 'max:500'],
         ]);
-        if ($referral->status === ReferralStatus::Rewarded) {
-            return back()->with('error', 'This referral was already rewarded.');
+        if ($referral->status === ReferralStatus::Completed) {
+            return back()->with('error', 'This referral is already completed and its reward was sent.');
         }
 
         $status = ReferralStatus::from($data['status']);
         $this->referrals->setStatus($referral, $status, $data['note'] ?? null);
+        $notified = $status === ReferralStatus::Pending ? '' : " {$referral->referrer?->name} has been notified.";
 
-        return back()->with('success', "{$referral->name}: {$status->label()}.");
+        return back()->with('success', "{$referral->name}: {$status->label()}.{$notified}");
     }
 
-    public function reward(Request $request, Referral $referral): RedirectResponse
+    /** Completing records the GCash reward the owner sent; the referrer is told to check their GCash. */
+    public function complete(Request $request, Referral $referral): RedirectResponse
     {
         $data = $request->validate([
             'amount' => ['required', 'numeric', 'min:1', 'max:100000'],
-            'reference' => ['required', 'string', 'max:100'],
+            'reference' => ['nullable', 'string', 'max:100'],
             'note' => ['nullable', 'string', 'max:500'],
         ]);
-        if ($referral->status === ReferralStatus::Rewarded) {
-            return back()->with('error', 'This referral was already rewarded.');
+        if (in_array($referral->status, [ReferralStatus::Completed, ReferralStatus::Declined], true)) {
+            return back()->with('error', $referral->status === ReferralStatus::Completed
+                ? 'This referral is already completed and its reward was sent.'
+                : 'Reopen this referral before completing it.');
         }
 
-        $this->referrals->reward($referral, (float) $data['amount'], $data['reference'], $data['note'] ?? null);
+        $this->referrals->complete($referral, (float) $data['amount'], $data['reference'] ?? null, $data['note'] ?? null);
 
-        return back()->with('success', "Reward recorded. {$referral->referrer?->name} has been notified.");
+        return back()->with('success', "Referral completed. {$referral->referrer?->name} has been notified to check their GCash.");
     }
 
     /**

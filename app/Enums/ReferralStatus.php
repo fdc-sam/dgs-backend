@@ -2,30 +2,30 @@
 
 namespace App\Enums;
 
-/** New → Contacted → Service completed → Reward sent, or Not eligible at any point before the reward. */
+/** New → Accepted → In progress → Completed (reward sent to the referrer's GCash), or Not eligible before that. */
 enum ReferralStatus: string
 {
     case Pending = 'pending';
-    case Contacted = 'contacted';
+    case Accepted = 'accepted';
+    case InProgress = 'in_progress';
     case Completed = 'completed';
-    case Rewarded = 'rewarded';
     case Declined = 'declined';
 
     public function label(): string
     {
         return match ($this) {
             self::Pending => 'New',
-            self::Contacted => 'Contacted',
-            self::Completed => 'Service completed',
-            self::Rewarded => 'Reward sent',
+            self::Accepted => 'Accepted',
+            self::InProgress => 'In progress',
+            self::Completed => 'Completed',
             self::Declined => 'Not eligible',
         };
     }
 
-    /** Statuses an admin can move a referral to by hand (the reward has its own form). */
+    /** Statuses an admin can move a referral to with a button (Completed has its own form with the reward). */
     public static function manual(): array
     {
-        return [self::Pending, self::Contacted, self::Completed, self::Declined];
+        return [self::Pending, self::Accepted, self::InProgress, self::Declined];
     }
 
     /** @return list<string> */

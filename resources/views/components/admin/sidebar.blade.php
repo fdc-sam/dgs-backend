@@ -8,6 +8,7 @@
             ['appointments.index', 'Appointments', 'event_available', true, 'appointments.*'],
             ['walk-ins.index', 'Walk-in Customers', 'how_to_reg', $manager, 'walk-ins.*'],
             ['payments.index', 'Payments', 'payments', $manager, 'payments.*'],
+            ['referrals.index', 'Referrals', 'group_add', $manager, 'referrals.*'],
         ],
         'Catalog' => [
             ['services.index', 'Services', 'content_cut', $manager, 'services.*'],
@@ -18,7 +19,6 @@
         ],
         'People' => [
             ['customers.index', 'Customers', 'groups', $manager, 'customers.*'],
-            ['referrals.index', 'Referrals', 'group_add', $manager, 'referrals.*'],
             ['staff.index', 'Staff', 'badge', $manager, 'staff.*'],
             ['my-schedule', 'My Schedule', 'schedule', $user->isStaff()],
             ['branches.index', 'Branches', 'storefront', $manager, 'branches.*'],

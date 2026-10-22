@@ -76,7 +76,7 @@ class AccountDeletionService
             $user->tokens()->delete();
             $user->deviceTokens()->delete();
             $user->favorites()->delete();
-            $user->referrals()->where('status', '!=', ReferralStatus::Rewarded->value)->delete();
+            $user->referrals()->where('status', '!=', ReferralStatus::Completed->value)->delete();
             $user->reviews()->withTrashed()->forceDelete();
             $user->notifications()->delete();
             $user->customerProfile()->delete();
