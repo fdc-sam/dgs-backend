@@ -3,6 +3,7 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\Appointment;
+use App\Models\AuditLog;
 use App\Models\Product;
 use App\Models\Promotion;
 use App\Models\Review;
@@ -82,6 +83,7 @@ class AdminPagesTest extends TestCase
             '/categories', '/categories/create', "/categories/{$category->id}/edit", '/products', '/products/create', "/products/{$product->id}/edit", '/promotions', '/promotions/create',
             "/promotions/{$promotion->id}/edit", "/promotions/{$promotion->id}/preview", '/customers', "/customers/{$appointment->customer_id}",
             '/staff', '/staff/create', "/staff/{$this->stylist->id}/edit", '/branches', '/branches/create', "/branches/{$this->branch->id}/edit",
+            '/referrals', '/referrals?status=all&search=x',
             '/reviews', '/reviews?status=all', '/reports', '/reports/sales', '/reports/appointments', '/reports/services', '/reports/staff',
             '/reports/branches', '/reports/sales?range=custom&from=2026-09-01&to=2026-09-30', '/notifications', '/settings', '/account',
         ];
@@ -89,6 +91,26 @@ class AdminPagesTest extends TestCase
         foreach ($pages as $page) {
             $this->get($page)->assertOk();
         }
+    }
+
+    /** Every audited model needs a morph map alias, or the audit log write turns the save into a 500. */
+    public function test_categories_can_be_created_edited_and_deleted(): void
+    {
+        $this->actingAs(User::factory()->superAdmin()->create());
+
+        $this->post('/categories', ['name' => 'Hair Spa', 'slug' => '', 'sort_order' => '0', 'description' => '', 'status' => 'active'])
+            ->assertRedirect(route('categories.index'));
+        $category = ServiceCategory::where('slug', 'hair-spa')->firstOrFail();
+
+        $this->put("/categories/{$category->id}", ['name' => 'Hair Treatments', 'slug' => 'hair-spa', 'status' => 'inactive'])
+            ->assertRedirect(route('categories.index'));
+        $this->assertSame('Hair Treatments', $category->fresh()->name);
+
+        $this->delete("/categories/{$category->id}")->assertRedirect(route('categories.index'));
+        $this->assertSoftDeleted($category);
+
+        $this->assertEqualsCanonicalizing(['category.created', 'category.updated', 'category.deleted'],
+            AuditLog::where('entity_type', 'service_category')->where('entity_id', $category->id)->pluck('action')->all());
     }
 
     public function test_admin_cannot_open_settings_and_staff_is_limited(): void

@@ -84,8 +84,33 @@ class CustomerQrService
         return $customer->qr_code;
     }
 
-    /** The salon's configured logo (admin → Settings), or the bundled DGS logo. */
+    /**
+     * The logo on a white backing: the QR PNG has no alpha channel, so a transparent logo's clear corners would turn
+     * black. Flattened once per logo file and kept under storage/app/cache.
+     */
     private function logoPath(): string
+    {
+        $source = $this->sourceLogoPath();
+        $flat = storage_path('app/cache/qr-logo-white-'.sha1($source.'|'.@filemtime($source)).'.png');
+        if (is_file($flat)) {
+            return $flat;
+        }
+
+        $logo = @imagecreatefromstring((string) @file_get_contents($source));
+        if ($logo === false) {
+            return $source;
+        }
+        $canvas = imagecreatetruecolor(imagesx($logo), imagesy($logo));
+        imagefill($canvas, 0, 0, imagecolorallocate($canvas, 255, 255, 255));
+        imagecopy($canvas, $logo, 0, 0, 0, 0, imagesx($logo), imagesy($logo));
+        @mkdir(dirname($flat), 0755, true);
+        imagepng($canvas, $flat);
+
+        return $flat;
+    }
+
+    /** The salon's configured logo (admin → Settings), or the bundled DGS logo. */
+    private function sourceLogoPath(): string
     {
         $configured = $this->settings->get('salon_logo');
         $disk = Storage::disk(FileUploadService::publicDisk());

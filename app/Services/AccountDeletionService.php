@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\AppointmentStatus;
+use App\Enums\ReferralStatus;
 use App\Enums\UserStatus;
 use App\Models\Appointment;
 use App\Models\ReviewImage;
@@ -16,9 +17,9 @@ use Illuminate\Validation\ValidationException;
 /**
  * A customer deleting their own account, in the app or on the website's /delete-account page (Google Play requires both).
  *
- * Personal data is removed: profile details, photo, favorites, reviews (with their images), notifications, push and API
- * tokens, and the name, email, phone and QR code on the user row. Past appointments and payments stay for the salon's
- * accounting, linked to the anonymised, soft-deleted user. Upcoming appointments are cancelled first so their slots open
+ * Personal data is removed: profile details, photo, favorites, reviews (with their images), referrals not yet rewarded,
+ * notifications, push and API tokens, and the name, email, phone and QR code on the user row. Past appointments, payments
+ * and paid referral rewards stay for the salon's accounting, linked to the anonymised, soft-deleted user. Upcoming appointments are cancelled first so their slots open
  * up and the team is told. The email and phone are freed, so the person can register again later.
  */
 class AccountDeletionService
@@ -75,6 +76,7 @@ class AccountDeletionService
             $user->tokens()->delete();
             $user->deviceTokens()->delete();
             $user->favorites()->delete();
+            $user->referrals()->where('status', '!=', ReferralStatus::Rewarded->value)->delete();
             $user->reviews()->withTrashed()->forceDelete();
             $user->notifications()->delete();
             $user->customerProfile()->delete();

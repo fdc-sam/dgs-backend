@@ -18,6 +18,7 @@
         ],
         'People' => [
             ['customers.index', 'Customers', 'groups', $manager, 'customers.*'],
+            ['referrals.index', 'Referrals', 'group_add', $manager, 'referrals.*'],
             ['staff.index', 'Staff', 'badge', $manager, 'staff.*'],
             ['my-schedule', 'My Schedule', 'schedule', $user->isStaff()],
             ['branches.index', 'Branches', 'storefront', $manager, 'branches.*'],
@@ -73,6 +74,9 @@
                                     @endif
                                     @if ($link[0] === 'products.index' && $lowStockCount > 0)
                                         <span class="rounded-full bg-warning-container px-2 py-0.5 text-xs font-semibold text-warning" title="Low or out of stock" aria-label="{{ $lowStockCount }} low or out of stock">{{ $lowStockCount > 99 ? '99+' : $lowStockCount }}</span>
+                                    @endif
+                                    @if ($link[0] === 'referrals.index' && $newReferrals > 0)
+                                        <span class="rounded-full bg-gold px-2 py-0.5 text-xs font-semibold text-on-surface" aria-label="{{ $newReferrals }} new">{{ $newReferrals > 99 ? '99+' : $newReferrals }}</span>
                                     @endif
                                     @if ($link[0] === 'payments.index' && $paymentsToVerify > 0)
                                         <span class="rounded-full bg-gold px-2 py-0.5 text-xs font-semibold text-on-surface" aria-label="{{ $paymentsToVerify }} to verify">{{ $paymentsToVerify > 99 ? '99+' : $paymentsToVerify }}</span>

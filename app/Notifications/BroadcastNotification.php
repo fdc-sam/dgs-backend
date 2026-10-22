@@ -9,7 +9,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
 
-/** Admin-composed announcement or promotion sent to customers. */
+/** A message to customers that is not about an appointment: an announcement, a promotion or a referral update. */
 class BroadcastNotification extends Notification implements ShouldQueue
 {
     use Queueable;

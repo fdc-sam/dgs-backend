@@ -91,6 +91,12 @@ class CustomerQrCodeTest extends TestCase
         $this->assertGreaterThan(CustomerQrService::MIN_SIZE, $w);
         $this->assertGreaterThan($w, $h); // taller than wide: the code is printed under the QR
 
+        // The round logo's clear corners stay white (the PNG has no alpha, so they used to turn black).
+        $image = imagecreatefromstring($png);
+        $logoStart = intdiv($w - (int) round(CustomerQrService::DEFAULT_SIZE * 0.22), 2);
+        $corner = imagecolorsforindex($image, imagecolorat($image, $logoStart + 2, $logoStart + 2));
+        $this->assertSame([255, 255, 255], [$corner['red'], $corner['green'], $corner['blue']]);
+
         // Same customer, same picture; a different customer, a different picture.
         $this->assertSame($png, $this->get('/api/v1/auth/qr')->getContent());
         Sanctum::actingAs($this->customer());

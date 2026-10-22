@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Enums\PaymentStatus;
+use App\Enums\ReferralStatus;
 use App\Models\Appointment;
 use App\Models\Achievement;
 use App\Models\Branch;
@@ -11,8 +12,10 @@ use App\Models\AppointmentItem;
 use App\Models\Product;
 use App\Models\WalkInVisitItem;
 use App\Models\Promotion;
+use App\Models\Referral;
 use App\Models\Review;
 use App\Models\Service;
+use App\Models\ServiceCategory;
 use App\Models\StaffProfile;
 use App\Models\WalkInVisit;
 use App\Models\User;
@@ -50,11 +53,13 @@ class AppServiceProvider extends ServiceProvider
         Relation::enforceMorphMap([
             'user' => User::class,
             'service' => Service::class,
+            'service_category' => ServiceCategory::class,
             'staff' => StaffProfile::class,
             'promotion' => Promotion::class,
             'branch' => Branch::class,
             'appointment' => Appointment::class,
             'review' => Review::class,
+            'referral' => Referral::class,
             'achievement' => Achievement::class,
             'walk_in_visit' => WalkInVisit::class,
             'payment' => Payment::class,
@@ -89,6 +94,9 @@ class AppServiceProvider extends ServiceProvider
             // GCash receipts waiting for a manager to check them (sidebar badge).
             $view->with('paymentsToVerify', once(fn () => auth()->user()?->isManager()
                 ? Appointment::query()->where('payment_status', PaymentStatus::Submitted->value)->count() : 0));
+            // Referrals nobody has acted on yet (sidebar badge).
+            $view->with('newReferrals', once(fn () => auth()->user()?->isManager()
+                ? Referral::query()->where('status', ReferralStatus::Pending->value)->count() : 0));
         });
         // Super admins can do everything, except change the shared setup from a test account.
         Gate::before(fn (User $user, string $ability) => $user->isSuperAdmin() && $user->isActive() && $ability !== 'change-setup' ? true : null);

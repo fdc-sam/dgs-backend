@@ -4,10 +4,12 @@ namespace App\Services;
 
 use App\Enums\NotificationType;
 use App\Enums\PaymentStatus;
+use App\Enums\ReferralStatus;
 use App\Enums\UserStatus;
 use App\Models\Appointment;
 use App\Models\DeviceToken;
 use App\Models\Payment;
+use App\Models\Referral;
 use App\Models\User;
 use App\Notifications\AppointmentNotification;
 use App\Notifications\BroadcastNotification;
@@ -115,6 +117,26 @@ class NotificationService
     {
         $this->toCustomer($appointment, NotificationType::PaymentRefunded, 'Deposit refunded',
             "We refunded your deposit for {$appointment->appointment_number} to your GCash account.");
+    }
+
+    /** Tells the referrer that someone they referred completed a service, was not eligible, or earned them a reward. */
+    public function referralUpdated(Referral $referral): void
+    {
+        $name = $referral->name;
+        [$title, $body] = match ($referral->status) {
+            ReferralStatus::Completed => ['Your referral visited us',
+                "{$name} completed a service at DGS. Your referral reward will be sent to your GCash number soon."],
+            ReferralStatus::Rewarded => ['Referral reward sent',
+                "We sent {$this->peso($referral->reward_amount)} to your GCash number for referring {$name}. Reference no. {$referral->reward_reference}."],
+            ReferralStatus::Declined => ['Referral not eligible',
+                "Your referral of {$name} is not eligible for a reward.".($referral->admin_note ? " {$referral->admin_note}" : '')],
+            default => [null, null],
+        };
+        if ($title === null) {
+            return;
+        }
+
+        $referral->referrer?->notify(new BroadcastNotification(NotificationType::Referral, $title, $body, ['referral_id' => $referral->id]));
     }
 
     /** Send an announcement/promotion to every active customer. Returns the recipient count. */

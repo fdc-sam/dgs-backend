@@ -91,6 +91,12 @@ class User extends Authenticatable
         return $this->hasMany(Review::class, 'customer_id');
     }
 
+    /** People this customer referred to the salon. */
+    public function referrals(): HasMany
+    {
+        return $this->hasMany(Referral::class, 'referrer_id');
+    }
+
     /**
      * After a password change or reset: end every other API session (mobile apps) and stop push to the devices they were
      * on. The current API token and, when given, this device's push token are kept. Web sessions are signed out by the
@@ -125,6 +131,7 @@ class User extends Authenticatable
             if ($this->isCustomer()) {
                 Appointment::withoutGlobalScopes()->where('customer_id', $this->id)->update(['is_test' => $test]);
                 Review::withoutGlobalScopes()->where('customer_id', $this->id)->update(['is_test' => $test]);
+                Referral::withoutGlobalScopes()->where('referrer_id', $this->id)->update(['is_test' => $test]);
             }
         });
     }

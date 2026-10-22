@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\FavoriteController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PromotionController;
+use App\Http\Controllers\Api\V1\ReferralController;
 use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\ServiceController;
 use App\Http\Controllers\Api\V1\SettingsController;
@@ -107,6 +108,9 @@ Route::prefix('v1')->name('api.v1.')->middleware('throttle:api')->group(function
         Route::post('favorites', [FavoriteController::class, 'store'])->name('favorites.store');
         Route::delete('favorites/{favorite}', [FavoriteController::class, 'destroy'])->name('favorites.destroy');
 
+        Route::get('referrals', [ReferralController::class, 'index'])->name('referrals.index');
+        Route::post('referrals', [ReferralController::class, 'store'])->middleware('throttle:bookings')->name('referrals.store');
+        Route::delete('referrals/{referral}', [ReferralController::class, 'destroy'])->name('referrals.destroy');
         Route::post('reviews', [ReviewController::class, 'store'])->name('reviews.store');
 
         Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');

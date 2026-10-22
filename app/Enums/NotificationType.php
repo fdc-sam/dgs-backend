@@ -17,6 +17,7 @@ enum NotificationType: string
     case PaymentExpired = 'PAYMENT_EXPIRED';
     case PaymentRefunded = 'PAYMENT_REFUNDED';
     case Promotion = 'PROMOTION';
+    case Referral = 'REFERRAL';
     case General = 'GENERAL';
 
     public function label(): string
@@ -35,6 +36,7 @@ enum NotificationType: string
             self::PaymentExpired => 'Payment Expired',
             self::PaymentRefunded => 'Payment Refunded',
             self::Promotion => 'Promotion',
+            self::Referral => 'Referral',
             self::General => 'General',
         };
     }
