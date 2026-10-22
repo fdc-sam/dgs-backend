@@ -59,6 +59,37 @@
             </div>
         </x-admin.card>
 
+        <x-admin.card title="Loyalty card & referrals" id="loyalty"
+                      subtitle="Shown in the app under the customer's loyalty card. The referral rewards also fill in the amount when you complete a referral.">
+            @php
+                $rewardRows = collect(old('referral_rewards', $s['referral_rewards'] ?? []))
+                    ->map(fn ($row) => ['service' => $row['service'] ?? '', 'amount' => isset($row['amount']) ? (string) (float) $row['amount'] : ''])->values()->all();
+            @endphp
+            <div class="grid gap-6 lg:grid-cols-2">
+                <x-admin.textarea name="loyalty_card_perks" label="Card perks / discounts" :value="$s['loyalty_card_perks']" rows="7" maxlength="2000"
+                                  hint="One perk per line, as printed on the card, e.g. Less ₱200 for rebond." />
+
+                <div x-data="{ rows: @js($rewardRows) }">
+                    <input type="hidden" name="referral_rewards_shown" value="1">
+                    <p class="label">Direct referral rewards</p>
+                    <p class="mb-3 text-xs text-on-surface-variant">Sent to the referrer's GCash when the person they referred gets the service. "Haircut" also covers services like "Men's Haircut".</p>
+                    {{-- A row left blank is ignored on save; a half-filled one must be finished. --}}
+                    <template x-for="(row, i) in rows" :key="i">
+                        <div class="mb-2 grid grid-cols-12 gap-2">
+                            <div class="col-span-6"><label class="sr-only" :for="`rr_service_${i}`">Service</label><input :id="`rr_service_${i}`" class="field" :name="`referral_rewards[${i}][service]`" x-model="row.service" placeholder="Service, e.g. Haircut" maxlength="60" :required="row.service !== '' || row.amount !== ''"></div>
+                            <div class="relative col-span-4"><label class="sr-only" :for="`rr_amount_${i}`">Reward</label><span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-sm text-on-surface-variant">₱</span><input :id="`rr_amount_${i}`" class="field pl-8" type="number" step="0.01" min="1" max="100000" :name="`referral_rewards[${i}][amount]`" x-model="row.amount" placeholder="0" :required="row.service !== '' || row.amount !== ''"></div>
+                            <div class="col-span-2"><button type="button" class="inline-flex min-h-11 w-full items-center justify-center rounded-full text-danger hover:bg-danger-container/60" @click="rows.splice(i, 1)" aria-label="Remove reward"><span class="material-symbols-outlined" aria-hidden="true">delete</span></button></div>
+                        </div>
+                    </template>
+                    <p x-show="rows.length === 0" class="mb-3 text-sm text-on-surface-variant">No rewards listed. You can still enter any amount when you complete a referral.</p>
+                    @error('referral_rewards')<p class="mb-2 text-xs font-medium text-danger">{{ $message }}</p>@enderror
+                    @error('referral_rewards.*.service')<p class="mb-2 text-xs font-medium text-danger">{{ $message }}</p>@enderror
+                    @error('referral_rewards.*.amount')<p class="mb-2 text-xs font-medium text-danger">{{ $message }}</p>@enderror
+                    <x-admin.button variant="tonal" icon="add" size="sm" class="mt-1" @click="rows.push({ service: '', amount: '' })">Add reward</x-admin.button>
+                </div>
+            </div>
+        </x-admin.card>
+
         <x-admin.card title="Website & Google" id="website"
                       subtitle="Your public homepage at {{ url('/') }}. It shows your branches, services, prices, promotions and reviews from this admin.">
             <div class="grid gap-5 sm:grid-cols-2">

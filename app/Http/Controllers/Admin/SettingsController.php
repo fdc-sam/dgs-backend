@@ -28,6 +28,13 @@ class SettingsController extends Controller
         // "+63 917 123 4567" → "09171234567"
         $number = preg_replace('/[\s\-().]/', '', (string) $request->input('payment_gcash_number'));
         $request->merge(['payment_gcash_number' => preg_match('/^\+?639\d{9}$/', $number) ? '0'.substr($number, -10) : ($number ?: null)]);
+        // Reward rows the admin left blank are dropped; the marker tells "all rows removed" apart from a form without them.
+        if ($request->boolean('referral_rewards_shown')) {
+            $request->merge(['referral_rewards' => collect($request->input('referral_rewards', []))
+                ->filter(fn ($row) => is_array($row) && (filled($row['service'] ?? null) || filled($row['amount'] ?? null)))
+                ->map(fn ($row) => ['service' => trim((string) ($row['service'] ?? '')), 'amount' => $row['amount'] ?? null])
+                ->values()->all()]);
+        }
 
         $data = $request->validate([
             'salon_name' => ['required', 'string', 'max:120'],
@@ -61,12 +68,20 @@ class SettingsController extends Controller
             'facebook_url' => ['nullable', 'url:https', 'max:255', 'regex:#^https://(www\.|m\.|web\.)?facebook\.com/#'],
             'website_description' => ['nullable', 'string', 'max:300'],
             'google_site_verification' => ['nullable', 'string', 'max:120', 'regex:/^[A-Za-z0-9_\-]+$/'],
+            'loyalty_card_perks' => ['sometimes', 'nullable', 'string', 'max:2000'],
+            'referral_rewards' => ['sometimes', 'array', 'max:20'],
+            'referral_rewards.*.service' => ['required', 'string', 'max:60', 'distinct:ignore_case'],
+            'referral_rewards.*.amount' => ['required', 'numeric', 'min:1', 'max:100000'],
         ], [
             'facebook_url.regex' => 'Enter the Facebook page link, e.g. https://www.facebook.com/yourpage.',
             'google_site_verification.regex' => 'Paste only the code from the content="…" part of the Google meta tag.',
             'reminder_offsets.regex' => 'Enter hours as numbers separated by commas, e.g. 24, 2.',
             'payment_gcash_number.regex' => 'Enter an 11-digit mobile number, e.g. 09171234567.',
             'payment_gcash_account_name.required_if_accepted' => 'Enter the GCash account name customers will see.',
+            'referral_rewards.*.service.required' => 'Enter the service this reward is for.',
+            'referral_rewards.*.service.distinct' => 'This service already has a reward.',
+            'referral_rewards.*.amount.required' => 'Enter the reward amount.',
+            'referral_rewards.*.amount.min' => 'The reward must be at least ₱1.',
         ]);
         $this->validatePayments($request, $settings, $data);
 
@@ -88,6 +103,10 @@ class SettingsController extends Controller
         unset($data['payment_qr']);
         if (array_key_exists('payment_deposit_value', $data) && $data['payment_deposit_value'] === null) {
             $data['payment_deposit_value'] = $old['payment_deposit_value']; // "full" hides the field
+        }
+
+        if (array_key_exists('referral_rewards', $data)) {
+            $data['referral_rewards'] = array_map(fn ($row) => ['service' => $row['service'], 'amount' => round((float) $row['amount'], 2)], $data['referral_rewards']);
         }
 
         $settings->update($data);

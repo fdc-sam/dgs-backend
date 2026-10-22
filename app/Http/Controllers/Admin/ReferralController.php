@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Referral;
 use App\Models\User;
 use App\Models\WalkInVisit;
+use App\Services\LoyaltyProgram;
 use App\Services\ReferralService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,10 +21,10 @@ class ReferralController extends Controller
 {
     public function __construct(private readonly ReferralService $referrals) {}
 
-    public function index(Request $request): View
+    public function index(Request $request, LoyaltyProgram $loyalty): View
     {
         $status = $request->query('status', ReferralStatus::Pending->value);
-        $referrals = Referral::query()->with(['referrer', 'services'])
+        $referrals = Referral::query()->with(['referrer', 'services.category'])
             ->when($status !== 'all', fn ($q) => $q->where('status', $status))
             ->when($request->query('search'), function ($q, $term) {
                 $like = '%'.addcslashes($term, '%_\\').'%';
@@ -37,6 +38,8 @@ class ReferralController extends Controller
             'status' => $status,
             'counts' => Referral::selectRaw('status, COUNT(*) as c')->groupBy('status')->pluck('c', 'status'),
             'visits' => $this->visitsByPhone($referrals->pluck('phone')->unique()->values()->all()),
+            // The Complete form starts with the reward set in Settings for the referral's services.
+            'suggestions' => $referrals->getCollection()->mapWithKeys(fn ($r) => [$r->id => $loyalty->suggestedReward($r)]),
         ]);
     }
 

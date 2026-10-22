@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Api\ApiController;
+use App\Services\LoyaltyProgram;
 use App\Services\PaymentService;
 use App\Services\SettingsService;
 use App\Support\Fmt;
@@ -17,7 +18,7 @@ class SettingsController extends ApiController
         'cancellation_policy', 'terms_and_conditions', 'privacy_policy',
     ];
 
-    public function __invoke(SettingsService $settings, PaymentService $payments): JsonResponse
+    public function __invoke(SettingsService $settings, PaymentService $payments, LoyaltyProgram $loyalty): JsonResponse
     {
         $all = $settings->all();
         $gcash = $payments->isEnabled();
@@ -36,6 +37,9 @@ class SettingsController extends ApiController
             'payment_deposit_value' => $all['payment_deposit_value'],
             'payment_window_minutes' => $payments->windowMinutes(),
             'payment_policy' => $all['payment_policy'],
+            // Shown under the customer's loyalty card: the perks printed on it and the GCash reward per referred service.
+            'loyalty_card_perks' => $loyalty->perks(),
+            'referral_rewards' => $loyalty->referralRewards(),
         ]);
     }
 }

@@ -46,6 +46,11 @@ return [
         'google_site_verification' => ['value' => '', 'type' => 'string'],
         'terms_and_conditions' => ['value' => '', 'type' => 'text'],
         'privacy_policy' => ['value' => '', 'type' => 'text'],
+        // The loyalty card the salon sells: the perks printed on it (one per line) and the GCash reward a referrer earns
+        // when the person they referred gets one of these services. Shown in the app under the customer's card; the
+        // rewards also pre-fill the amount when a referral is completed (App\Services\LoyaltyProgram).
+        'loyalty_card_perks' => ['value' => "Haircut 50% discount for men\nLess ₱200 for rebond\nLess ₱50 for manicure\nBrazilian botox: ₱500 every month transaction, ₱1,000 every 2–3 months transaction", 'type' => 'text'],
+        'referral_rewards' => ['value' => '[{"service":"Haircut","amount":20},{"service":"Rebond","amount":200},{"service":"Manicure","amount":50},{"service":"Brazilian botox","amount":200}]', 'type' => 'json'],
     ],
 
     'uploads' => [
@@ -54,9 +59,11 @@ return [
         'max_dimension' => 1600,
     ],
 
-    // Loyalty cards the salon sells: the number printed on the card (digits only, spaces and dashes ignored).
+    // Loyalty cards the salon sells, printed "CARD NO. LC-0000353": the prefix plus a zero-padded number.
+    // Customers may type it with or without the prefix, spaces or dashes; only the digits are stored.
     'loyalty' => [
-        'min_digits' => (int) env('LOYALTY_MIN_DIGITS', 8),
-        'max_digits' => (int) env('LOYALTY_MAX_DIGITS', 20),
+        'prefix' => env('LOYALTY_PREFIX', 'LC-'),
+        'min_digits' => (int) env('LOYALTY_MIN_DIGITS', 7),
+        'max_digits' => (int) env('LOYALTY_MAX_DIGITS', 7),
     ],
 ];

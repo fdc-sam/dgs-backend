@@ -15,6 +15,14 @@
     --color-gold-soft: #FFF1C7;
     --color-gold-strong: #8F6A00;
 
+    /* The printed loyalty card (x-admin.loyalty-card): black with metallic gold, the same as in the app. */
+    --color-card-black: #0E0E0E;
+    --color-card-black-light: #2A2621;
+    --color-card-gold: #DDB54A;
+    --color-card-gold-light: #F6DC8C;
+    --color-card-gold-dark: #A87A12;
+    --color-card-text: #F4EBD3;
+
     --color-primary: #7A5900;
     --color-primary-hover: #664A00;
     --color-on-primary: #FFFFFF;

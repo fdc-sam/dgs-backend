@@ -16,7 +16,7 @@
         <x-admin.input name="search" label="Search" :value="request('search')" placeholder="Name or number of either person" class="w-72" />
     </x-admin.filter-bar>
 
-    <div x-data="{ copied: false, target: { name: '', services: '', referrer: '', email: '', gcash: '', status: '', complete: '' } }">
+    <div x-data="{ copied: false, target: { name: '', services: '', referrer: '', email: '', gcash: '', status: '', complete: '', suggested: null, suggestion: '' } }">
         <x-admin.card :padding="false">
             @if ($referrals->isEmpty())
                 <x-admin.empty-state icon="group_add" title="No referrals here" message="Customers add referrals from Profile → My referrals in the app." />
@@ -28,7 +28,8 @@
                             $referrer = $r->referrer;
                             $target = ['name' => $r->name, 'services' => $r->services->pluck('name')->join(', '),
                                 'referrer' => $referrer?->name, 'email' => $referrer?->email, 'gcash' => $referrer?->phone ?? '—',
-                                'status' => route('referrals.status', $r), 'complete' => route('referrals.complete', $r)];
+                                'status' => route('referrals.status', $r), 'complete' => route('referrals.complete', $r),
+                                'suggested' => $suggestions[$r->id]['amount'] ?? null, 'suggestion' => $suggestions[$r->id]['summary'] ?? ''];
                         @endphp
                         <tr>
                             <td class="whitespace-nowrap">
@@ -124,9 +125,14 @@
                 </div>
 
                 <div class="grid gap-4 sm:grid-cols-2">
-                    <x-admin.input name="amount" id="complete_amount" type="number" step="0.01" min="1" max="100000" label="Amount sent to GCash" prefix="₱" required />
+                    <x-admin.input name="amount" id="complete_amount" type="number" step="0.01" min="1" max="100000" label="Amount sent to GCash" prefix="₱" required
+                                   x-bind:value="target.suggested ?? ''" />
                     <x-admin.input name="reference" id="complete_reference" label="GCash reference no. (optional)" />
                 </div>
+                <p class="-mt-2 text-xs text-on-surface-variant">
+                    <template x-if="target.suggestion"><span>Filled in from your referral rewards: <span class="font-medium text-on-surface" x-text="target.suggestion"></span>. Change it if you sent a different amount.</span></template>
+                    <template x-if="!target.suggestion"><span>No referral reward is set for these services. Rewards per service are under @can('super-admin')<a href="{{ route('settings.edit') }}#loyalty" class="font-medium underline">Settings → Loyalty card &amp; referrals</a>@else Settings → Loyalty card &amp; referrals @endcan.</span></template>
+                </p>
                 <x-admin.input name="note" id="complete_note" label="Message to the referrer (optional)" placeholder="e.g. Thank you for recommending us!" />
                 <div class="flex justify-end gap-2">
                     <x-admin.button variant="text" @click="$dispatch('close-modal', 'referral-complete')">Close</x-admin.button>

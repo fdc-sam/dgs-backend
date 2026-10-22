@@ -88,19 +88,15 @@
                 </x-admin.card>
             @endcan
             <x-admin.card title="Loyalty card" subtitle="The number on the card the customer bought. Customers can also add it in the app.">
-                @if ($customer->loyalty_number)
-                    <div class="mb-4 rounded-card bg-gold-soft px-4 py-3">
-                        <p class="eyebrow">Card number</p>
-                        <p class="mt-1 font-mono text-xl font-semibold tracking-wider">{{ \App\Support\LoyaltyNumber::format($customer->loyalty_number) }}</p>
-                    </div>
-                @else
+                <x-admin.loyalty-card :number="$customer->loyalty_number" :name="$customer->name" :class="$customer->loyalty_number ? 'mb-4' : 'mb-3 opacity-60'" />
+                @unless ($customer->loyalty_number)
                     <p class="mb-4 text-sm text-on-surface-variant">No loyalty card linked yet.</p>
-                @endif
+                @endunless
                 @can('update', $customer)
                     <form method="POST" action="{{ route('customers.loyalty-card', $customer) }}" class="space-y-3">
                         @csrf
                         <x-admin.input name="loyalty_number" :label="$customer->loyalty_number ? 'Change card number' : 'Card number'" inputmode="numeric"
-                                       autocomplete="off" placeholder="e.g. 1234 5678 9012" :value="old('loyalty_number')" />
+                                       autocomplete="off" placeholder="e.g. LC-0000353" :value="old('loyalty_number')" />
                         <div class="flex flex-wrap gap-2">
                             <x-admin.button type="submit" variant="tonal" size="sm" icon="credit_card">{{ $customer->loyalty_number ? 'Save new number' : 'Link card' }}</x-admin.button>
                         </div>
