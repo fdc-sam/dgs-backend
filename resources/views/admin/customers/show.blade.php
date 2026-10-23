@@ -87,7 +87,7 @@
                     </form>
                 </x-admin.card>
             @endcan
-            <x-admin.card title="Loyalty card" subtitle="The number on the card the customer bought. Customers can also add it in the app.">
+            <x-admin.card title="Loyalty card" subtitle="The number on the card the customer bought. Once it is linked here, the card shows in the customer's app.">
                 <x-admin.loyalty-card :number="$customer->loyalty_number" :name="$customer->name" :class="$customer->loyalty_number ? 'mb-4' : 'mb-3 opacity-60'" />
                 @unless ($customer->loyalty_number)
                     <p class="mb-4 text-sm text-on-surface-variant">No loyalty card linked yet.</p>

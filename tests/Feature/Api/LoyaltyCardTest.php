@@ -75,6 +75,10 @@ class LoyaltyCardTest extends TestCase
 
         $this->get('/customers?search=LC-0000354')->assertOk()
             ->assertViewHas('customers', fn ($page) => $page->total() === 1 && $page->first()->is($customer));
+        // The list marks card holders with their card number; customers without a card get no chip.
+        $this->get('/customers')->assertOk()->assertSee('title="Loyalty card holder"', false)
+            ->assertSee('data-href="'.route('customers.show', $customer).'"', false) // the whole row opens the customer
+            ->assertSeeInOrder(['Ana Reyes', 'LC-0000354'])->assertSee('LC-0000353');
 
         $this->post("/customers/{$customer->id}/loyalty-card", ['loyalty_number' => ''])->assertSessionHas('success', 'Loyalty card removed from Ana Reyes.');
         $this->assertNull($customer->fresh()->loyalty_number);

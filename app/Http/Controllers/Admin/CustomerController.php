@@ -29,7 +29,7 @@ class CustomerController extends Controller
                 $like = '%'.addcslashes($term, '%_\\').'%';
                 // A scanned or typed QR code (any case, with or without dashes) finds its owner exactly.
                 $code = CustomerCode::normalize($term);
-                // So does a loyalty card number, typed with or without spaces.
+                // So does a loyalty card number, typed with or without the LC- prefix.
                 $card = LoyaltyNumber::normalize($term);
                 $q->where(fn ($q) => $q->whereLike('name', $like)->orWhereLike('email', $like)->orWhereLike('phone', $like)
                     ->when($code, fn ($q) => $q->orWhere('qr_code', $code))

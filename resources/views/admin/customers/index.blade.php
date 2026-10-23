@@ -12,9 +12,23 @@
         @else
             <x-admin.table :headers="['Customer', 'Bookings', '>Lifetime value', 'Last visit', 'Joined', 'Status']">
                 @foreach ($customers as $c)
-                    <tr>
+                    {{-- The whole row opens the customer, like the name link (which still handles Ctrl/Cmd-click itself). --}}
+                    <tr role="link" tabindex="0" data-href="{{ route('customers.show', $c) }}"
+                        onclick="if (!event.target.closest('a, button')) window.location.href = this.dataset.href"
+                        onkeydown="if (event.key === 'Enter' && event.target === this) window.location.href = this.dataset.href"
+                        class="cursor-pointer hover:bg-surface-container/60 focus-visible:outline-2 focus-visible:outline-primary">
                         <td>
-                            <a href="{{ route('customers.show', $c) }}" class="font-medium text-primary hover:underline">{{ $c->name }}</a>
+                            <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                <a href="{{ route('customers.show', $c) }}" class="font-medium text-primary hover:underline">{{ $c->name }}</a>
+                                @if ($c->loyalty_number)
+                                    {{-- Loyalty card holder: a little black-and-gold chip, like the card itself. --}}
+                                    <span class="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-card-black py-0.5 pr-2.5 pl-1.5 text-xs font-semibold text-card-gold ring-1 ring-card-gold/40" title="Loyalty card holder">
+                                        <span class="material-symbols-outlined text-sm" aria-hidden="true">credit_card</span>
+                                        <span class="sr-only">Loyalty card</span>
+                                        <span class="font-mono tracking-wide">{{ \App\Support\LoyaltyNumber::format($c->loyalty_number) }}</span>
+                                    </span>
+                                @endif
+                            </div>
                             <p class="text-xs text-on-surface-variant">{{ $c->email }}@if ($c->phone) · <span class="whitespace-nowrap">{{ $c->phone }}</span>@endif</p>
                         </td>
                         <td class="whitespace-nowrap">
