@@ -51,6 +51,7 @@ class AppointmentService
     {
         $branch = Branch::query()->active()->findOrFail($data['branch_id']);
         $selections = $this->resolveSelections($branch, $data['services']);
+        $selections = $this->applyLoyaltyDiscounts($customer, $selections);
         $staff = $this->resolveStaff($data['staff_id'] ?? null);
         $date = CarbonImmutable::parse($data['appointment_date']);
         $time = substr($data['start_time'], 0, 5);
@@ -73,7 +74,10 @@ class AppointmentService
 
             $this->assertCustomerIsFree($customer, $slotStart, $slotEnd);
 
-            $subtotal = round((float) $selections->sum(fn (ServiceSelection $s) => $s->unitPrice), 2);
+            $discountedSubtotal = round((float) $selections->sum(fn (ServiceSelection $s) => $s->unitPrice), 2);
+            $loyaltyDiscount = round((float) $selections->sum(fn (ServiceSelection $s) => $s->loyaltyDiscount), 2);
+            $subtotal = round($discountedSubtotal + $loyaltyDiscount, 2);
+            $discount = round($discount + $loyaltyDiscount, 2);
             $total = max(0, $subtotal - $discount);
             // Customer bookings may owe a GCash deposit first; counter bookings are paid at the salon.
             [$payment, $itemDeposits] = $walkInBy ? [[], []] : $this->payments->forNewBooking($selections, $total, $slotStart);
@@ -390,6 +394,24 @@ class AppointmentService
             }
 
             return ServiceSelection::resolve($service, $variant, $branch, $staffId);
+        });
+    }
+
+    /** Apply the configured loyalty card reduction to every eligible service in this booking. */
+    private function applyLoyaltyDiscounts(User $customer, Collection $selections): Collection
+    {
+        if (! $customer->loyalty_number) return $selections;
+
+        return $selections->map(function (ServiceSelection $selection) use ($customer) {
+            $service = $selection->service;
+            $amount = $service->qualifiesForFirstVisitDiscount($customer)
+                ? (float) $service->first_visit_discount
+                : (float) $service->loyalty_discount;
+            $amount = min($selection->unitPrice, $amount);
+            if ($amount <= 0) return $selection;
+
+            return new ServiceSelection($service, $selection->variant, $selection->unitPrice - $amount,
+                $selection->durationMinutes, $selection->bufferMinutes, $selection->staffProfileId, $amount);
         });
     }
 

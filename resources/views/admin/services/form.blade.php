@@ -27,6 +27,18 @@
                     </div>
                 </x-admin.card>
 
+                <x-admin.card title="Loyalty card discounts" subtitle="The return discount applies when a loyalty card holder has not completed this service within the selected period. For a first visit, the period starts from account creation.">
+                    <div class="grid gap-5 sm:grid-cols-2">
+                        <x-admin.input name="loyalty_discount" type="number" step="0.01" min="0" label="Loyalty card discount" prefix="₱" :value="$service->loyalty_discount ?? 0" />
+                        <x-admin.input name="first_visit_discount" type="number" step="0.01" min="0" label="Return discount" prefix="₱" :value="$service->first_visit_discount ?? 0" />
+                        <div class="sm:col-span-2 flex flex-wrap items-end gap-4">
+                            <x-admin.checkbox name="first_visit_discount_enabled" label="Enable return discount" :checked="$service->first_visit_discount_enabled ?? false" />
+                            <x-admin.input name="first_visit_discount_period" type="number" min="1" max="1200" step="1" label="No visit within" :value="$service->first_visit_discount_period ?: 30" />
+                            <x-admin.select name="first_visit_discount_unit" label="Period unit" :options="['days' => 'Days', 'months' => 'Months']" :value="$service->first_visit_discount_unit ?? 'days'" />
+                        </div>
+                    </div>
+                </x-admin.card>
+
                 <x-admin.card title="Pricing & timing">
                     <div class="grid gap-5 sm:grid-cols-3">
                         <x-admin.input name="regular_price" type="number" step="0.01" min="0" label="Regular price" prefix="₱" :value="$service->regular_price" required x-model.number="price" />

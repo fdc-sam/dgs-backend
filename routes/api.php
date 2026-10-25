@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\V1\ReferralController;
 use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\ServiceController;
 use App\Http\Controllers\Api\V1\SettingsController;
+use App\Http\Middleware\OptionalSanctumAuth;
 use App\Http\Controllers\Api\V1\StaffController;
 use Illuminate\Support\Facades\Route;
 
@@ -36,15 +37,15 @@ Route::prefix('v1')->name('api.v1.')->middleware('throttle:api')->group(function
     Route::get('achievements', AchievementController::class)->name('achievements.index');
 
     Route::get('categories', [CategoryController::class, 'index'])->name('categories.index');
-    Route::get('categories/{category}', [CategoryController::class, 'show'])->name('categories.show');
+    Route::get('categories/{category}', [CategoryController::class, 'show'])->middleware(OptionalSanctumAuth::class)->name('categories.show');
 
-    Route::get('services', [ServiceController::class, 'index'])->name('services.index');
-    Route::get('services/featured', [ServiceController::class, 'featured'])->name('services.featured');
-    Route::get('services/{service}', [ServiceController::class, 'show'])->name('services.show');
+    Route::get('services', [ServiceController::class, 'index'])->middleware(OptionalSanctumAuth::class)->name('services.index');
+    Route::get('services/featured', [ServiceController::class, 'featured'])->middleware(OptionalSanctumAuth::class)->name('services.featured');
+    Route::get('services/{service}', [ServiceController::class, 'show'])->middleware(OptionalSanctumAuth::class)->name('services.show');
 
     Route::get('branches', [BranchController::class, 'index'])->name('branches.index');
     Route::get('branches/{branch}', [BranchController::class, 'show'])->name('branches.show');
-    Route::get('branches/{branch}/services', [BranchController::class, 'services'])->name('branches.services');
+    Route::get('branches/{branch}/services', [BranchController::class, 'services'])->middleware(OptionalSanctumAuth::class)->name('branches.services');
     Route::get('branches/{branch}/staff', [BranchController::class, 'staff'])->name('branches.staff');
 
     Route::get('staff', [StaffController::class, 'index'])->name('staff.index');

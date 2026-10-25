@@ -18,6 +18,15 @@ class ServiceResource extends JsonResource
         $variants = $this->relationLoaded('variants') ? $this->variants : null;
         $priceFrom = $variants && $variants->isNotEmpty() ? min($price, (float) $variants->min('price')) : $price;
         $average = Fmt::attr($this->resource, 'approved_reviews_avg_rating');
+        $customer = $request->user();
+        $hasLoyaltyCard = filled($customer?->loyalty_number);
+        $discount = 0.0;
+        if ($hasLoyaltyCard) {
+            $discount = $this->qualifiesForFirstVisitDiscount($customer)
+                ? (float) $this->first_visit_discount
+                : (float) $this->loyalty_discount;
+        }
+        $discountedPrice = $discount > 0 ? max(0, $priceFrom - $discount) : null;
 
         return [
             'id' => $this->id,
@@ -33,8 +42,15 @@ class ServiceResource extends JsonResource
             'description' => $this->description,
             'image_url' => Fmt::url($this->image),
             'regular_price' => Fmt::money($this->regular_price),
+            'loyalty_discount' => Fmt::money($this->loyalty_discount),
+            'return_discount' => Fmt::money($this->first_visit_discount),
+            'first_visit_discount_enabled' => (bool) $this->first_visit_discount_enabled,
+            'return_discount_period' => (int) $this->first_visit_discount_period,
+            'return_discount_period_unit' => $this->first_visit_discount_unit,
             'price' => $price,
             'price_from' => Fmt::money($priceFrom),
+            'loyalty_discounted_price' => $discountedPrice === null ? null : Fmt::money($discountedPrice),
+            'loyalty_discount_amount' => Fmt::money($discount),
             // GCash downpayment asked when booking this service (its own fixed-amount QR); null = none.
             'deposit_amount' => Fmt::money($this->resource->ownDeposit()),
             'duration_minutes' => $this->duration_minutes,
@@ -49,6 +65,7 @@ class ServiceResource extends JsonResource
                 'id' => $branch->id,
                 'name' => $branch->name,
                 'price' => Fmt::money($branch->pivot->custom_price ?? $this->regular_price),
+                'loyalty_discounted_price' => $discount > 0 ? Fmt::money(max(0, min((float) ($branch->pivot->custom_price ?? $this->regular_price), (float) ($this->variants->min('price') ?? $price)) - $discount)) : null,
             ])->values()),
             'staff' => $this->whenLoaded('staff', fn () => $this->staff->map(fn ($staff) => [
                 'id' => $staff->id,

@@ -16,6 +16,7 @@ final class ServiceSelection
         public readonly int $durationMinutes,
         public readonly int $bufferMinutes,
         public readonly ?string $staffProfileId = null,
+        public readonly float $loyaltyDiscount = 0,
     ) {}
 
     public static function resolve(Service $service, ?ServiceVariant $variant, Branch $branch, ?string $staffProfileId = null): self
