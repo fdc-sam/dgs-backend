@@ -31,7 +31,7 @@ class AppointmentController extends Controller
         $user = $request->user();
 
         $appointments = Appointment::query()
-            ->with(['customer', 'branch', 'staff.user', 'items.staff.user'])
+            ->with(['customer', 'branch', 'staff.user', 'items.staff.user', 'promotion'])
             ->when($user->isStaff(), fn ($q) => $q->where(fn ($q) => $q->where('staff_profile_id', $user->staffProfile?->id ?? '')
                 ->orWhereHas('items', fn ($items) => $items->where('staff_profile_id', $user->staffProfile?->id ?? ''))))
             ->when($filters['date'] ?? null, fn ($q, $d) => $q->whereDate('appointment_date', $d))
@@ -117,6 +117,33 @@ class AppointmentController extends Controller
         $appointment->update($data);
 
         return back()->with('success', 'Internal notes saved.');
+    }
+
+    public function updateAdditionalCharge(Request $request, Appointment $appointment): RedirectResponse
+    {
+        abort_unless($request->user()->isManager(), 403);
+        abort_if($appointment->status->isFinal(), 422, 'A completed or cancelled appointment cannot be repriced.');
+        $data = $request->validate([
+            'additional_charge' => ['required', 'numeric', 'min:0', 'max:999999'],
+            'additional_charge_reason' => ['nullable', 'string', 'max:160'],
+        ]);
+        if ((float) $data['additional_charge'] > 0 && blank($data['additional_charge_reason'] ?? null)) {
+            return back()->withErrors(['additional_charge_reason' => 'Add a short reason so the customer knows what this charge is for.'])->withInput();
+        }
+
+        $previousCharge = (float) $appointment->additional_charge;
+        $previousReason = $appointment->additional_charge_reason;
+        $appointment->additional_charge = round((float) $data['additional_charge'], 2);
+        $appointment->additional_charge_reason = $appointment->additional_charge > 0
+            ? trim((string) ($data['additional_charge_reason'] ?? '')) : null;
+        $appointment->total_amount = max(0, round((float) $appointment->subtotal - (float) $appointment->discount_amount + (float) $appointment->additional_charge, 2));
+        $appointment->save();
+
+        if ($previousCharge !== (float) $appointment->additional_charge || $previousReason !== $appointment->additional_charge_reason) {
+            app(\App\Services\NotificationService::class)->appointmentChargeUpdated($appointment);
+        }
+
+        return back()->with('success', 'Additional charge and booking total updated.');
     }
 
     /** Free start times for the reschedule dialog (excludes this appointment itself). */

@@ -14,7 +14,7 @@ enum DiscountType: string
     {
         return match ($this) {
             self::Percentage => 'Percentage',
-            self::Fixed => 'Fixed Amount',
+            self::Fixed => 'Fixed Price',
             self::SpecialPrice => 'Special Price',
             self::Package => 'Package',
             self::BuyXGetY => 'Buy X Get Y',

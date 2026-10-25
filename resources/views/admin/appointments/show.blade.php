@@ -28,7 +28,13 @@
                     <div><dt class="text-sm text-on-surface-variant">Date & time</dt><dd class="font-medium">{{ $a->startsAt()->format('l, F j, Y') }}<br>{{ $a->startsAt()->format('g:i A') }} – {{ $a->endsAt()->format('g:i A') }} <span class="text-on-surface-variant">({{ $a->durationMinutes() }} min + {{ $a->buffer_minutes }} min buffer)</span></dd></div>
                     <div><dt class="text-sm text-on-surface-variant">Branch</dt><dd class="font-medium">{{ $a->branch->name }}</dd></div>
                     <div><dt class="text-sm text-on-surface-variant">Stylists</dt><dd class="font-medium">{{ $assignedStylists ?: ($a->staff?->user?->name ?? 'Unassigned') }}</dd></div>
-                    <div><dt class="text-sm text-on-surface-variant">Promotion</dt><dd class="font-medium">{{ $a->promotion?->name ?? '—' }}</dd></div>
+                    <div><dt class="text-sm text-on-surface-variant">Promotion</dt><dd class="font-medium">
+                        @if ($a->promotion)
+                            <x-admin.badge tone="warning" icon="sell">{{ $a->promotion->name }}</x-admin.badge>
+                        @else
+                            —
+                        @endif
+                    </dd></div>
                     <div><dt class="text-sm text-on-surface-variant">Arrival</dt><dd class="font-medium">
                         @if ($a->checked_in_at)
                             Arrived {{ $a->checked_in_at->format('g:i A') }}@if ($a->checkedInBy) <span class="text-on-surface-variant">· checked in by {{ $a->checkedInBy->name }}</span>@endif
@@ -62,6 +68,9 @@
                     <tr><td colspan="4" class="text-right text-on-surface-variant">Subtotal</td><td class="text-right">₱{{ number_format($a->subtotal, 2) }}</td></tr>
                     @if ((float) $a->discount_amount > 0)
                         <tr><td colspan="4" class="text-right text-on-surface-variant">Discount</td><td class="text-right text-success">−₱{{ number_format($a->discount_amount, 2) }}</td></tr>
+                    @endif
+                    @if ((float) $a->additional_charge > 0)
+                        <tr><td colspan="4" class="text-right text-on-surface-variant">Additional charge · {{ $a->additional_charge_reason }}</td><td class="text-right">+₱{{ number_format($a->additional_charge, 2) }}</td></tr>
                     @endif
                     <tr><td colspan="4" class="text-right font-semibold">Total</td><td class="text-right text-lg font-semibold">₱{{ number_format($a->total_amount, 2) }}</td></tr>
                     @if ((float) $a->amount_paid > 0)
@@ -137,6 +146,20 @@
                     <x-admin.button :href="route('customers.show', $a->customer)" variant="text" size="sm" class="-ml-3 mt-2">View profile & history</x-admin.button>
                 @endcan
             </x-admin.card>
+
+            @can('manage')
+                @if (! $a->status->isFinal())
+                    <x-admin.card title="Additional charge" subtitle="For example, add a long-hair charge. The customer will see the reason and updated total in the app.">
+                        <form method="POST" action="{{ route('appointments.additional-charge', $a) }}" class="space-y-3">
+                            @csrf @method('PUT')
+                            <x-admin.input name="additional_charge" type="number" step="0.01" min="0" max="999999" label="Extra amount" prefix="₱" :value="old('additional_charge', $a->additional_charge)" required />
+                            <x-admin.input name="additional_charge_reason" label="Reason shown to customer" placeholder="Long hair" :value="old('additional_charge_reason', $a->additional_charge_reason)" />
+                            <p class="text-sm text-on-surface-variant">Current extra charge: ₱{{ number_format($a->additional_charge, 2) }}. Enter 0 to remove it.</p>
+                            <x-admin.button type="submit" variant="tonal" size="sm">Update booking price</x-admin.button>
+                        </form>
+                    </x-admin.card>
+                @endif
+            @endcan
 
             @can('updateNotes', $a)
                 <x-admin.card title="Internal notes" subtitle="Only visible to the salon team.">

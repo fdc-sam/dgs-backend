@@ -37,6 +37,7 @@ Route::middleware(['auth', 'auth.session', 'admin'])->group(function () {
     Route::post('appointments/{appointment}/reschedule', [Admin\AppointmentController::class, 'reschedule'])->name('appointments.reschedule');
     Route::get('appointments/{appointment}/slots', [Admin\AppointmentController::class, 'slots'])->name('appointments.slots');
     Route::put('appointments/{appointment}/notes', [Admin\AppointmentController::class, 'updateNotes'])->name('appointments.notes');
+    Route::put('appointments/{appointment}/additional-charge', [Admin\AppointmentController::class, 'updateAdditionalCharge'])->name('appointments.additional-charge');
 
     Route::get('my-schedule', Admin\MyScheduleController::class)->name('my-schedule');
 

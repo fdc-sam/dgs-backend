@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 #[Fillable([
     'appointment_number', 'customer_id', 'branch_id', 'staff_profile_id', 'promotion_id',
     'appointment_date', 'start_time', 'end_time', 'buffer_minutes', 'starts_at', 'status',
-    'subtotal', 'discount_amount', 'total_amount', 'customer_notes', 'admin_notes',
+    'subtotal', 'discount_amount', 'additional_charge', 'additional_charge_reason', 'total_amount', 'customer_notes', 'admin_notes',
     'confirmed_at', 'cancelled_at', 'cancelled_by', 'cancellation_reason', 'completed_at',
     'checked_in_at', 'checked_in_by', 'source',
     'payment_status', 'deposit_amount', 'amount_paid', 'payment_due_at', 'payment_reminded_at', 'paid_at',
@@ -48,6 +48,7 @@ class Appointment extends Model
             'buffer_minutes' => 'integer',
             'subtotal' => 'decimal:2',
             'discount_amount' => 'decimal:2',
+            'additional_charge' => 'decimal:2',
             'total_amount' => 'decimal:2',
             'confirmed_at' => 'datetime',
             'cancelled_at' => 'datetime',

@@ -49,7 +49,7 @@ class PromotionResource extends JsonResource
 
         return match ($this->discount_type) {
             DiscountType::Percentage => rtrim(rtrim(number_format($value, 2), '0'), '.').'% off',
-            DiscountType::Fixed => Fmt::peso($value).' off',
+            DiscountType::Fixed => 'Now '.Fmt::peso($value),
             DiscountType::SpecialPrice => 'Now '.Fmt::peso($this->promo_price),
             DiscountType::Package => $this->promo_price !== null ? 'Package '.Fmt::peso($this->promo_price) : 'Package deal',
             DiscountType::BuyXGetY => 'Bundle offer',

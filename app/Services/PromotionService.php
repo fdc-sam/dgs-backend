@@ -59,7 +59,7 @@ class PromotionService
 
         $discount = match ($promotion->discount_type) {
             DiscountType::Percentage => $eligibleTotal * min(100, (float) $promotion->discount_value) / 100,
-            DiscountType::Fixed => (float) $promotion->discount_value,
+            DiscountType::Fixed => (float) $eligible->sum(fn (ServiceSelection $s) => max(0, $s->unitPrice - (float) $promotion->discount_value)),
             DiscountType::SpecialPrice => (float) $eligible->sum(fn (ServiceSelection $s) => max(0, $s->unitPrice - (float) $promotion->promo_price)),
             DiscountType::Package, DiscountType::BuyXGetY => 0.0,
         };

@@ -39,7 +39,7 @@ class PromotionController extends Controller
     public function create(): View
     {
         return view('admin.promotions.form', $this->formData(new Promotion([
-            'status' => PromotionStatus::Draft, 'discount_type' => DiscountType::Percentage,
+            'status' => PromotionStatus::Draft, 'discount_type' => DiscountType::Fixed,
             'start_at' => now()->startOfDay(), 'end_at' => now()->addMonth()->endOfDay(),
         ])));
     }

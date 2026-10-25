@@ -25,6 +25,9 @@
                         <td class="min-w-36">
                             <a href="{{ route('appointments.show', $a) }}" class="whitespace-nowrap font-mono text-[0.6875rem] font-semibold tracking-tight text-primary hover:underline">{{ $a->appointment_number }}</a>
                             <p class="text-xs text-on-surface-variant">{{ $a->branch->name }}</p>
+                            @if ($a->promotion)
+                                <x-admin.badge tone="warning" icon="sell" class="mt-1">Promotion</x-admin.badge>
+                            @endif
                         </td>
                         <td>
                             <p class="font-medium">{{ $a->customer->name }}</p>

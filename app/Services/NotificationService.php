@@ -40,6 +40,15 @@ class NotificationService
             "Your appointment {$appointment->appointment_number} on {$this->when($appointment)} is confirmed. See you soon!");
     }
 
+    public function appointmentChargeUpdated(Appointment $appointment): void
+    {
+        $charge = (float) $appointment->additional_charge > 0
+            ? "Additional charge: {$this->peso($appointment->additional_charge)} for {$appointment->additional_charge_reason}. "
+            : 'The additional charge was removed. ';
+        $this->toCustomer($appointment, NotificationType::General, 'Booking price updated',
+            "{$charge}Your new total for appointment {$appointment->appointment_number} is {$this->peso($appointment->total_amount)}.");
+    }
+
     public function appointmentCancelled(Appointment $appointment, User $by): void
     {
         $reason = $appointment->cancellation_reason ? " Reason: {$appointment->cancellation_reason}" : '';

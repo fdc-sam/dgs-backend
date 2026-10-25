@@ -33,6 +33,8 @@ class AppointmentResource extends JsonResource
             'duration_minutes' => $this->durationMinutes(),
             'subtotal' => Fmt::money($this->subtotal),
             'discount_amount' => Fmt::money($this->discount_amount),
+            'additional_charge' => Fmt::money($this->additional_charge),
+            'additional_charge_reason' => $this->additional_charge_reason,
             'total_amount' => Fmt::money($this->total_amount),
             'payment' => $this->payment(),
             'customer_notes' => $this->customer_notes,

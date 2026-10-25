@@ -12,10 +12,43 @@ Alpine.data('adminLive', adminLive);
 
 /** Confirm-before-submit for destructive or state-changing forms: <form data-confirm="Cancel this booking?"> */
 document.addEventListener('submit', (event) => {
+    if (event.target.dataset?.submitting === 'true') {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return;
+    }
     const message = event.target.dataset?.confirm;
     if (message && !window.confirm(message)) {
         event.preventDefault();
     }
+});
+
+/** Give admin form submissions consistent feedback and stop accidental double submits. */
+document.addEventListener('submit', (event) => {
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement) || event.defaultPrevented || form.dataset.noLoading !== undefined) return;
+    const method = (form.querySelector('input[name="_method"]')?.value || form.method || 'get').toLowerCase();
+    if (method === 'get') return;
+
+    if (form.dataset.submitting === 'true') {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return;
+    }
+    form.dataset.submitting = 'true';
+
+    const buttons = Array.from(form.querySelectorAll('button[type="submit"], input[type="submit"]'));
+    const submitter = event.submitter instanceof HTMLElement
+        ? event.submitter
+        : buttons[0];
+    if (!submitter || submitter instanceof HTMLInputElement) return;
+
+    const isSave = /save|create|add|update|record|send|publish/i.test(submitter.innerText || '');
+    submitter.setAttribute('aria-busy', 'true');
+    submitter.innerHTML = `<span class="material-symbols-outlined animate-spin" aria-hidden="true">progress_activity</span><span>${isSave ? 'Saving…' : 'Processing…'}</span>`;
+    buttons.filter((button) => button !== submitter).forEach((button) => { button.disabled = true; });
+    // Let the browser capture the clicked button's name/value before disabling it.
+    window.setTimeout(() => { submitter.disabled = true; }, 0);
 });
 
 /** Line/bar chart helper used by dashboard & reports: <canvas data-chart='{"type":"line","labels":[],"series":[...]}'> */
