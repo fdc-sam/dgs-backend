@@ -147,27 +147,54 @@
 }
 
 /*
- | Phones (< md): an x-admin.table (.table-stack) becomes a list of cards. The first cell is the card's title; the
- | rest sit two per line under their column header (data-label, copied from <th> in app.js). data-cell="wide" and
- | the Actions cell take a whole line. Unlayered so it beats the cells' own utilities (text-right, whitespace-nowrap,
- | max-w-*, truncate).
+ | Phones (< md): each x-admin.table row becomes a compact two-line record. The primary field and amount lead;
+ | secondary signals follow, and the remaining cells/actions expand in place. Unlayered to override table utilities.
  */
 @media (width < 48rem) {
-    .table-stack, .table-stack tbody { display: block; }
+    .table-stack { display: block; }
+    .table-stack tbody { display: block; }
     .table-stack thead { display: none; }
-    .table-stack tbody tr { @apply grid grid-cols-2 gap-x-4 gap-y-3 px-5 py-4; border-bottom: 1px solid color-mix(in oklab, var(--color-outline-variant) 80%, transparent); }
-    .table-stack tbody tr:last-child { border-bottom: 0; }
+    .table-stack tbody tr { @apply min-h-14 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 border-b border-outline-variant/70 px-4 py-3; cursor: pointer; touch-action: manipulation; }
+    .table-stack tbody tr:last-child { @apply border-b-0; }
     .table-stack tbody td { @apply block w-auto min-w-0 max-w-none border-0 p-0 text-left whitespace-normal; }
     .table-stack tbody td[data-label]::before {
         content: attr(data-label);
         @apply mb-0.5 block text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-outline;
     }
-    .table-stack tbody td:first-child,
-    .table-stack tbody td[data-cell] { grid-column: 1 / -1; }
-    .table-stack tbody td:first-child::before,
+    .table-stack tbody td[data-mobile-primary='true'] { grid-column: 1; grid-row: 1; }
+    .table-stack tbody td[data-mobile-primary='true']::before,
     .table-stack tbody td[data-cell='actions']::before { content: none; }
-    .table-stack tbody td:first-child { @apply text-[0.9375rem]; }
-    .table-stack tbody td[data-cell='actions'] { @apply border-t border-outline-variant/70 pt-3; }
+    .table-stack tbody td[data-mobile-primary='true'] { @apply text-[0.9375rem] font-semibold; }
+    .table-stack tbody tr:not([data-mobile-expanded='true']) td[data-mobile-primary='true'] :is(div, p) + p { display: none; }
+    .table-stack tbody td[data-cell='amount'] {
+        @apply col-start-2 row-start-1 text-right whitespace-nowrap font-semibold tabular-nums text-on-surface;
+    }
+    .table-stack tbody td[data-cell='amount']::before { content: none; }
+    .table-stack tbody td[data-mobile-summary='true'] { @apply min-w-0 text-xs text-on-surface-variant; grid-row: 2; }
+    .table-stack tbody td[data-mobile-summary='true']::before { @apply mb-0 inline text-[0.625rem] font-medium uppercase tracking-wide text-outline; }
+    .table-stack tbody td[data-mobile-summary='true']::before { content: attr(data-label) ': '; }
+    .table-stack tbody td[data-mobile-summary='true'][data-full-label='Status']::before { content: none; }
+    .table-mobile-secondary-status { display: none !important; }
+    .table-stack tbody td[data-cell='wide'] { grid-column: 1 / -1; }
+    .table-stack tbody td[hidden] { display: none !important; }
+    .table-stack tbody td[data-cell='actions'] { @apply col-span-full border-t border-outline-variant/70 pt-3; }
+    .table-mobile-details { @apply ml-1 inline-flex h-8 w-8 items-center justify-center rounded-full text-primary; }
+    .table-mobile-details .material-symbols-outlined { @apply text-lg; }
+    .table-mobile-full-record { @apply col-span-full; }
+    .table-mobile-full-record-button { @apply inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-sm font-semibold text-primary hover:bg-surface-container; }
+    .table-mobile-full-record-button .material-symbols-outlined { @apply text-base; }
+    .table-stack tbody tr[data-mobile-expanded='true'] { @apply items-start gap-y-2; }
+    .table-stack tbody tr[data-mobile-expanded='true'] td[data-mobile-preview='true'] {
+        @apply col-span-full grid grid-cols-[minmax(5rem,0.7fr)_minmax(0,1.3fr)] items-start gap-x-3 border-t border-outline-variant/70 pt-2.5;
+    }
+    .table-stack tbody tr[data-mobile-expanded='true'] td[data-mobile-preview='true']::before { @apply mb-0.5 block text-[0.6875rem] font-semibold uppercase tracking-[0.06em] text-outline; content: attr(data-label); }
+    .table-mobile-cell-value { @apply min-w-0 text-right text-sm text-on-surface; }
+    .table-mobile-cell-value > * + * { @apply mt-1; }
+    .table-stack tbody tr[data-mobile-expanded='true'] td[data-cell='actions'] { @apply col-span-full border-t border-outline-variant/70 pt-3; }
+    .table-stack tbody tr[data-mobile-expanded='true'] td.table-mobile-full-record { @apply col-span-full border-t border-outline-variant/70 pt-1; }
+    .table-stack tbody tr[data-mobile-expanded='true'] td[data-mobile-primary='true'] :is(div, p) + p { display: none; }
+    .table-stack tbody tr[data-mobile-expanded='true'] .table-mobile-secondary-status,
+    .mobile-record-sheet .table-mobile-secondary-status { display: inline-flex !important; }
     .table-stack tbody td[data-cell='actions'] > div { flex-wrap: wrap; }
     /* Room for four actions on one line; a destructive one (Delete) sits apart on the left. */
     .table-stack tbody td[data-cell='actions'] :is(a, button) { padding-inline: 0.75rem; }
@@ -176,6 +203,41 @@
     .table-stack tbody td[data-cell='actions'] > div > :has(.text-danger) :is(a, button) { margin-left: -0.75rem; }
     .table-stack tbody tr[data-row='summary'] { @apply flex items-baseline justify-between gap-4 py-3; }
     .table-stack tbody tr[data-row='summary'] td:last-child { @apply shrink-0 text-right; }
+}
+
+.mobile-record-sheet {
+    position: fixed;
+    inset: auto 0 0;
+    width: min(100%, 36rem);
+    max-width: none;
+    max-height: min(84vh, 48rem);
+    margin: 0 auto;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--color-outline-variant);
+    border-bottom: 0;
+    border-radius: 1.5rem 1.5rem 0 0;
+    background: var(--color-surface, white);
+    color: var(--color-on-surface, #18181b);
+    box-shadow: 0 -12px 40px rgb(0 0 0 / 0.18);
+}
+.mobile-record-sheet::backdrop { background: rgb(17 17 19 / 0.48); }
+.mobile-record-sheet__panel { max-height: min(84vh, 48rem); overflow-y: auto; padding: 0.75rem 1.25rem max(1.5rem, env(safe-area-inset-bottom)); }
+.mobile-record-sheet__handle { width: 2.5rem; height: 0.25rem; margin: 0 auto 1rem; border-radius: 999px; background: var(--color-outline-variant); }
+.mobile-record-sheet__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding-bottom: 1rem; }
+.mobile-record-sheet__title { margin-top: 0.2rem; font-size: 1.125rem; font-weight: 700; }
+.mobile-record-sheet__close { display: inline-flex; width: 2.75rem; height: 2.75rem; align-items: center; justify-content: center; border-radius: 999px; color: var(--color-on-surface-variant); }
+.mobile-record-sheet__fields { border-top: 1px solid var(--color-outline-variant); }
+.mobile-record-field { display: grid; grid-template-columns: minmax(6rem, 0.8fr) minmax(0, 1.2fr); gap: 1rem; border-bottom: 1px solid color-mix(in oklab, var(--color-outline-variant) 70%, transparent); padding: 0.85rem 0; }
+.mobile-record-field dt { color: var(--color-on-surface-variant); font-size: 0.875rem; }
+.mobile-record-field dd { min-width: 0; text-align: right; font-size: 0.9375rem; font-weight: 500; overflow-wrap: anywhere; }
+.mobile-record-sheet__close:focus-visible,
+.table-mobile-full-record-button:focus-visible,
+.table-mobile-details:focus-visible,
+.table-stack tbody tr:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+
+@media (width < 22.5rem) {
+    .table-stack tbody td[data-cell='amount'] { max-width: 9rem; font-size: 0.8125rem; }
 }
 
 /*

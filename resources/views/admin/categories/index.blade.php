@@ -9,7 +9,9 @@
                 @can('change-setup')<x-admin.button :href="route('categories.create')" icon="add">New category</x-admin.button> @endcan
             </x-admin.empty-state>
         @else
-            <x-admin.table :headers="['Category', 'Services', 'Order', 'Status', '>Actions']">
+            <x-admin.table :headers="['Category', 'Services', 'Order', 'Status', '>Actions']"
+                           :mobile-order="['Category' => 0, 'Status' => 1, 'Services' => 2, 'Order' => 3, 'Actions' => 4]"
+                           :mobile-summary="['Status', 'Services']">
                 @foreach ($categories as $category)
                     <tr>
                         <td>

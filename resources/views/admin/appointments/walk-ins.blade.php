@@ -13,7 +13,10 @@
         @if ($visits->isEmpty())
             <x-admin.empty-state icon="how_to_reg" title="No walk-in visits yet" message="Record a guest's salon services here without creating an account or appointment." />
         @else
-            <x-admin.table :headers="['Guest', 'Services', 'Status', 'Branch', 'Staff', 'Visited', '>Total']" class="min-w-0 max-w-full overscroll-x-contain">
+            <x-admin.table :headers="['Guest', 'Services', 'Status', 'Branch', 'Staff', 'Visited', '>Total']"
+                           :mobile-order="['Guest' => 0, 'Total' => 1, 'Status' => 2, 'Visited' => 3, 'Services' => 4, 'Branch' => 5, 'Staff' => 6]"
+                           :mobile-summary="['Status', 'Visited']"
+                           :mobile-labels="['Visited' => 'Date']" class="min-w-0 max-w-full overscroll-x-contain">
                 @foreach ($visits as $visit)
                     <tr role="link" tabindex="0" data-href="{{ route('walk-ins.show', $visit) }}" onclick="window.location.href = this.dataset.href" onkeydown="if (event.key === 'Enter') window.location.href = this.dataset.href" class="cursor-pointer hover:bg-surface-container/60 focus-visible:outline-2 focus-visible:outline-primary">
                         <td>

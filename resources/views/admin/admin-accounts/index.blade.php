@@ -15,7 +15,9 @@
     </div>
 
     <x-admin.card :padding="false">
-        <x-admin.table :headers="['Name', 'Role', 'Status', 'Account type']">
+        <x-admin.table :headers="['Name', 'Role', 'Status', 'Account type']"
+                       :mobile-order="['Name' => 0, 'Status' => 1, 'Role' => 2, 'Account type' => 3]"
+                       :mobile-summary="['Status', 'Role']">
             @foreach ($admins as $admin)
                 <tr>
                     <td>

@@ -44,7 +44,7 @@
        :class="nav && 'translate-x-0 shadow-e2'" aria-label="Main navigation">
     <div class="flex items-center gap-2 pr-3 lg:pr-0">
         <a href="{{ route('dashboard') }}" class="flex min-w-0 flex-1 items-center gap-3 px-6 pb-5 pt-6 max-lg:pl-5">
-            <img src="{{ $logoUrl }}" alt="" class="h-11 w-11 rounded-xl bg-white object-contain p-0.5 ring-1 ring-outline-variant">
+            <img src="{{ \App\Support\Fmt::versionedAsset('images/dgs-logo-256.png') }}" alt="{{ $salonName }} logo" class="h-11 w-11 rounded-xl bg-white object-contain p-0.5 ring-1 ring-outline-variant">
             <span class="min-w-0">
                 <span class="block truncate text-lg font-bold leading-tight tracking-tight">{{ $salonName }}</span>
                 <span class="block text-xs text-outline">Admin portal</span>

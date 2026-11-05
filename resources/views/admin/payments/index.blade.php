@@ -29,7 +29,10 @@
             <x-admin.empty-state icon="payments" :title="$status === PaymentStatus::Submitted ? 'No receipts to check' : 'Nothing here'"
                                  :message="$status === PaymentStatus::Submitted ? 'New GCash receipts from customers will appear here.' : null" />
         @else
-            <x-admin.table :headers="['Booking', 'Customer', '>Deposit', 'Ref No.', $status->isHolding() ? 'Pay by' : 'Updated', 'Status', '>Actions']">
+            <x-admin.table :headers="['Booking', 'Customer', '>Deposit', 'Ref No.', $status->isHolding() ? 'Pay by' : 'Updated', 'Status', '>Actions']"
+                           :mobile-order="['Customer' => 0, 'Deposit' => 1, 'Status' => 2, 'Pay by' => 3, 'Updated' => 3, 'Booking' => 4, 'Ref No.' => 5, 'Actions' => 6]"
+                           :mobile-summary="['Status', $status->isHolding() ? 'Pay by' : 'Updated']"
+                           :mobile-labels="['Pay by' => 'Due', 'Updated' => 'Updated', 'Ref No.' => 'Reference number']">
                 @foreach ($appointments as $a)
                     <tr>
                         {{-- The booking number, its date and its branch share a cell so the table fits a laptop screen. --}}
@@ -50,7 +53,7 @@
                         <td class="whitespace-nowrap">
                             @if ($status->isHolding())
                                 {{ $a->payment_due_at?->format('g:i A') ?? '—' }}
-                                @if ($a->payment_due_at)<p class="text-xs text-on-surface-variant">{{ $a->payment_due_at->diffForHumans() }}</p>@endif
+                                @if ($a->payment_due_at)<p class="max-md:ml-1 max-md:inline text-xs text-on-surface-variant">{{ $a->payment_due_at->diffForHumans() }}</p>@endif
                             @else
                                 {{ $a->updated_at->format('M j, g:i A') }}
                             @endif

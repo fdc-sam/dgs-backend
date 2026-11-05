@@ -10,7 +10,10 @@
         @if ($customers->isEmpty())
             <x-admin.empty-state icon="groups" title="No customers found" />
         @else
-            <x-admin.table :headers="['Customer', 'Bookings', '>Lifetime value', 'Last visit', 'Joined', 'Status']">
+            <x-admin.table :headers="['Customer', 'Bookings', '>Lifetime value', 'Last visit', 'Joined', 'Status']"
+                           :mobile-order="['Customer' => 0, 'Lifetime value' => 1, 'Status' => 2, 'Last visit' => 3, 'Bookings' => 4, 'Joined' => 5]"
+                           :mobile-summary="['Status', 'Last visit']"
+                           :mobile-labels="['Lifetime value' => 'Lifetime spend', 'Joined' => 'Customer since']">
                 @foreach ($customers as $c)
                     {{-- The whole row opens the customer, like the name link (which still handles Ctrl/Cmd-click itself). --}}
                     <tr role="link" tabindex="0" data-href="{{ route('customers.show', $c) }}"
