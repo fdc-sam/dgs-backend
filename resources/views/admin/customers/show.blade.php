@@ -27,7 +27,10 @@
                 @if ($appointments->isEmpty())
                     <x-admin.empty-state icon="event" title="No appointments yet" />
                 @else
-                    <x-admin.table :headers="['Booking', 'When', 'Services', '>Total', 'Status']">
+                    <x-admin.table :headers="['Booking', 'When', 'Services', '>Total', 'Status']"
+                                   :mobile-order="['Booking' => 0, 'Total' => 1, 'Status' => 2, 'When' => 3, 'Services' => 4]"
+                                   :mobile-summary="['Status', 'When']"
+                                   :mobile-labels="['When' => 'Date']">
                         @foreach ($appointments as $a)
                             <tr>
                                 <td class="min-w-36">
@@ -36,7 +39,7 @@
                                 </td>
                                 <td class="whitespace-nowrap">
                                     {{ $a->startsAt()->format('M j, Y') }}
-                                    <p class="text-xs text-on-surface-variant">{{ $a->startsAt()->format('g:i A') }}</p>
+                                    <p class="max-md:ml-1 max-md:inline text-xs text-on-surface-variant">{{ $a->startsAt()->format('g:i A') }}</p>
                                 </td>
                                 <td>{{ $a->items->pluck('service_name')->join(', ') }}</td>
                                 <td class="whitespace-nowrap text-right">₱{{ number_format($a->total_amount, 2) }}</td>

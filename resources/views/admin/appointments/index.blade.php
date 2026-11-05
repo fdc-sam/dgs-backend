@@ -18,7 +18,10 @@
         @if ($appointments->isEmpty())
             <x-admin.empty-state icon="event_busy" title="No appointments found" message="Try adjusting the filters." />
         @else
-            <x-admin.table :headers="['Booking', 'Customer', 'Service', 'When', '>Total', 'Status', '>Actions']">
+            <x-admin.table :headers="['Booking', 'Customer', 'Service', 'When', '>Total', 'Status', '>Actions']"
+                           :mobile-order="['Customer' => 0, 'Total' => 1, 'Status' => 2, 'When' => 3, 'Booking' => 4, 'Service' => 5, 'Actions' => 6]"
+                           :mobile-summary="['Status', 'When']"
+                           :mobile-labels="['When' => 'Date']">
                 @foreach ($appointments as $a)
                     <tr>
                         {{-- Related details share a cell (number + branch, service + stylist, date + time) so the table fits a laptop screen. --}}
@@ -39,13 +42,13 @@
                         </td>
                         <td class="whitespace-nowrap">
                             {{ $a->appointment_date->format('M j, Y') }}
-                            <p class="text-xs text-on-surface-variant">{{ $a->startsAt()->format('g:i A') }}</p>
+                            <p class="max-md:ml-1 max-md:inline text-xs text-on-surface-variant">{{ $a->startsAt()->format('g:i A') }}</p>
                         </td>
                         <td class="whitespace-nowrap text-right font-medium">₱{{ number_format($a->total_amount, 2) }}</td>
                         <td>
                             <x-admin.status-badge :status="$a->status" />
                             @if ($a->payment_status !== \App\Enums\PaymentStatus::NotRequired)
-                                <x-admin.badge :tone="$a->payment_status->color()" icon="payments" class="mt-1">{{ $a->payment_status->label() }}</x-admin.badge>
+                                <x-admin.badge :tone="$a->payment_status->color()" icon="payments" class="table-mobile-secondary-status mt-1">{{ $a->payment_status->label() }}</x-admin.badge>
                             @endif
                         </td>
                         <td class="text-right">

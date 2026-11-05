@@ -14,7 +14,9 @@
         @if ($reviews->isEmpty())
             <x-admin.empty-state icon="reviews" title="No reviews here" message="Reviews appear after customers rate completed appointments." />
         @else
-            <x-admin.table :headers="['Customer', 'Service', 'Review', 'Status', '>Actions']" :wide="['Review']">
+            <x-admin.table :headers="['Customer', 'Service', 'Review', 'Status', '>Actions']" :wide="['Review']"
+                           :mobile-order="['Customer' => 0, 'Status' => 1, 'Service' => 2, 'Review' => 3, 'Actions' => 4]"
+                           :mobile-summary="['Status', 'Service']">
                 @foreach ($reviews as $r)
                     <tr>
                         <td class="whitespace-nowrap">

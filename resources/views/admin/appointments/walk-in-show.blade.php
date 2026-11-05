@@ -30,7 +30,10 @@
                 @if ($errors->any())
                     <div class="mx-5 mt-4 rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{{ $errors->first() }}</div>
                 @endif
-                <x-admin.table :headers="['Service', 'Stylist', 'Quantity', 'Price', 'Actions']">
+                <x-admin.table :headers="['Service', 'Stylist', 'Quantity', '>Price', 'Actions']"
+                               :mobile-order="['Service' => 0, 'Price' => 1, 'Quantity' => 2, 'Stylist' => 3, 'Actions' => 4]"
+                               :mobile-summary="['Quantity', 'Stylist']"
+                               :mobile-labels="['Price' => 'Service price']">
                     @foreach ($visit->items as $item)
                         <tr>
                             <td class="font-medium">{{ $item->service_name }}</td>

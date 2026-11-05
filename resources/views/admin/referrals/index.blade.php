@@ -21,7 +21,9 @@
             @if ($referrals->isEmpty())
                 <x-admin.empty-state icon="group_add" title="No referrals here" message="Customers add referrals from Profile → My referrals in the app." />
             @else
-                <x-admin.table :headers="['Referred person', 'Referred by', 'Services', 'Visits', 'Status', '>Actions']" :wide="['Services']">
+                <x-admin.table :headers="['Referred person', 'Referred by', 'Services', 'Visits', 'Status', '>Actions']" :wide="['Services']"
+                               :mobile-order="['Referred person' => 0, 'Status' => 1, 'Visits' => 2, 'Referred by' => 3, 'Services' => 4, 'Actions' => 5]"
+                               :mobile-summary="['Status', 'Visits']">
                     @foreach ($referrals as $r)
                         @php
                             $visit = $visits[$r->phone] ?? ['customer' => null, 'completed' => 0];

@@ -89,8 +89,9 @@ function renderCharts() {
     });
 }
 
-/** Phones show x-admin.table rows as cards (.table-stack in app.css); each cell is labelled with its column header. */
+/** On phones, x-admin.table rows show a compact summary and open additional record details on demand. */
 function labelTableCells() {
+    const compact = window.matchMedia('(width < 48rem)').matches;
     document.querySelectorAll('table.table-stack').forEach((table) => {
         const headers = Array.from(table.tHead?.rows[0]?.cells ?? []);
         Array.from(table.tBodies).flatMap((body) => Array.from(body.rows)).forEach((row) => {
@@ -103,12 +104,148 @@ function labelTableCells() {
             Array.from(row.cells).forEach((cell) => {
                 const header = headers[column];
                 if (header) {
-                    cell.dataset.label ??= header.textContent.trim();
+                    cell.dataset.label ??= header.dataset.mobileLabel || header.textContent.trim();
+                    cell.dataset.fullLabel ??= header.textContent.trim();
                     if (header.dataset.cell) cell.dataset.cell ??= header.dataset.cell;
+                    if (header.dataset.mobilePrimary) cell.dataset.mobilePrimary = 'true';
+                    if (header.dataset.mobileSummary) cell.dataset.mobileSummary = 'true';
+                    if (header.dataset.mobileOrder !== undefined) cell.style.order = header.dataset.mobileOrder;
                 }
                 column += cell.colSpan;
             });
+
+            // Keep the key, amount, status/date row visible; expand for a couple of extra fields and actions.
+            if (!compact) return;
+            const cells = Array.from(row.cells);
+            const primary = cells.find((cell) => cell.dataset.mobilePrimary === 'true') ?? cells[0];
+            const amount = cells.find((cell) => cell.dataset.cell === 'amount');
+            const summary = cells.filter((cell) => cell.dataset.mobileSummary === 'true');
+            const visibleSummary = summary.length ? summary : cells.filter((cell) => cell !== primary && cell !== amount && cell.dataset.cell !== 'actions').slice(0, 2);
+            const visible = new Set([primary, amount, ...visibleSummary].filter(Boolean));
+            const hidden = cells.filter((cell) => !visible.has(cell));
+            const preview = hidden
+                .filter((cell) => cell.dataset.cell !== 'actions')
+                .sort((a, b) => Number(a.style.order || 0) - Number(b.style.order || 0))
+                .slice(0, 2);
+            preview.forEach((cell, index) => {
+                cell.dataset.mobilePreview = 'true';
+                cell.style.order = String(100 + index);
+                const value = document.createElement('span');
+                value.className = 'table-mobile-cell-value';
+                while (cell.firstChild) value.append(cell.firstChild);
+                cell.append(value);
+            });
+            const actions = hidden.filter((cell) => cell.dataset.cell === 'actions');
+            actions.forEach((cell) => { cell.style.order = '998'; });
+            const remaining = hidden.filter((cell) => !preview.includes(cell) && !actions.includes(cell));
+
+            hidden.forEach((cell) => { cell.hidden = true; });
+            row.dataset.mobileCompact = 'true';
+            if (row.tabIndex < 0) {
+                row.tabIndex = 0;
+                row.dataset.mobileTabindex = 'true';
+            }
+
+            const toggle = document.createElement('button');
+            toggle.type = 'button';
+            toggle.className = 'table-mobile-details';
+            toggle.setAttribute('aria-expanded', 'false');
+            toggle.setAttribute('aria-label', 'Show row details');
+            toggle.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">expand_more</span>';
+            const toggleHost = [...visibleSummary]
+                .sort((a, b) => Number(a.style.order || 0) - Number(b.style.order || 0))
+                .at(-1) ?? primary;
+            toggleHost?.append(toggle);
+
+            const fullRecordCell = document.createElement('td');
+            fullRecordCell.className = 'table-mobile-full-record';
+            fullRecordCell.hidden = true;
+            fullRecordCell.style.order = '999';
+            fullRecordCell.innerHTML = '<button type="button" class="table-mobile-full-record-button">Full record <span class="material-symbols-outlined" aria-hidden="true">open_in_new</span></button>';
+            row.append(fullRecordCell);
+
+            const setExpanded = (expanded) => {
+                row.dataset.mobileExpanded = String(expanded);
+                [...preview, ...actions, fullRecordCell].forEach((cell) => { cell.hidden = !expanded; });
+                toggle.setAttribute('aria-expanded', String(expanded));
+                toggle.setAttribute('aria-label', expanded ? 'Hide row details' : 'Show row details');
+                toggle.querySelector('.material-symbols-outlined').textContent = expanded ? 'expand_less' : 'expand_more';
+            };
+            toggle.addEventListener('click', (event) => {
+                event.stopPropagation();
+                setExpanded(row.dataset.mobileExpanded !== 'true');
+            });
+            fullRecordCell.querySelector('button').addEventListener('click', (event) => {
+                event.stopPropagation();
+                openMobileRecordSheet(row, primary);
+            });
+
+            // The whole row acts as a thumb-sized disclosure target; links and controls keep their own behavior.
+            row.addEventListener('click', (event) => {
+                if (event.target.closest('a, button, input, select, textarea, label')) return;
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                setExpanded(row.dataset.mobileExpanded !== 'true');
+            }, true);
+            row.addEventListener('keydown', (event) => {
+                if (event.target !== row || !['Enter', ' '].includes(event.key)) return;
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                setExpanded(row.dataset.mobileExpanded !== 'true');
+            }, true);
+
+            // Keep unused cells hidden even when a row has no preview fields.
+            remaining.forEach((cell) => { cell.hidden = true; });
         });
+    });
+}
+
+function openMobileRecordSheet(row, primary) {
+    const dialog = document.getElementById('mobile-record-sheet');
+    if (!dialog) return;
+    const title = dialog.querySelector('[data-record-title]');
+    const fields = dialog.querySelector('[data-record-fields]');
+    const titleSource = primary?.cloneNode(true);
+    titleSource?.querySelectorAll('button, .table-mobile-details').forEach((node) => node.remove());
+    title.textContent = titleSource?.innerText.trim().split('\n')[0] || 'Record details';
+    fields.replaceChildren();
+
+    Array.from(row.cells).forEach((cell) => {
+        if (cell.dataset.cell === 'actions' || cell.classList.contains('table-mobile-full-record')) return;
+        const item = document.createElement('div');
+        item.className = 'mobile-record-field';
+        const label = document.createElement('dt');
+        label.textContent = cell.dataset.fullLabel || cell.dataset.label || 'Details';
+        const value = document.createElement('dd');
+        const content = cell.cloneNode(true);
+        content.hidden = false;
+        content.querySelector('.table-mobile-details')?.remove();
+        content.removeAttribute('data-mobile-primary');
+        while (content.firstChild) value.append(content.firstChild);
+        item.append(label, value);
+        fields.append(item);
+    });
+
+    if (!dialog.open) dialog.showModal();
+}
+
+function restoreMobileTableRows() {
+    document.querySelectorAll('table.table-stack tbody tr').forEach((row) => {
+        row.querySelectorAll('td[hidden]').forEach((cell) => { cell.hidden = false; });
+        row.querySelectorAll('td[data-mobile-preview]').forEach((cell) => {
+            const value = cell.querySelector(':scope > .table-mobile-cell-value');
+            if (value) {
+                while (value.firstChild) cell.insertBefore(value.firstChild, value);
+                value.remove();
+            }
+            delete cell.dataset.mobilePreview;
+        });
+        row.querySelectorAll('.table-mobile-details').forEach((button) => button.remove());
+        row.querySelectorAll('.table-mobile-full-record').forEach((cell) => cell.remove());
+        if (row.dataset.mobileTabindex === 'true') row.removeAttribute('tabindex');
+        delete row.dataset.mobileTabindex;
+        delete row.dataset.mobileCompact;
+        delete row.dataset.mobileExpanded;
     });
 }
 
@@ -124,6 +261,16 @@ function watchTableOverflow() {
 }
 
 document.addEventListener('DOMContentLoaded', labelTableCells);
+document.addEventListener('DOMContentLoaded', () => {
+    const dialog = document.getElementById('mobile-record-sheet');
+    if (!dialog) return;
+    dialog.querySelector('[data-close-record-sheet]')?.addEventListener('click', () => dialog.close());
+    dialog.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); });
+});
+window.matchMedia('(width < 48rem)').addEventListener('change', (event) => {
+    if (event.matches) labelTableCells();
+    else restoreMobileTableRows();
+});
 document.addEventListener('DOMContentLoaded', watchTableOverflow);
 Alpine.start();
 // After Alpine, so x-model has already chosen each select's value when Select2 reads it.

@@ -15,7 +15,10 @@
                 @can('change-setup')<x-admin.button :href="route('services.create')" icon="add">New service</x-admin.button> @endcan
             </x-admin.empty-state>
         @else
-            <x-admin.table :headers="['Service', '>Price', 'Duration', 'Offered', 'Status', '>Actions']">
+            <x-admin.table :headers="['Service', '>Price', 'Duration', 'Offered', 'Status', '>Actions']"
+                           :mobile-order="['Service' => 0, 'Price' => 1, 'Status' => 2, 'Duration' => 3, 'Offered' => 4, 'Actions' => 5]"
+                           :mobile-summary="['Status', 'Duration']"
+                           :mobile-labels="['Price' => 'Service price', 'Offered' => 'Availability']">
                 @foreach ($services as $service)
                     <tr>
                         <td>

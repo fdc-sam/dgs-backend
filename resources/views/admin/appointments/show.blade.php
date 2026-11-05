@@ -53,7 +53,10 @@
             </x-admin.card>
 
             <x-admin.card title="Services" :padding="false">
-                <x-admin.table :headers="['Service', 'Option', 'Stylist', 'Duration', '>Price']">
+                <x-admin.table :headers="['Service', 'Option', 'Stylist', 'Duration', '>Price']"
+                               :mobile-order="['Service' => 0, 'Price' => 1, 'Option' => 2, 'Stylist' => 3, 'Duration' => 4]"
+                               :mobile-summary="['Option', 'Stylist']"
+                               :mobile-labels="['Price' => 'Service price', 'Option' => 'Selected option']">
                     @foreach ($a->items as $item)
                         <tr>
                             <td class="font-medium">{{ $item->service_name }}

@@ -29,7 +29,10 @@
             </x-admin.empty-state>
         @else
             <div x-data="{ target: { name: '', unit: '', stock: '', restock: '', count: '' } }">
-            <x-admin.table :headers="['Product', '>In stock', '>Cost per unit', 'Used in', '>Actions']">
+            <x-admin.table :headers="['Product', '>In stock', '>Cost per unit', 'Used in', '>Actions']"
+                           :mobile-order="['Product' => 0, 'Cost per unit' => 1, 'In stock' => 2, 'Used in' => 3, 'Actions' => 4]"
+                           :mobile-summary="['In stock', 'Used in']"
+                           :mobile-labels="['In stock' => 'Stock on hand', 'Cost per unit' => 'Unit cost']">
                 @foreach ($products as $product)
                     <tr>
                         <td>

@@ -61,6 +61,22 @@
             </button>
         </div>
     </div>
+
+    <dialog id="mobile-record-sheet" class="mobile-record-sheet" aria-labelledby="mobile-record-sheet-title">
+        <div class="mobile-record-sheet__panel">
+            <div class="mobile-record-sheet__handle" aria-hidden="true"></div>
+            <header class="mobile-record-sheet__header">
+                <div class="min-w-0">
+                    <p class="eyebrow">Full record</p>
+                    <h2 id="mobile-record-sheet-title" class="mobile-record-sheet__title" data-record-title>Record details</h2>
+                </div>
+                <button type="button" class="mobile-record-sheet__close" data-close-record-sheet aria-label="Close full record">
+                    <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                </button>
+            </header>
+            <dl class="mobile-record-sheet__fields" data-record-fields></dl>
+        </div>
+    </dialog>
     @stack('scripts')
 </body>
 </html>

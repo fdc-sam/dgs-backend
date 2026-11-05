@@ -16,7 +16,10 @@
                 @can('change-setup')<x-admin.button :href="route('promotions.create')" icon="add">New promotion</x-admin.button> @endcan
             </x-admin.empty-state>
         @else
-            <x-admin.table :headers="['Promotion', 'Valid', 'Services', 'Status', '>Actions']">
+            <x-admin.table :headers="['Promotion', 'Valid', 'Services', 'Status', '>Actions']"
+                           :mobile-order="['Promotion' => 0, 'Status' => 1, 'Valid' => 2, 'Services' => 3, 'Actions' => 4]"
+                           :mobile-summary="['Status', 'Valid']"
+                           :mobile-labels="['Valid' => 'Promotion dates']">
                 @foreach ($promotions as $promo)
                     @php $live = $promo->isCurrentlyActive(); $expired = $promo->end_at->isPast(); @endphp
                     <tr>

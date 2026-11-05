@@ -15,7 +15,7 @@
         <div class="relative min-w-0 flex-1 self-stretch">
             <a href="{{ route('dashboard') }}" class="absolute inset-0 flex items-center gap-2.5 transition duration-200 lg:hidden"
                :class="scrolled && 'pointer-events-none -translate-y-2 opacity-0'" :tabindex="scrolled ? -1 : 0">
-                <img src="{{ $logoUrl }}" alt="" class="h-8 w-8 shrink-0 rounded-lg bg-white object-contain p-px ring-1 ring-outline-variant">
+                <img src="{{ \App\Support\Fmt::versionedAsset('images/dgs-logo-256.png') }}" alt="{{ $salonName }} logo" class="h-8 w-8 shrink-0 rounded-lg bg-white object-contain p-px ring-1 ring-outline-variant">
                 <span class="truncate text-[0.9375rem] font-bold tracking-tight">{{ $salonName }}</span>
             </a>
             <p class="absolute inset-0 flex translate-y-2 items-center opacity-0 transition duration-200 lg:static lg:h-full lg:translate-y-0 lg:opacity-100"
