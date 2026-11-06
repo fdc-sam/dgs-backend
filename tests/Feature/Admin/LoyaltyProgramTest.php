@@ -48,6 +48,32 @@ class LoyaltyProgramTest extends TestCase
             ]);
     }
 
+    public function test_the_app_lists_the_services_loyalty_prices_above_the_typed_perks(): void
+    {
+        $botox = Service::factory()->create(['name' => 'Brazilian botox', 'regular_price' => 1500, 'loyalty_price' => 500, 'return_price' => 1000,
+            'first_visit_discount_enabled' => true, 'first_visit_discount_period' => 30, 'first_visit_discount_unit' => 'days']);
+        // Return price turned off: only the card holder price is listed.
+        Service::factory()->create(['name' => 'Hair rebond', 'regular_price' => 2500, 'loyalty_price' => 2300, 'return_price' => 2000, 'first_visit_discount_enabled' => false]);
+        // Not listed: no loyalty price, a price that is not below the regular one, or an inactive service.
+        Service::factory()->create(['name' => 'Manicure', 'regular_price' => 300, 'loyalty_price' => 300]);
+        Service::factory()->create(['name' => 'Old promo', 'regular_price' => 900, 'loyalty_price' => 500, 'status' => 'inactive']);
+
+        $this->getJson('/api/v1/settings')->assertOk()
+            ->assertJsonPath('data.loyalty_service_prices', [
+                ['service_id' => $botox->id, 'service' => 'Brazilian botox', 'regular_price' => 1500, 'card_holder_price' => 500,
+                    'return_price' => 1000, 'return_period' => 30, 'return_period_unit' => 'days'],
+                ['service_id' => Service::where('name', 'Hair rebond')->value('id'), 'service' => 'Hair rebond', 'regular_price' => 2500,
+                    'card_holder_price' => 2300, 'return_price' => null, 'return_period' => null, 'return_period_unit' => null],
+            ])
+            ->assertJsonPath('data.loyalty_card_perks.0', 'Haircut 50% discount for men');
+
+        // Settings shows the admin which services are listed automatically, so the typed perks need not repeat them.
+        $this->actingAs(User::factory()->superAdmin()->create(), 'web');
+        $this->get('/settings')->assertOk()->assertSee('Listed automatically from service prices')
+            ->assertSeeInOrder(['Brazilian botox', 'regular ₱1,500.00', 'card holder ₱500.00', '₱1,000.00 after no visit within 30 days', 'Hair rebond'])
+            ->assertSee('Other card perks / discounts');
+    }
+
     public function test_the_owner_edits_the_perks_and_rewards_in_settings(): void
     {
         $this->actingAs(User::factory()->superAdmin()->create());

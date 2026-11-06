@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Services\AuditLogger;
 use App\Services\FileUploadService;
+use App\Services\LoyaltyProgram;
 use App\Services\SettingsService;
 use App\Support\Fmt;
 use Illuminate\Http\RedirectResponse;
@@ -14,10 +15,12 @@ use Illuminate\View\View;
 
 class SettingsController extends Controller
 {
-    public function edit(SettingsService $settings): View
+    public function edit(SettingsService $settings, LoyaltyProgram $loyalty): View
     {
         return view('admin.settings.edit', [
             'settings' => $settings->all(),
+            // Listed in the app automatically, so the typed perks need not repeat them.
+            'loyaltyServicePrices' => $loyalty->servicePrices(),
             'logoUrl' => $settings->logoUrl(),
             'paymentQrUrl' => Fmt::url($settings->get('payment_gcash_qr') ?: null),
         ]);

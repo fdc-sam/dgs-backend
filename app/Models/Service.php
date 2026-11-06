@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['category_id', 'name', 'slug', 'short_description', 'description', 'image', 'regular_price', 'deposit_amount', 'gcash_qr', 'loyalty_discount', 'first_visit_discount', 'first_visit_discount_enabled', 'first_visit_discount_period', 'first_visit_discount_unit', 'duration_minutes', 'buffer_minutes', 'status', 'is_featured', 'sort_order'])]
+#[Fillable(['category_id', 'name', 'slug', 'short_description', 'description', 'image', 'regular_price', 'deposit_amount', 'gcash_qr', 'loyalty_price', 'return_price', 'first_visit_discount_enabled', 'first_visit_discount_period', 'first_visit_discount_unit', 'duration_minutes', 'buffer_minutes', 'status', 'is_featured', 'sort_order'])]
 class Service extends Model
 {
     /** @use HasFactory<ServiceFactory> */
@@ -32,8 +32,9 @@ class Service extends Model
             'status' => RecordStatus::class,
             'regular_price' => 'decimal:2',
             'deposit_amount' => 'decimal:2',
-            'loyalty_discount' => 'decimal:2',
-            'first_visit_discount' => 'decimal:2',
+            // Loyalty card prices: what a card holder pays, and what they pay after no visit within the return period.
+            'loyalty_price' => 'decimal:2',
+            'return_price' => 'decimal:2',
             'first_visit_discount_enabled' => 'boolean',
             'first_visit_discount_period' => 'integer',
             'duration_minutes' => 'integer',
@@ -49,8 +50,25 @@ class Service extends Model
         return $this->gcash_qr && (float) $this->deposit_amount > 0 ? (float) $this->deposit_amount : null;
     }
 
-    /** A return discount applies when the customer's last completed visit, or signup if none, is outside the lookback. */
-    public function qualifiesForFirstVisitDiscount(User $customer): bool
+    /**
+     * The price a customer pays for this service with their loyalty card, or null for the regular price. Only an
+     * active (not expired) card counts. The return price wins when its rule is on and they have not had this service
+     * within the period; otherwise the card holder price. Callers still charge the option or branch price when that is
+     * lower.
+     */
+    public function loyaltyPriceFor(?User $customer): ?float
+    {
+        if (! $customer?->hasActiveLoyaltyCard()) return null;
+
+        if ((float) $this->return_price > 0 && $this->qualifiesForReturnPrice($customer)) {
+            return (float) $this->return_price;
+        }
+
+        return (float) $this->loyalty_price > 0 ? (float) $this->loyalty_price : null;
+    }
+
+    /** The return price applies when the customer's last completed visit for this service, or signup if none, is outside the period. */
+    public function qualifiesForReturnPrice(User $customer): bool
     {
         $period = (int) $this->first_visit_discount_period;
         if (! $this->first_visit_discount_enabled || $period < 1) return false;

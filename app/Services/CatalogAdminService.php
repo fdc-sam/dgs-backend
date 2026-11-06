@@ -51,8 +51,9 @@ class CatalogAdminService
                 'short_description' => $data['short_description'] ?? null,
                 'description' => $data['description'] ?? null,
                 'regular_price' => $data['regular_price'],
-                'loyalty_discount' => $data['loyalty_discount'] ?? 0,
-                'first_visit_discount' => $data['first_visit_discount'] ?? 0,
+                // Blank or 0 = no loyalty price for that case.
+                'loyalty_price' => (float) ($data['loyalty_price'] ?? 0) > 0 ? $data['loyalty_price'] : null,
+                'return_price' => (float) ($data['return_price'] ?? 0) > 0 ? $data['return_price'] : null,
                 'first_visit_discount_enabled' => (bool) ($data['first_visit_discount_enabled'] ?? false),
                 'first_visit_discount_period' => $data['first_visit_discount_period'] ?? 0,
                 'first_visit_discount_unit' => $data['first_visit_discount_unit'] ?? 'days',

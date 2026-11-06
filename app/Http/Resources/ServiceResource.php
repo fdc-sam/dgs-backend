@@ -18,16 +18,10 @@ class ServiceResource extends JsonResource
         $variants = $this->relationLoaded('variants') ? $this->variants : null;
         $priceFrom = $variants && $variants->isNotEmpty() ? min($price, (float) $variants->min('price')) : $price;
         $average = Fmt::attr($this->resource, 'approved_reviews_avg_rating');
-        $customer = $request->user();
-        // An expired card gets the regular prices until the salon renews it.
-        $hasLoyaltyCard = (bool) $customer?->hasActiveLoyaltyCard();
-        $discount = 0.0;
-        if ($hasLoyaltyCard) {
-            $discount = $this->qualifiesForFirstVisitDiscount($customer)
-                ? (float) $this->first_visit_discount
-                : (float) $this->loyalty_discount;
-        }
-        $discountedPrice = $discount > 0 ? max(0, $priceFrom - $discount) : null;
+        // What this customer pays with their loyalty card (Services → Loyalty card prices), or null: no active card or
+        // no loyalty price. An option or branch price that is already lower still wins.
+        $loyaltyPrice = $this->resource->loyaltyPriceFor($request->user());
+        $discountedPrice = $loyaltyPrice !== null && $loyaltyPrice < $priceFrom ? $loyaltyPrice : null;
 
         return [
             'id' => $this->id,
@@ -43,15 +37,19 @@ class ServiceResource extends JsonResource
             'description' => $this->description,
             'image_url' => Fmt::url($this->image),
             'regular_price' => Fmt::money($this->regular_price),
-            'loyalty_discount' => Fmt::money($this->loyalty_discount),
-            'return_discount' => Fmt::money($this->first_visit_discount),
-            'first_visit_discount_enabled' => (bool) $this->first_visit_discount_enabled,
-            'return_discount_period' => (int) $this->first_visit_discount_period,
-            'return_discount_period_unit' => $this->first_visit_discount_unit,
+            // The service's loyalty card prices as set in the admin (null = none).
+            'card_holder_price' => Fmt::money($this->loyalty_price),
+            'return_price' => Fmt::money($this->return_price),
+            'return_price_enabled' => (bool) $this->first_visit_discount_enabled,
+            'return_price_period' => (int) $this->first_visit_discount_period,
+            'return_price_period_unit' => $this->first_visit_discount_unit,
             'price' => $price,
             'price_from' => Fmt::money($priceFrom),
             'loyalty_discounted_price' => $discountedPrice === null ? null : Fmt::money($discountedPrice),
-            'loyalty_discount_amount' => Fmt::money($discount),
+            // The loyalty price this customer pays for any option or branch (the app charges the lower of the two).
+            'loyalty_price' => Fmt::money($loyaltyPrice),
+            // For older app versions, which take a flat amount off: the saving on the regular (or branch) price.
+            'loyalty_discount_amount' => Fmt::money($loyaltyPrice === null ? 0 : max(0, $price - $loyaltyPrice)),
             // GCash downpayment asked when booking this service (its own fixed-amount QR); null = none.
             'deposit_amount' => Fmt::money($this->resource->ownDeposit()),
             'duration_minutes' => $this->duration_minutes,
@@ -66,7 +64,7 @@ class ServiceResource extends JsonResource
                 'id' => $branch->id,
                 'name' => $branch->name,
                 'price' => Fmt::money($branch->pivot->custom_price ?? $this->regular_price),
-                'loyalty_discounted_price' => $discount > 0 ? Fmt::money(max(0, min((float) ($branch->pivot->custom_price ?? $this->regular_price), (float) ($this->variants->min('price') ?? $price)) - $discount)) : null,
+                'loyalty_discounted_price' => $this->loyaltyPriceAt((float) ($branch->pivot->custom_price ?? $this->regular_price), $loyaltyPrice),
             ])->values()),
             'staff' => $this->whenLoaded('staff', fn () => $this->staff->map(fn ($staff) => [
                 'id' => $staff->id,
@@ -75,5 +73,13 @@ class ServiceResource extends JsonResource
                 'photo_url' => Fmt::url($staff->user?->profile_photo),
             ])->values()),
         ];
+    }
+
+    /** The loyalty price to show at a branch: only when it beats the cheapest way to book the service there. */
+    private function loyaltyPriceAt(float $branchPrice, ?float $loyaltyPrice): ?float
+    {
+        $from = min($branchPrice, (float) ($this->variants->min('price') ?? $branchPrice));
+
+        return $loyaltyPrice !== null && $loyaltyPrice < $from ? Fmt::money($loyaltyPrice) : null;
     }
 }

@@ -11,7 +11,24 @@
                          subtitle="Prices shown to customers come from here. Do not enter unofficial prices." />
 
     <form method="POST" action="{{ $editing ? route('services.update', $service) : route('services.store') }}" enctype="multipart/form-data"
-          x-data="{ price: @js((float) old('regular_price', $service->regular_price)) }">
+          x-data="{
+              price: @js((float) old('regular_price', $service->regular_price)),
+              cardPrice: @js(filled($cardPrice = old('loyalty_price', $service->loyalty_price)) ? (float) $cardPrice : ''),
+              returnPrice: @js(filled($returnPrice = old('return_price', $service->return_price)) ? (float) $returnPrice : ''),
+              returnOn: @js((bool) old('first_visit_discount_enabled', $service->first_visit_discount_enabled)),
+              period: @js((int) old('first_visit_discount_period', $service->first_visit_discount_period ?: 30)),
+              unit: @js(old('first_visit_discount_unit', $service->first_visit_discount_unit ?? 'days')),
+              peso(value) { return '₱' + Number(value).toLocaleString('en-PH', { maximumFractionDigits: 2 }) },
+              summary() {
+                  const card = this.cardPrice > 0 ? Math.min(this.cardPrice, this.price) : this.price;
+                  let text = `With these prices: no card or expired card ${this.peso(this.price)} · card holder ${this.peso(card)}`;
+                  if (this.returnOn && this.returnPrice > 0 && this.period > 0) {
+                      const unit = this.period === 1 ? this.unit.replace(/s$/, '') : this.unit;
+                      text += ` · no visit within ${this.period} ${unit} ${this.peso(Math.min(this.returnPrice, this.price))}`;
+                  }
+                  return text + '.';
+              },
+          }">
         @csrf @if ($editing) @method('PUT') @endif
         {{-- Test accounts see the shared setup read-only. --}}
         <fieldset class="min-w-0" @cannot('change-setup') disabled @endcannot>
@@ -27,23 +44,40 @@
                     </div>
                 </x-admin.card>
 
-                <x-admin.card title="Loyalty card discounts" subtitle="The return discount applies when a loyalty card holder has not completed this service within the selected period. For a first visit, the period starts from account creation.">
-                    <div class="grid gap-5 sm:grid-cols-2">
-                        <x-admin.input name="loyalty_discount" type="number" step="0.01" min="0" label="Loyalty card discount" prefix="₱" :value="$service->loyalty_discount ?? 0" />
-                        <x-admin.input name="first_visit_discount" type="number" step="0.01" min="0" label="Return discount" prefix="₱" :value="$service->first_visit_discount ?? 0" />
-                        <div class="sm:col-span-2 flex flex-wrap items-end gap-4">
-                            <x-admin.checkbox name="first_visit_discount_enabled" label="Enable return discount" :checked="$service->first_visit_discount_enabled ?? false" />
-                            <x-admin.input name="first_visit_discount_period" type="number" min="1" max="1200" step="1" label="No visit within" :value="$service->first_visit_discount_period ?: 30" />
-                            <x-admin.select name="first_visit_discount_unit" label="Period unit" :options="['days' => 'Days', 'months' => 'Months']" :value="$service->first_visit_discount_unit ?? 'days'" />
-                        </div>
-                    </div>
-                </x-admin.card>
-
                 <x-admin.card title="Pricing & timing">
                     <div class="grid gap-5 sm:grid-cols-3">
                         <x-admin.input name="regular_price" type="number" step="0.01" min="0" label="Regular price" prefix="₱" :value="$service->regular_price" required x-model.number="price" />
                         <x-admin.input name="duration_minutes" type="number" min="5" step="5" label="Duration (min)" :value="$service->duration_minutes" required />
                         <x-admin.input name="buffer_minutes" type="number" min="0" step="5" label="Buffer after (min)" :value="$service->buffer_minutes" hint="Clean-up time; blocks the staff member." />
+                    </div>
+                </x-admin.card>
+
+                {{--
+                    What loyalty card holders pay (Service::loyaltyPriceFor). First box: the return price, for a card holder
+                    who has not had this service within the period. Second box: the card holder price, for everyone else
+                    with an active card. The live line below works it out from the prices typed in.
+                --}}
+                <x-admin.card title="Loyalty card prices" subtitle="What customers with an active (not expired) loyalty card pay for this service. Customers without a card, or with an expired card, pay the regular price.">
+                    <div class="mb-5 rounded-xl bg-surface-container px-4 py-3 text-sm text-on-surface-variant">
+                        <p class="font-medium text-on-surface">How the prices are chosen</p>
+                        <ul class="mt-1.5 list-disc space-y-1 pl-5">
+                            <li><span class="font-medium text-on-surface">Return price</span>: a card holder who has <em>not</em> had this service within the period below pays this. For a first visit, the period counts from when they signed up. Only used when “Enable return price” is ticked.</li>
+                            <li><span class="font-medium text-on-surface">Card holder price</span>: every other customer with an active card pays this.</li>
+                            <li>Leave a box blank to not use it. If an option or branch price is already lower, the customer pays that.</li>
+                            <li>Example: regular ₱1,500, return price ₱1,000, card holder price ₱500. A card holder who had this service in the last 30 days pays ₱500; one who has not pays ₱1,000.</li>
+                        </ul>
+                        <p class="mt-2 font-medium text-on-surface" x-cloak x-show="price > 0" x-text="summary()"></p>
+                    </div>
+                    <div class="grid gap-5 sm:grid-cols-2">
+                        <x-admin.input name="return_price" type="number" step="0.01" min="0" label="Return price" prefix="₱" :value="$service->return_price" placeholder="Not used"
+                                       x-model.number="returnPrice" hint="Card holder with no visit for this service within the period below." />
+                        <x-admin.input name="loyalty_price" type="number" step="0.01" min="0" label="Card holder price" prefix="₱" :value="$service->loyalty_price" placeholder="Not used"
+                                       x-model.number="cardPrice" hint="Every other customer with an active loyalty card." />
+                        <div class="sm:col-span-2 flex flex-wrap items-end gap-4">
+                            <x-admin.checkbox name="first_visit_discount_enabled" label="Enable return price" :checked="$service->first_visit_discount_enabled ?? false" x-model="returnOn" />
+                            <x-admin.input name="first_visit_discount_period" type="number" min="1" max="1200" step="1" label="No visit within" :value="$service->first_visit_discount_period ?: 30" x-model.number="period" />
+                            <x-admin.select name="first_visit_discount_unit" label="Period unit" :options="['days' => 'Days', 'months' => 'Months']" :value="$service->first_visit_discount_unit ?? 'days'" x-model="unit" />
+                        </div>
                     </div>
                 </x-admin.card>
 

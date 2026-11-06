@@ -397,21 +397,20 @@ class AppointmentService
         });
     }
 
-    /** Apply the configured loyalty card reduction to every eligible service in this booking (not for an expired card). */
+    /**
+     * Charge loyalty card holders their loyalty price (card holder or return price) for each service that has one,
+     * unless the option or branch price is already lower. Not for an expired card (Service::loyaltyPriceFor).
+     */
     private function applyLoyaltyDiscounts(User $customer, Collection $selections): Collection
     {
         if (! $customer->hasActiveLoyaltyCard()) return $selections;
 
         return $selections->map(function (ServiceSelection $selection) use ($customer) {
-            $service = $selection->service;
-            $amount = $service->qualifiesForFirstVisitDiscount($customer)
-                ? (float) $service->first_visit_discount
-                : (float) $service->loyalty_discount;
-            $amount = min($selection->unitPrice, $amount);
-            if ($amount <= 0) return $selection;
+            $price = $selection->service->loyaltyPriceFor($customer);
+            if ($price === null || $price >= $selection->unitPrice) return $selection;
 
-            return new ServiceSelection($service, $selection->variant, $selection->unitPrice - $amount,
-                $selection->durationMinutes, $selection->bufferMinutes, $selection->staffProfileId, $amount);
+            return new ServiceSelection($selection->service, $selection->variant, $price,
+                $selection->durationMinutes, $selection->bufferMinutes, $selection->staffProfileId, round($selection->unitPrice - $price, 2));
         });
     }
 

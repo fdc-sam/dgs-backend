@@ -66,8 +66,28 @@
                     ->map(fn ($row) => ['service' => $row['service'] ?? '', 'amount' => isset($row['amount']) ? (string) (float) $row['amount'] : ''])->values()->all();
             @endphp
             <div class="grid gap-6 lg:grid-cols-2">
-                <x-admin.textarea name="loyalty_card_perks" label="Card perks / discounts" :value="$s['loyalty_card_perks']" rows="7" maxlength="2000"
-                                  hint="One perk per line, as printed on the card, e.g. Less ₱200 for rebond." />
+                <div>
+                    {{-- Services with loyalty prices come first in the app, built from each service's prices. --}}
+                    <div class="mb-4 rounded-xl bg-surface-container px-4 py-3 text-sm">
+                        <p class="font-medium">Listed automatically from service prices</p>
+                        @if (empty($loyaltyServicePrices))
+                            <p class="mt-1 text-on-surface-variant">None yet. Set a card holder price or return price on a service (Services → edit → Loyalty card prices) and it shows here and in the app.</p>
+                        @else
+                            <ul class="mt-1.5 space-y-1 text-on-surface-variant">
+                                @foreach ($loyaltyServicePrices as $row)
+                                    <li>
+                                        <a href="{{ route('services.edit', $row['service_id']) }}" class="font-medium text-on-surface hover:underline">{{ $row['service'] }}</a>
+                                        · regular {{ \App\Support\Fmt::peso($row['regular_price']) }}
+                                        @if ($row['card_holder_price'] !== null) · card holder {{ \App\Support\Fmt::peso($row['card_holder_price']) }} @endif
+                                        @if ($row['return_price'] !== null) · {{ \App\Support\Fmt::peso($row['return_price']) }} after no visit within {{ $row['return_period'] }} {{ \Illuminate\Support\Str::plural(rtrim($row['return_period_unit'], 's'), $row['return_period']) }} @endif
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
+                    </div>
+                    <x-admin.textarea name="loyalty_card_perks" label="Other card perks / discounts" :value="$s['loyalty_card_perks']" rows="7" maxlength="2000"
+                                      hint="One perk per line, as printed on the card, e.g. Haircut 50% discount for men. Shown below the service prices; no need to repeat them here." />
+                </div>
 
                 <div x-data="{ rows: @js($rewardRows) }">
                     <input type="hidden" name="referral_rewards_shown" value="1">
