@@ -67,17 +67,18 @@
             @endphp
             <div class="grid gap-6 lg:grid-cols-2">
                 <div>
-                    {{-- Services with loyalty prices come first in the app, built from each service's prices. --}}
-                    <div class="mb-4 rounded-xl bg-surface-container px-4 py-3 text-sm">
-                        <p class="font-medium">Listed automatically from service prices</p>
+                    {{-- The card's perks in the app, built from each service's loyalty prices; changed on the service itself. --}}
+                    <p class="label">Card perks &amp; discounts</p>
+                    <p class="mb-3 text-xs text-on-surface-variant">Listed in the app from each service's loyalty card prices. To change one, open the service (Services → edit → Loyalty card prices).</p>
+                    <div class="rounded-xl bg-surface-container px-4 py-3 text-sm">
                         @if (empty($loyaltyServicePrices))
-                            <p class="mt-1 text-on-surface-variant">None yet. On a service (Services → edit → Loyalty card prices), turn the switch on and set a Less discount or tiered prices; it then shows here and in the app.</p>
+                            <p class="text-on-surface-variant">None yet. On a service, turn the Loyalty card prices switch on and set a Less discount or tiered prices; it then shows here and in the app.</p>
                         @else
                             {{-- Grouped like the service form's tabs, the same way the app lists them. --}}
                             @foreach (['less' => 'Less (discount)', 'tiered' => 'Tiered member pricing'] as $mode => $modeLabel)
                                 @php $rows = array_filter($loyaltyServicePrices, fn ($row) => $row['pricing'] === $mode); @endphp
                                 @continue (empty($rows))
-                                <p class="mt-2.5 text-xs font-semibold uppercase tracking-wide text-on-surface-variant">{{ $modeLabel }}</p>
+                                <p class="mt-2.5 text-xs font-semibold first:mt-0 uppercase tracking-wide text-on-surface-variant">{{ $modeLabel }}</p>
                                 <ul class="mt-1 space-y-1 text-on-surface-variant">
                                     @foreach ($rows as $row)
                                         <li>
@@ -95,8 +96,6 @@
                             @endforeach
                         @endif
                     </div>
-                    <x-admin.textarea name="loyalty_card_perks" label="Other card perks / discounts" :value="$s['loyalty_card_perks']" rows="7" maxlength="2000"
-                                      hint="One perk per line, as printed on the card, e.g. Haircut 50% discount for men. Shown below the service prices; no need to repeat them here." />
                 </div>
 
                 <div x-data="{ rows: @js($rewardRows) }">

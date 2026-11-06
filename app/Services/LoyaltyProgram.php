@@ -7,25 +7,17 @@ use App\Models\Service;
 use App\Support\Fmt;
 
 /**
- * What the salon's loyalty card offers: the loyalty prices set on services, the other perks printed on the card
- * (Settings → Loyalty card & referrals) and the GCash reward per service for referring someone. Rewards are matched to a referral's services by name, so
+ * What the salon's loyalty card offers: the loyalty prices set on services (the card's perks) and the GCash reward per
+ * service for referring someone (Settings → Loyalty card & referrals). Rewards are matched to a referral's services by name, so
  * "Haircut" covers "Men's Haircut" and "Rebond" covers "Hair Rebonding".
  */
 class LoyaltyProgram
 {
     public function __construct(private readonly SettingsService $settings) {}
 
-    /** @return list<string> */
-    public function perks(): array
-    {
-        return collect(preg_split('/\R/', (string) $this->settings->get('loyalty_card_perks', '')))
-            ->map(fn ($line) => trim(ltrim(trim($line), '-•*')))
-            ->filter()->values()->all();
-    }
-
     /**
-     * The loyalty pricing set on services (Services → edit → Loyalty card prices), listed in the app above the typed
-     * perks: every active service where a card holder pays less than the regular price. Less: the amount or percent off.
+     * The loyalty pricing set on services (Services → edit → Loyalty card prices), listed in the app as the card's
+     * perks: every active service with the switch on where a card holder pays less than the regular price. Less: the amount or percent off.
      * Tiered: the maintenance price, and the lapsed price when that rule is on. Anything not below the regular price is
      * left out.
      *

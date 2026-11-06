@@ -4,6 +4,7 @@ namespace Tests\Feature\Admin;
 
 use App\Models\Referral;
 use App\Models\Service;
+use App\Models\Setting;
 use App\Models\ServiceCategory;
 use App\Models\User;
 use App\Services\SettingsService;
@@ -12,7 +13,10 @@ use Illuminate\Testing\TestResponse;
 use Tests\Concerns\BuildsSalon;
 use Tests\TestCase;
 
-/** Settings → Loyalty card & referrals: the card perks and referral rewards, shown in the app and used to pre-fill rewards. */
+/**
+ * Settings → Loyalty card & referrals: the card's perks (built from the services' loyalty prices) and the referral rewards,
+ * shown in the app; the rewards also pre-fill referral payouts.
+ */
 class LoyaltyProgramTest extends TestCase
 {
     use BuildsSalon, RefreshDatabase;
@@ -36,19 +40,17 @@ class LoyaltyProgramTest extends TestCase
         return $this->put('/settings', [...$this->requiredSettings(), 'referral_rewards_shown' => '1', ...$loyalty]);
     }
 
-    public function test_the_app_gets_the_perks_and_rewards_printed_on_the_card_by_default(): void
+    public function test_the_app_gets_the_rewards_printed_on_the_card_by_default(): void
     {
         $this->getJson('/api/v1/settings')->assertOk()
-            ->assertJsonPath('data.loyalty_card_perks.0', 'Haircut 50% discount for men')
-            ->assertJsonPath('data.loyalty_card_perks.1', 'Less ₱200 for rebond')
-            ->assertJsonCount(4, 'data.loyalty_card_perks')
+            ->assertJsonPath('data.loyalty_card_perks', [])
             ->assertJsonPath('data.referral_rewards', [
                 ['service' => 'Haircut', 'amount' => 20], ['service' => 'Rebond', 'amount' => 200],
                 ['service' => 'Manicure', 'amount' => 50], ['service' => 'Brazilian botox', 'amount' => 200],
             ]);
     }
 
-    public function test_the_app_lists_the_services_loyalty_prices_above_the_typed_perks(): void
+    public function test_the_app_lists_the_services_loyalty_prices_as_the_card_perks(): void
     {
         $botox = Service::factory()->create(['name' => 'Brazilian botox', 'regular_price' => 1500, 'loyalty_enabled' => true, 'loyalty_pricing' => 'tiered', 'loyalty_price' => 500,
             'return_price' => 1000, 'first_visit_discount_enabled' => true, 'first_visit_discount_period' => 30, 'first_visit_discount_unit' => 'days']);
@@ -59,6 +61,10 @@ class LoyaltyProgramTest extends TestCase
         Service::factory()->create(['name' => 'Old promo', 'regular_price' => 900, 'loyalty_enabled' => true, 'loyalty_discount' => 100, 'status' => 'inactive']);
         Service::factory()->create(['name' => 'Pedicure', 'regular_price' => 300, 'loyalty_enabled' => false, 'loyalty_discount' => 50]);
 
+        // Typed perks were removed: a copy still saved in the database is no longer sent (older apps get an empty list).
+        Setting::create(['key' => 'loyalty_card_perks', 'value' => "Haircut 50% discount for men\nLess ₱200 for rebond", 'type' => 'text']);
+        app(SettingsService::class)->flush();
+
         $row = fn (Service $s, array $values) => array_replace(['service_id' => $s->id, 'service' => $s->name, 'regular_price' => (int) $s->regular_price, 'pricing' => null,
             'less_type' => null, 'less_value' => null, 'card_holder_price' => null, 'return_price' => null, 'return_period' => null, 'return_period_unit' => null], $values);
         $this->getJson('/api/v1/settings')->assertOk()
@@ -67,24 +73,23 @@ class LoyaltyProgramTest extends TestCase
                 $row($rebond, ['pricing' => 'less', 'less_type' => 'amount', 'less_value' => 200]),
                 $row($haircut, ['pricing' => 'less', 'less_type' => 'percent', 'less_value' => 50]),
             ])
-            ->assertJsonPath('data.loyalty_card_perks.0', 'Haircut 50% discount for men');
+            ->assertJsonPath('data.loyalty_card_perks', []);
 
-        // Settings shows the admin which services are listed automatically, so the typed perks need not repeat them,
-        // grouped like the service form's tabs (and the app): Less first, then Tiered member pricing.
+        // Settings shows the admin the same list, grouped like the service form's tabs (and the app): Less first, then
+        // Tiered member pricing. There is no box for typing perks any more.
         $this->actingAs(User::factory()->superAdmin()->create(), 'web');
-        $this->get('/settings')->assertOk()->assertSee('Listed automatically from service prices')
+        $this->get('/settings')->assertOk()->assertSee('Card perks &amp; discounts', false)
             ->assertSeeInOrder(['Less (discount)', 'Hair rebond', 'less ₱200.00', 'Haircut for men', 'less 50%',
                 'Tiered member pricing', 'Brazilian botox', 'regular ₱1,500.00', 'maintenance ₱500.00', 'lapsed ₱1,000.00 (no visit within 30 days)'])
-            ->assertSee('Other card perks / discounts');
+            ->assertDontSee('Other card perks')->assertDontSee('name="loyalty_card_perks"', false);
     }
 
-    public function test_the_owner_edits_the_perks_and_rewards_in_settings(): void
+    public function test_the_owner_edits_the_referral_rewards_in_settings(): void
     {
         $this->actingAs(User::factory()->superAdmin()->create());
-        $this->get('/settings')->assertOk()->assertSee('Loyalty card &amp; referrals', false)->assertSee('Less ₱200 for rebond');
+        $this->get('/settings')->assertOk()->assertSee('Loyalty card &amp; referrals', false)->assertSee('Direct referral rewards');
 
         $this->saveSettings([
-            'loyalty_card_perks' => "- Free hair spa on your birthday\n\n• 10% off every 5th visit ",
             'referral_rewards' => [
                 ['service' => ' Hair color ', 'amount' => '150'],
                 ['service' => '', 'amount' => ''], // an empty row the owner added and left blank
@@ -93,12 +98,11 @@ class LoyaltyProgramTest extends TestCase
         ])->assertSessionHasNoErrors()->assertRedirect();
 
         $this->getJson('/api/v1/settings')
-            ->assertJsonPath('data.loyalty_card_perks', ['Free hair spa on your birthday', '10% off every 5th visit'])
             ->assertJsonPath('data.referral_rewards', [['service' => 'Hair color', 'amount' => 150], ['service' => 'Pedicure', 'amount' => 40.5]]);
 
         // Removing every row clears the rewards; a form without the section leaves them alone.
-        $this->saveSettings(['loyalty_card_perks' => ''])->assertSessionHasNoErrors();
-        $this->getJson('/api/v1/settings')->assertJsonPath('data.referral_rewards', [])->assertJsonPath('data.loyalty_card_perks', []);
+        $this->saveSettings([])->assertSessionHasNoErrors();
+        $this->getJson('/api/v1/settings')->assertJsonPath('data.referral_rewards', []);
         $this->saveSettings(['referral_rewards' => [['service' => 'Haircut', 'amount' => 25]]]);
         $this->put('/settings', $this->requiredSettings())->assertSessionHasNoErrors();
         $this->getJson('/api/v1/settings')->assertJsonPath('data.referral_rewards', [['service' => 'Haircut', 'amount' => 25]]);

@@ -37,10 +37,11 @@ class SettingsController extends ApiController
             'payment_deposit_value' => $all['payment_deposit_value'],
             'payment_window_minutes' => $payments->windowMinutes(),
             'payment_policy' => $all['payment_policy'],
-            // Shown under the customer's loyalty card: the services' loyalty prices first, then the other perks typed in
-            // Settings, and the GCash reward per referred service.
+            // Shown under the customer's loyalty card: the services' loyalty prices (the card's perks) and the GCash
+            // reward per referred service. loyalty_card_perks (typed perks) was removed; it stays empty so app versions
+            // that still list it show nothing there.
             'loyalty_service_prices' => $loyalty->servicePrices(),
-            'loyalty_card_perks' => $loyalty->perks(),
+            'loyalty_card_perks' => [],
             'referral_rewards' => $loyalty->referralRewards(),
         ]);
     }

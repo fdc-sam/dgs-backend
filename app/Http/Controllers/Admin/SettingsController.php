@@ -71,7 +71,6 @@ class SettingsController extends Controller
             'facebook_url' => ['nullable', 'url:https', 'max:255', 'regex:#^https://(www\.|m\.|web\.)?facebook\.com/#'],
             'website_description' => ['nullable', 'string', 'max:300'],
             'google_site_verification' => ['nullable', 'string', 'max:120', 'regex:/^[A-Za-z0-9_\-]+$/'],
-            'loyalty_card_perks' => ['sometimes', 'nullable', 'string', 'max:2000'],
             'referral_rewards' => ['sometimes', 'array', 'max:20'],
             'referral_rewards.*.service' => ['required', 'string', 'max:60', 'distinct:ignore_case'],
             'referral_rewards.*.amount' => ['required', 'numeric', 'min:1', 'max:100000'],
