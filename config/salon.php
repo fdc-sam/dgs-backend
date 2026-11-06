@@ -60,10 +60,14 @@ return [
     ],
 
     // Loyalty cards the salon sells, printed "CARD NO. LC-0000353": the prefix plus a zero-padded number.
-    // Customers may type it with or without the prefix, spaces or dashes; only the digits are stored.
+    // The salon links a card in the admin (typed with or without the prefix, spaces or dashes; only the digits are
+    // stored). A card is good for validity_months from the day it is linked or renewed; the admin can renew it once it
+    // has expired, or up to renewal_window_days before.
     'loyalty' => [
         'prefix' => env('LOYALTY_PREFIX', 'LC-'),
         'min_digits' => (int) env('LOYALTY_MIN_DIGITS', 7),
         'max_digits' => (int) env('LOYALTY_MAX_DIGITS', 7),
+        'validity_months' => (int) env('LOYALTY_VALIDITY_MONTHS', 12),
+        'renewal_window_days' => (int) env('LOYALTY_RENEWAL_WINDOW_DAYS', 30),
     ],
 ];

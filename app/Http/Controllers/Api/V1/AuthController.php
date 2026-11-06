@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Exceptions\ApiException;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\ChangePasswordRequest;
 use App\Http\Requests\Api\DeleteAccountRequest;
@@ -9,12 +10,10 @@ use App\Http\Requests\Api\ForgotPasswordRequest;
 use App\Http\Requests\Api\LoginRequest;
 use App\Http\Requests\Api\RegisterRequest;
 use App\Http\Requests\Api\ResetPasswordRequest;
-use App\Http\Requests\Api\UpdateLoyaltyCardRequest;
 use App\Http\Requests\Api\UpdateProfilePhotoRequest;
 use App\Http\Requests\Api\UpdateProfileRequest;
 use App\Http\Resources\UserResource;
 use App\Services\AccountDeletionService;
-use App\Services\AuditLogger;
 use App\Services\AuthService;
 use App\Services\CustomerQrService;
 use Illuminate\Http\JsonResponse;
@@ -65,26 +64,13 @@ class AuthController extends ApiController
         return $this->ok(new UserResource($this->auth->updateProfile($request->user(), $request->validated())), 'Profile updated.');
     }
 
-    /** Links the loyalty card the customer bought at the salon (the number printed on it). */
-    public function updateLoyaltyCard(UpdateLoyaltyCardRequest $request, AuditLogger $audit): JsonResponse
+    /**
+     * Customers can no longer add, change or remove their loyalty card in the app: the salon links it, and renews it
+     * when its year runs out, in the admin. Older app versions still call PUT/DELETE auth/loyalty-card and get this.
+     */
+    public function loyaltyCardManagedBySalon(): never
     {
-        $user = $request->user();
-        $old = $user->loyalty_number;
-        $user->forceFill(['loyalty_number' => $request->validated('loyalty_number')])->save();
-        $audit->log('customer.loyalty_number', $user, ['loyalty_number' => $old], ['loyalty_number' => $user->loyalty_number]);
-
-        return $this->ok(new UserResource($user->load('customerProfile')), 'Loyalty card saved.');
-    }
-
-    public function removeLoyaltyCard(Request $request, AuditLogger $audit): JsonResponse
-    {
-        $user = $request->user();
-        if ($user->loyalty_number !== null) {
-            $audit->log('customer.loyalty_number', $user, ['loyalty_number' => $user->loyalty_number], ['loyalty_number' => null]);
-            $user->forceFill(['loyalty_number' => null])->save();
-        }
-
-        return $this->ok(new UserResource($user->load('customerProfile')), 'Loyalty card removed.');
+        throw ApiException::forbidden('Your loyalty card is added and renewed by the salon. Please ask at the counter.');
     }
 
     public function updatePhoto(UpdateProfilePhotoRequest $request): JsonResponse

@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\User;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 /**
@@ -27,6 +28,16 @@ final class LoyaltyNumber
     public static function format(?string $number): ?string
     {
         return $number === null ? null : config('salon.loyalty.prefix').$number;
+    }
+
+    /** How long a card is good for once linked or renewed, in words: "1 year" (config salon.loyalty.validity_months). */
+    public static function validity(): string
+    {
+        $months = (int) config('salon.loyalty.validity_months');
+
+        return $months % 12 === 0
+            ? ($months / 12).' '.Str::plural('year', $months / 12)
+            : $months.' '.Str::plural('month', $months);
     }
 
     /** @return list<mixed> */

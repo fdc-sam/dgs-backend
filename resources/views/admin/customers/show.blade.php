@@ -90,16 +90,46 @@
                     </form>
                 </x-admin.card>
             @endcan
-            <x-admin.card title="Loyalty card" subtitle="The number on the card the customer bought. Once it is linked here, the card shows in the customer's app.">
-                <x-admin.loyalty-card :number="$customer->loyalty_number" :name="$customer->name" :class="$customer->loyalty_number ? 'mb-4' : 'mb-3 opacity-60'" />
+            @php
+                $cardExpired = $customer->loyaltyCardExpired();
+                $cardDaysLeft = $customer->loyaltyCardDaysLeft();
+                $validity = \App\Support\LoyaltyNumber::validity();
+            @endphp
+            <x-admin.card title="Loyalty card" subtitle="Enter the number on the card the customer bought. Only the salon can link a card; it is good for {{ $validity }} and shows in the customer's app.">
+                <x-admin.loyalty-card :number="$customer->loyalty_number" :name="$customer->name" :expired="$cardExpired" :class="$customer->loyalty_number ? 'mb-4' : 'mb-3 opacity-60'" />
                 @unless ($customer->loyalty_number)
                     <p class="mb-4 text-sm text-on-surface-variant">No loyalty card linked yet.</p>
                 @endunless
+                @if ($customer->hasLoyaltyCard() && $customer->loyalty_expires_at)
+                    <div class="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                        @if ($cardExpired)
+                            <x-admin.badge tone="danger" icon="event_busy">Expired</x-admin.badge>
+                            <span class="text-on-surface-variant">on {{ $customer->loyalty_expires_at->format('M j, Y') }} · regular prices until it is renewed</span>
+                        @elseif ($customer->loyaltyCardRenewable())
+                            <x-admin.badge tone="warning" icon="schedule">Expires in {{ $cardDaysLeft }} {{ \Illuminate\Support\Str::plural('day', $cardDaysLeft) }}</x-admin.badge>
+                            <span class="text-on-surface-variant">on {{ $customer->loyalty_expires_at->format('M j, Y') }}</span>
+                        @else
+                            <x-admin.badge tone="success" icon="verified">Active</x-admin.badge>
+                            <span class="text-on-surface-variant">Expires on {{ $customer->loyalty_expires_at->format('M j, Y') }}</span>
+                        @endif
+                    </div>
+                @endif
                 @can('update', $customer)
+                    @if ($customer->loyaltyCardRenewable())
+                        <form method="POST" action="{{ route('customers.loyalty-card.renew', $customer) }}" class="mb-4"
+                              data-confirm="Renew loyalty card {{ \App\Support\LoyaltyNumber::format($customer->loyalty_number) }} for {{ $validity }}?">
+                            @csrf
+                            <x-admin.button type="submit" icon="autorenew" class="w-full">Renew card</x-admin.button>
+                            <p class="mt-1.5 text-xs text-on-surface-variant">
+                                {{ $cardExpired ? "Good for {$validity} from today." : "Adds {$validity} to the current expiry date, so no days are lost." }}
+                            </p>
+                        </form>
+                    @endif
                     <form method="POST" action="{{ route('customers.loyalty-card', $customer) }}" class="space-y-3">
                         @csrf
                         <x-admin.input name="loyalty_number" :label="$customer->loyalty_number ? 'Change card number' : 'Card number'" inputmode="numeric"
-                                       autocomplete="off" placeholder="e.g. LC-0000353" :value="old('loyalty_number')" />
+                                       autocomplete="off" placeholder="e.g. LC-0000353" :value="old('loyalty_number')"
+                                       :hint="$customer->loyalty_number ? 'A new number counts as a new card and starts a fresh '.$validity.'.' : 'The card is good for '.$validity.' from today.'" />
                         <div class="flex flex-wrap gap-2">
                             <x-admin.button type="submit" variant="tonal" size="sm" icon="credit_card">{{ $customer->loyalty_number ? 'Save new number' : 'Link card' }}</x-admin.button>
                         </div>

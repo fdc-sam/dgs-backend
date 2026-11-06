@@ -76,7 +76,10 @@ class CustomerController extends Controller
         return $qr->response($customer, $request, download: $request->boolean('download'));
     }
 
-    /** Link, change or clear the customer's loyalty card, e.g. when they buy one at the counter. Empty clears it. */
+    /**
+     * Link, change or clear the customer's loyalty card, e.g. when they buy one at the counter. Empty clears it.
+     * Only the salon links cards. A new number starts a fresh year (see User::booted); the same number keeps its date.
+     */
     public function updateLoyaltyCard(Request $request, User $customer, AuditLogger $audit): RedirectResponse
     {
         abort_unless($customer->isCustomer(), 404);
@@ -85,18 +88,49 @@ class CustomerController extends Controller
         $data = $request->validate(['loyalty_number' => $request->filled('loyalty_number') ? LoyaltyNumber::rules($customer) : ['nullable']],
             LoyaltyNumber::messages());
 
-        $old = $customer->loyalty_number;
+        $old = $this->cardValues($customer);
         $customer->forceFill(['loyalty_number' => $data['loyalty_number'] ?: null])->save();
-        $audit->log('customer.loyalty_number', $customer, ['loyalty_number' => $old], ['loyalty_number' => $customer->loyalty_number]);
+        $audit->log('customer.loyalty_number', $customer, $old, $this->cardValues($customer));
 
         return back()->with('success', $customer->loyalty_number
-            ? "Loyalty card {$this->cardNumber($customer)} linked to {$customer->name}."
+            ? "Loyalty card {$this->cardNumber($customer)} linked to {$customer->name}. It expires on {$this->expiresOn($customer)}."
             : "Loyalty card removed from {$customer->name}.");
+    }
+
+    /** Another year on the customer's card, once it has expired (or in its last weeks; config salon.loyalty). */
+    public function renewLoyaltyCard(User $customer, AuditLogger $audit): RedirectResponse
+    {
+        abort_unless($customer->isCustomer(), 404);
+        $this->authorize('update', $customer);
+        if (! $customer->hasLoyaltyCard()) {
+            return back()->with('error', "{$customer->name} has no loyalty card to renew.");
+        }
+        if (! $customer->loyaltyCardRenewable()) {
+            return back()->with('error', "Loyalty card {$this->cardNumber($customer)} does not expire until {$this->expiresOn($customer)}. "
+                .'It can be renewed in its last '.config('salon.loyalty.renewal_window_days').' days or once it has expired.');
+        }
+
+        $old = $this->cardValues($customer);
+        $customer->renewLoyaltyCard();
+        $audit->log('customer.loyalty_renewed', $customer, $old, $this->cardValues($customer));
+
+        return back()->with('success', "Loyalty card {$this->cardNumber($customer)} renewed. It now expires on {$this->expiresOn($customer)}.");
     }
 
     private function cardNumber(User $customer): string
     {
         return LoyaltyNumber::format($customer->loyalty_number) ?? '';
+    }
+
+    private function expiresOn(User $customer): string
+    {
+        return $customer->loyalty_expires_at?->format('M j, Y') ?? '';
+    }
+
+    /** @return array<string, ?string> */
+    private function cardValues(User $customer): array
+    {
+        return ['loyalty_number' => $customer->loyalty_number, 'loyalty_expires_at' => $customer->loyalty_expires_at?->toDateString()];
     }
 
     public function updateStatus(Request $request, User $customer, AuditLogger $audit): RedirectResponse

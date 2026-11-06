@@ -23,9 +23,19 @@
                         <td>
                             <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
                                 <a href="{{ route('customers.show', $c) }}" class="font-medium text-primary hover:underline">{{ $c->name }}</a>
-                                @if ($c->loyalty_number)
+                                @if ($c->loyaltyCardExpired())
+                                    {{-- Expired card: the chip turns red until the salon renews it on the customer's page. --}}
+                                    <span class="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-danger-container py-0.5 pr-2.5 pl-1.5 text-xs font-semibold text-danger ring-1 ring-danger/30"
+                                          title="Loyalty card expired on {{ $c->loyalty_expires_at->format('M j, Y') }}">
+                                        <span class="material-symbols-outlined text-sm" aria-hidden="true">credit_card_off</span>
+                                        <span class="sr-only">Loyalty card</span>
+                                        <span class="font-mono tracking-wide">{{ \App\Support\LoyaltyNumber::format($c->loyalty_number) }}</span>
+                                        <span>· Expired</span>
+                                    </span>
+                                @elseif ($c->loyalty_number)
                                     {{-- Loyalty card holder: a little black-and-gold chip, like the card itself. --}}
-                                    <span class="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-card-black py-0.5 pr-2.5 pl-1.5 text-xs font-semibold text-card-gold ring-1 ring-card-gold/40" title="Loyalty card holder">
+                                    <span class="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-card-black py-0.5 pr-2.5 pl-1.5 text-xs font-semibold text-card-gold ring-1 ring-card-gold/40"
+                                          title="Loyalty card holder{{ $c->loyalty_expires_at ? ' · expires '.$c->loyalty_expires_at->format('M j, Y') : '' }}">
                                         <span class="material-symbols-outlined text-sm" aria-hidden="true">credit_card</span>
                                         <span class="sr-only">Loyalty card</span>
                                         <span class="font-mono tracking-wide">{{ \App\Support\LoyaltyNumber::format($c->loyalty_number) }}</span>

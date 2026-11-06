@@ -1,14 +1,15 @@
 {{--
     The customer's loyalty card drawn like the printed one (and the app's): black with a gold wave, the DGS badge,
     CARD NO. and CUSTOMER NAME. Sizes are in container units, so it keeps its proportions at any width.
+    An expired card is greyed out under a red EXPIRED stamp until the salon renews it.
 --}}
-@props(['number' => null, 'name' => null])
+@props(['number' => null, 'name' => null, 'expired' => false])
 @php
     $formatted = $number ? \App\Support\LoyaltyNumber::format($number) : null;
     $gradient = 'loyalty-gold-'.\Illuminate\Support\Str::random(6);
 @endphp
 <div {{ $attributes->class(['@container relative aspect-[1.586] w-full max-w-sm overflow-hidden rounded-2xl bg-linear-135 from-card-black-light to-card-black to-65% text-card-text shadow-e2 ring-1 ring-card-gold/40']) }}
-     role="img" aria-label="{{ $formatted ? "Loyalty card {$formatted}, {$name}" : 'No loyalty card linked' }}">
+     role="img" aria-label="{{ $formatted ? 'Loyalty card '.$formatted.', '.$name.($expired ? ', expired' : '') : 'No loyalty card linked' }}">
     <svg class="absolute inset-0 size-full" viewBox="0 0 320 202" preserveAspectRatio="none" aria-hidden="true">
         <defs>
             <linearGradient id="{{ $gradient }}" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="320" y2="74">
@@ -36,4 +37,9 @@
             <p class="shrink-0 text-[length:3.6cqw] leading-snug font-medium tracking-[0.16em] text-card-gold uppercase">Loyalty card</p>
         </div>
     </div>
+    @if ($formatted && $expired)
+        <div class="absolute inset-0 flex items-center justify-center bg-card-black/55" aria-hidden="true">
+            <span class="-rotate-12 rounded-lg border-[0.8cqw] border-danger bg-card-black/70 px-[3cqw] py-[0.6cqw] text-[length:9cqw] leading-none font-black tracking-[0.2em] text-[#FF6B60] uppercase">Expired</span>
+        </div>
+    @endif
 </div>

@@ -19,7 +19,8 @@ class ServiceResource extends JsonResource
         $priceFrom = $variants && $variants->isNotEmpty() ? min($price, (float) $variants->min('price')) : $price;
         $average = Fmt::attr($this->resource, 'approved_reviews_avg_rating');
         $customer = $request->user();
-        $hasLoyaltyCard = filled($customer?->loyalty_number);
+        // An expired card gets the regular prices until the salon renews it.
+        $hasLoyaltyCard = (bool) $customer?->hasActiveLoyaltyCard();
         $discount = 0.0;
         if ($hasLoyaltyCard) {
             $discount = $this->qualifiesForFirstVisitDiscount($customer)

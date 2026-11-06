@@ -397,10 +397,10 @@ class AppointmentService
         });
     }
 
-    /** Apply the configured loyalty card reduction to every eligible service in this booking. */
+    /** Apply the configured loyalty card reduction to every eligible service in this booking (not for an expired card). */
     private function applyLoyaltyDiscounts(User $customer, Collection $selections): Collection
     {
-        if (! $customer->loyalty_number) return $selections;
+        if (! $customer->hasActiveLoyaltyCard()) return $selections;
 
         return $selections->map(function (ServiceSelection $selection) use ($customer) {
             $service = $selection->service;

@@ -7,6 +7,7 @@ use App\Enums\UserStatus;
 use App\Support\CustomerCode;
 use App\Support\TestMode;
 use Database\Factories\UserFactory;
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
@@ -17,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
@@ -35,6 +37,7 @@ class User extends Authenticatable
         'is_test' => false,
         // Set on new models too, so a just-registered customer's profile can show "no card yet".
         'loyalty_number' => null,
+        'loyalty_expires_at' => null,
     ];
 
     protected static function booted(): void
@@ -44,6 +47,14 @@ class User extends Authenticatable
         static::creating(function (User $user) {
             if ($user->role === UserRole::Customer && blank($user->qr_code)) {
                 $user->qr_code = static::newUniqueQrCode();
+            }
+        });
+
+        // A loyalty card is good for a year from the day it is linked: a new (or different) number starts a fresh
+        // year, saving the same number keeps it, and removing the card clears it. Renewing sets the date itself.
+        static::saving(function (User $user) {
+            if ($user->isDirty('loyalty_number') && ! $user->isDirty('loyalty_expires_at')) {
+                $user->loyalty_expires_at = $user->loyalty_number === null ? null : static::loyaltyTermFrom(today());
             }
         });
     }
@@ -65,6 +76,8 @@ class User extends Authenticatable
             'role' => UserRole::class,
             'status' => UserStatus::class,
             'is_test' => 'boolean',
+            // The day the loyalty card stops working (it is good up to the day before).
+            'loyalty_expires_at' => 'immutable_date',
         ];
     }
 
@@ -97,6 +110,57 @@ class User extends Authenticatable
     public function referrals(): HasMany
     {
         return $this->hasMany(Referral::class, 'referrer_id');
+    }
+
+    /** The salon has linked a loyalty card to this customer, whether or not it is still valid. */
+    public function hasLoyaltyCard(): bool
+    {
+        return filled($this->loyalty_number);
+    }
+
+    /** The card's year has run out: no card perks or loyalty prices until the salon renews it. */
+    public function loyaltyCardExpired(): bool
+    {
+        return $this->hasLoyaltyCard() && $this->loyalty_expires_at !== null && ! today()->lt($this->loyalty_expires_at);
+    }
+
+    /** A linked card that has not expired: the customer gets the loyalty prices. */
+    public function hasActiveLoyaltyCard(): bool
+    {
+        return $this->hasLoyaltyCard() && ! $this->loyaltyCardExpired();
+    }
+
+    /** Whole days until the card expires (0 once it has), or null without a card or an expiry date. */
+    public function loyaltyCardDaysLeft(): ?int
+    {
+        if (! $this->hasLoyaltyCard() || $this->loyalty_expires_at === null) {
+            return null;
+        }
+
+        return max(0, (int) today()->diffInDays($this->loyalty_expires_at, false));
+    }
+
+    /** The admin can renew a card once it has expired, or in the last few weeks before (config salon.loyalty). */
+    public function loyaltyCardRenewable(): bool
+    {
+        $daysLeft = $this->loyaltyCardDaysLeft();
+
+        return $daysLeft !== null && $daysLeft <= (int) config('salon.loyalty.renewal_window_days');
+    }
+
+    /**
+     * Another year on the card: from today when it has expired, or from its current expiry date when renewed early,
+     * so no days are lost. Saves the customer.
+     */
+    public function renewLoyaltyCard(): void
+    {
+        $from = $this->loyaltyCardExpired() || $this->loyalty_expires_at === null ? today() : $this->loyalty_expires_at;
+        $this->forceFill(['loyalty_expires_at' => static::loyaltyTermFrom($from)])->save();
+    }
+
+    private static function loyaltyTermFrom(DateTimeInterface $from): string
+    {
+        return Carbon::parse($from)->startOfDay()->addMonthsNoOverflow((int) config('salon.loyalty.validity_months'))->toDateString();
     }
 
     /**
