@@ -51,7 +51,13 @@ class CatalogAdminService
                 'short_description' => $data['short_description'] ?? null,
                 'description' => $data['description'] ?? null,
                 'regular_price' => $data['regular_price'],
-                // Blank or 0 = no loyalty price for that case.
+                // Less (amount or percent off) or Tiered (maintenance / lapsed price). The other mode's values are kept, so
+                // switching back does not lose them. Blank or 0 = not used.
+                // Off keeps the prices below saved for when the switch is turned back on.
+                'loyalty_enabled' => (bool) ($data['loyalty_enabled'] ?? false),
+                'loyalty_pricing' => ($data['loyalty_pricing'] ?? 'less') === 'tiered' ? 'tiered' : 'less',
+                'loyalty_discount' => (float) ($data['loyalty_discount'] ?? 0) > 0 ? $data['loyalty_discount'] : 0,
+                'loyalty_discount_type' => ($data['loyalty_discount_type'] ?? 'amount') === 'percent' ? 'percent' : 'amount',
                 'loyalty_price' => (float) ($data['loyalty_price'] ?? 0) > 0 ? $data['loyalty_price'] : null,
                 'return_price' => (float) ($data['return_price'] ?? 0) > 0 ? $data['return_price'] : null,
                 'first_visit_discount_enabled' => (bool) ($data['first_visit_discount_enabled'] ?? false),

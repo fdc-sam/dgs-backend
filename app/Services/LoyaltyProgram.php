@@ -24,34 +24,41 @@ class LoyaltyProgram
     }
 
     /**
-     * The loyalty prices set on services (Services → edit → Loyalty card prices), listed in the app above the typed
-     * perks: every active service where a card holder pays less than the regular price. A price that is not below the
-     * regular price, or a return price that is turned off, is left out.
+     * The loyalty pricing set on services (Services → edit → Loyalty card prices), listed in the app above the typed
+     * perks: every active service where a card holder pays less than the regular price. Less: the amount or percent off.
+     * Tiered: the maintenance price, and the lapsed price when that rule is on. Anything not below the regular price is
+     * left out.
      *
-     * @return list<array{service_id: string, service: string, regular_price: float, card_holder_price: ?float, return_price: ?float, return_period: ?int, return_period_unit: ?string}>
+     * @return list<array{service_id: string, service: string, regular_price: float, pricing: string, less_type: ?string, less_value: ?float, card_holder_price: ?float, return_price: ?float, return_period: ?int, return_period_unit: ?string}>
      */
     public function servicePrices(): array
     {
-        return Service::active()->ordered()
-            ->where(fn ($q) => $q->where('loyalty_price', '>', 0)->orWhere('return_price', '>', 0))
+        return Service::active()->ordered()->where('loyalty_enabled', true)
+            ->where(fn ($q) => $q
+                ->where(fn ($q) => $q->where('loyalty_pricing', 'less')->where('loyalty_discount', '>', 0))
+                ->orWhere(fn ($q) => $q->where('loyalty_pricing', 'tiered')->where(fn ($q) => $q->where('loyalty_price', '>', 0)->orWhere('return_price', '>', 0))))
             ->get()
             ->map(function (Service $service) {
                 $regular = (float) $service->regular_price;
-                $below = fn ($price) => (float) $price > 0 && (float) $price < $regular ? round((float) $price, 2) : null;
-                $return = $service->first_visit_discount_enabled && (int) $service->first_visit_discount_period > 0
-                    ? $below($service->return_price) : null;
+                $tiered = $service->loyalty_pricing === 'tiered';
+                $below = fn ($price) => $tiered && (float) $price > 0 && (float) $price < $regular ? round((float) $price, 2) : null;
+                $return = $service->first_visit_discount_enabled && (int) $service->first_visit_discount_period > 0 ? $below($service->return_price) : null;
+                $percent = $service->loyalty_discount_type === 'percent';
 
                 return [
                     'service_id' => $service->id,
                     'service' => $service->name,
                     'regular_price' => round($regular, 2),
+                    'pricing' => $tiered ? 'tiered' : 'less',
+                    'less_type' => $tiered ? null : ($percent ? 'percent' : 'amount'),
+                    'less_value' => $tiered ? null : round($percent ? min((float) $service->loyalty_discount, 100) : (float) $service->loyalty_discount, 2),
                     'card_holder_price' => $below($service->loyalty_price),
                     'return_price' => $return,
                     'return_period' => $return === null ? null : (int) $service->first_visit_discount_period,
                     'return_period_unit' => $return === null ? null : $service->first_visit_discount_unit,
                 ];
             })
-            ->filter(fn ($row) => $row['card_holder_price'] !== null || $row['return_price'] !== null)
+            ->filter(fn ($row) => $row['less_value'] > 0 || $row['card_holder_price'] !== null || $row['return_price'] !== null)
             ->values()->all();
     }
 

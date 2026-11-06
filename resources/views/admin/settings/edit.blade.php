@@ -71,18 +71,28 @@
                     <div class="mb-4 rounded-xl bg-surface-container px-4 py-3 text-sm">
                         <p class="font-medium">Listed automatically from service prices</p>
                         @if (empty($loyaltyServicePrices))
-                            <p class="mt-1 text-on-surface-variant">None yet. Set a card holder price or return price on a service (Services → edit → Loyalty card prices) and it shows here and in the app.</p>
+                            <p class="mt-1 text-on-surface-variant">None yet. On a service (Services → edit → Loyalty card prices), turn the switch on and set a Less discount or tiered prices; it then shows here and in the app.</p>
                         @else
-                            <ul class="mt-1.5 space-y-1 text-on-surface-variant">
-                                @foreach ($loyaltyServicePrices as $row)
-                                    <li>
-                                        <a href="{{ route('services.edit', $row['service_id']) }}" class="font-medium text-on-surface hover:underline">{{ $row['service'] }}</a>
-                                        · regular {{ \App\Support\Fmt::peso($row['regular_price']) }}
-                                        @if ($row['card_holder_price'] !== null) · card holder {{ \App\Support\Fmt::peso($row['card_holder_price']) }} @endif
-                                        @if ($row['return_price'] !== null) · {{ \App\Support\Fmt::peso($row['return_price']) }} after no visit within {{ $row['return_period'] }} {{ \Illuminate\Support\Str::plural(rtrim($row['return_period_unit'], 's'), $row['return_period']) }} @endif
-                                    </li>
-                                @endforeach
-                            </ul>
+                            {{-- Grouped like the service form's tabs, the same way the app lists them. --}}
+                            @foreach (['less' => 'Less (discount)', 'tiered' => 'Tiered member pricing'] as $mode => $modeLabel)
+                                @php $rows = array_filter($loyaltyServicePrices, fn ($row) => $row['pricing'] === $mode); @endphp
+                                @continue (empty($rows))
+                                <p class="mt-2.5 text-xs font-semibold uppercase tracking-wide text-on-surface-variant">{{ $modeLabel }}</p>
+                                <ul class="mt-1 space-y-1 text-on-surface-variant">
+                                    @foreach ($rows as $row)
+                                        <li>
+                                            <a href="{{ route('services.edit', $row['service_id']) }}" class="font-medium text-on-surface hover:underline">{{ $row['service'] }}</a>
+                                            · regular {{ \App\Support\Fmt::peso($row['regular_price']) }}
+                                            @if ($mode === 'less')
+                                                · less {{ $row['less_type'] === 'percent' ? \App\Support\Fmt::quantity($row['less_value']).'%' : \App\Support\Fmt::peso($row['less_value']) }}
+                                            @else
+                                                @if ($row['card_holder_price'] !== null) · maintenance {{ \App\Support\Fmt::peso($row['card_holder_price']) }} @endif
+                                                @if ($row['return_price'] !== null) · lapsed {{ \App\Support\Fmt::peso($row['return_price']) }} (no visit within {{ $row['return_period'] }} {{ \Illuminate\Support\Str::plural(rtrim($row['return_period_unit'], 's'), $row['return_period']) }}) @endif
+                                            @endif
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @endforeach
                         @endif
                     </div>
                     <x-admin.textarea name="loyalty_card_perks" label="Other card perks / discounts" :value="$s['loyalty_card_perks']" rows="7" maxlength="2000"

@@ -398,16 +398,17 @@ class AppointmentService
     }
 
     /**
-     * Charge loyalty card holders their loyalty price (card holder or return price) for each service that has one,
-     * unless the option or branch price is already lower. Not for an expired card (Service::loyaltyPriceFor).
+     * Charge loyalty card holders their loyalty price for each service that has one: Less (amount or percent off the
+     * option or branch price) or Tiered (maintenance or lapsed price, unless the option is already cheaper). Not for an
+     * expired card (Service::loyaltyRuleFor).
      */
     private function applyLoyaltyDiscounts(User $customer, Collection $selections): Collection
     {
         if (! $customer->hasActiveLoyaltyCard()) return $selections;
 
         return $selections->map(function (ServiceSelection $selection) use ($customer) {
-            $price = $selection->service->loyaltyPriceFor($customer);
-            if ($price === null || $price >= $selection->unitPrice) return $selection;
+            $price = $selection->service->loyaltyPriceFor($customer, $selection->unitPrice);
+            if ($price === null) return $selection;
 
             return new ServiceSelection($selection->service, $selection->variant, $price,
                 $selection->durationMinutes, $selection->bufferMinutes, $selection->staffProfileId, round($selection->unitPrice - $price, 2));

@@ -136,7 +136,7 @@ class LoyaltyCardTest extends TestCase
 
     public function test_the_app_shows_an_expired_card_and_it_gets_the_regular_prices(): void
     {
-        $this->service->update(['loyalty_price' => 800]);
+        $this->service->update(['loyalty_enabled' => true, 'loyalty_discount' => 200]); // Less ₱200 off the ₱1,000 regular price
         $customer = $this->actingAsCustomer();
         $customer->forceFill(['loyalty_number' => '0000353'])->save();
 

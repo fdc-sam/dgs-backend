@@ -13,18 +13,26 @@
     <form method="POST" action="{{ $editing ? route('services.update', $service) : route('services.store') }}" enctype="multipart/form-data"
           x-data="{
               price: @js((float) old('regular_price', $service->regular_price)),
+              loyaltyOn: @js((bool) old('loyalty_enabled', $service->loyalty_enabled ?? false)),
+              mode: @js(old('loyalty_pricing', $service->loyalty_pricing ?? 'less')),
+              lessValue: @js(filled($lessValue = old('loyalty_discount', $service->loyalty_discount)) && (float) $lessValue > 0 ? (float) $lessValue : ''),
+              lessType: @js(old('loyalty_discount_type', $service->loyalty_discount_type ?? 'amount')),
               cardPrice: @js(filled($cardPrice = old('loyalty_price', $service->loyalty_price)) ? (float) $cardPrice : ''),
               returnPrice: @js(filled($returnPrice = old('return_price', $service->return_price)) ? (float) $returnPrice : ''),
               returnOn: @js((bool) old('first_visit_discount_enabled', $service->first_visit_discount_enabled)),
               period: @js((int) old('first_visit_discount_period', $service->first_visit_discount_period ?: 30)),
               unit: @js(old('first_visit_discount_unit', $service->first_visit_discount_unit ?? 'days')),
               peso(value) { return '₱' + Number(value).toLocaleString('en-PH', { maximumFractionDigits: 2 }) },
+              lessSummary() {
+                  const off = this.lessType === 'percent' ? this.price * Math.min(this.lessValue, 100) / 100 : Math.min(this.lessValue, this.price);
+                  return `With this discount: no card or expired card ${this.peso(this.price)} · card holder ${this.peso(Math.max(this.price - off, 0))}.`;
+              },
               summary() {
                   const card = this.cardPrice > 0 ? Math.min(this.cardPrice, this.price) : this.price;
-                  let text = `With these prices: no card or expired card ${this.peso(this.price)} · card holder ${this.peso(card)}`;
+                  let text = `With these prices: no card or expired card ${this.peso(this.price)} · maintenance ${this.peso(card)}`;
                   if (this.returnOn && this.returnPrice > 0 && this.period > 0) {
                       const unit = this.period === 1 ? this.unit.replace(/s$/, '') : this.unit;
-                      text += ` · no visit within ${this.period} ${unit} ${this.peso(Math.min(this.returnPrice, this.price))}`;
+                      text += ` · lapsed (no visit within ${this.period} ${unit}) ${this.peso(Math.min(this.returnPrice, this.price))}`;
                   }
                   return text + '.';
               },
@@ -53,30 +61,81 @@
                 </x-admin.card>
 
                 {{--
-                    What loyalty card holders pay (Service::loyaltyPriceFor). First box: the return price, for a card holder
-                    who has not had this service within the period. Second box: the card holder price, for everyone else
-                    with an active card. The live line below works it out from the prices typed in.
+                    How loyalty card holders are charged (Service::loyaltyRuleFor). The switch (loyalty_enabled) turns it on or
+                    off for this service; off hides the tabs but keeps their values, so switching back on loses nothing.
+                    Picked with the tabs:
+                    Less = an amount or percent off every option and branch price (loyalty_discount + loyalty_discount_type).
+                    Tiered = the maintenance price (column loyalty_price) and the lapsed price (column return_price) for a card
+                    holder who has not had this service within the period. The hidden field sends the chosen tab; the other
+                    tab's values are kept so switching back loses nothing. The live lines work it out from the typed prices.
                 --}}
-                <x-admin.card title="Loyalty card prices" subtitle="What customers with an active (not expired) loyalty card pay for this service. Customers without a card, or with an expired card, pay the regular price.">
-                    <div class="mb-5 rounded-xl bg-surface-container px-4 py-3 text-sm text-on-surface-variant">
-                        <p class="font-medium text-on-surface">How the prices are chosen</p>
-                        <ul class="mt-1.5 list-disc space-y-1 pl-5">
-                            <li><span class="font-medium text-on-surface">Return price</span>: a card holder who has <em>not</em> had this service within the period below pays this. For a first visit, the period counts from when they signed up. Only used when “Enable return price” is ticked.</li>
-                            <li><span class="font-medium text-on-surface">Card holder price</span>: every other customer with an active card pays this.</li>
-                            <li>Leave a box blank to not use it. If an option or branch price is already lower, the customer pays that.</li>
-                            <li>Example: regular ₱1,500, return price ₱1,000, card holder price ₱500. A card holder who had this service in the last 30 days pays ₱500; one who has not pays ₱1,000.</li>
-                        </ul>
-                        <p class="mt-2 font-medium text-on-surface" x-cloak x-show="price > 0" x-text="summary()"></p>
+                @php
+                    $loyaltyMode = old('loyalty_pricing', $service->loyalty_pricing ?? 'less') === 'tiered' ? 'tiered' : 'less';
+                    $loyaltyOn = (bool) old('loyalty_enabled', $service->loyalty_enabled ?? false);
+                @endphp
+                <x-admin.card title="Loyalty card prices" subtitle="What customers with an active (not expired) loyalty card pay for this service. Choose a simple discount, or tiered prices that depend on how recently they had it. Customers without a card, or with an expired card, pay the regular price.">
+                    <x-slot:actions>
+                        <x-admin.switch name="loyalty_enabled" :checked="$loyaltyOn" x-model="loyaltyOn" ::aria-label="loyaltyOn ? 'Loyalty card prices on' : 'Loyalty card prices off'">
+                            <x-slot:label><span x-text="loyaltyOn ? 'On' : 'Off'">{{ $loyaltyOn ? 'On' : 'Off' }}</span></x-slot:label>
+                        </x-admin.switch>
+                    </x-slot:actions>
+
+                    <div class="rounded-xl bg-surface-container px-4 py-3 text-sm text-on-surface-variant" x-show="! loyaltyOn" @if ($loyaltyOn) style="display: none" @endif>
+                        <p class="font-medium text-on-surface">Loyalty card prices are off for this service</p>
+                        <p class="mt-1">Card holders pay the regular price, and the service is not listed in the app's card perks. Turn the switch on to give card holders a Less discount or tiered member prices. Prices set before are kept for when you turn it back on.</p>
                     </div>
-                    <div class="grid gap-5 sm:grid-cols-2">
-                        <x-admin.input name="return_price" type="number" step="0.01" min="0" label="Return price" prefix="₱" :value="$service->return_price" placeholder="Not used"
-                                       x-model.number="returnPrice" hint="Card holder with no visit for this service within the period below." />
-                        <x-admin.input name="loyalty_price" type="number" step="0.01" min="0" label="Card holder price" prefix="₱" :value="$service->loyalty_price" placeholder="Not used"
-                                       x-model.number="cardPrice" hint="Every other customer with an active loyalty card." />
-                        <div class="sm:col-span-2 flex flex-wrap items-end gap-4">
-                            <x-admin.checkbox name="first_visit_discount_enabled" label="Enable return price" :checked="$service->first_visit_discount_enabled ?? false" x-model="returnOn" />
-                            <x-admin.input name="first_visit_discount_period" type="number" min="1" max="1200" step="1" label="No visit within" :value="$service->first_visit_discount_period ?: 30" x-model.number="period" />
-                            <x-admin.select name="first_visit_discount_unit" label="Period unit" :options="['days' => 'Days', 'months' => 'Months']" :value="$service->first_visit_discount_unit ?? 'days'" x-model="unit" />
+
+                    <div x-show="loyaltyOn" @unless ($loyaltyOn) style="display: none" @endunless>
+                        <input type="hidden" name="loyalty_pricing" value="{{ $loyaltyMode }}" :value="mode">
+                        <div class="mb-5 flex gap-x-7 border-b border-outline-variant" role="tablist" aria-label="Loyalty pricing">
+                            @foreach (['less' => 'Less (discount)', 'tiered' => 'Tiered member pricing'] as $tab => $tabLabel)
+                                <button type="button" role="tab" id="loyalty-tab-{{ $tab }}" aria-controls="loyalty-panel-{{ $tab }}"
+                                        aria-selected="{{ $loyaltyMode === $tab ? 'true' : 'false' }}" :aria-selected="(mode === '{{ $tab }}').toString()" @click="mode = '{{ $tab }}'"
+                                        class="-mb-px whitespace-nowrap border-b-2 border-transparent pb-3 pt-1 text-[0.9375rem] font-medium text-on-surface-variant transition-colors hover:text-on-surface aria-selected:border-gold aria-selected:text-on-surface">{{ $tabLabel }}</button>
+                            @endforeach
+                        </div>
+
+                        <div id="loyalty-panel-less" role="tabpanel" aria-labelledby="loyalty-tab-less" x-show="mode === 'less'" @if ($loyaltyMode !== 'less') style="display: none" @endif>
+                            <div class="mb-5 rounded-xl bg-surface-container px-4 py-3 text-sm text-on-surface-variant">
+                                <p class="font-medium text-on-surface">How Less works</p>
+                                <ul class="mt-1.5 list-disc space-y-1 pl-5">
+                                    <li>Every customer with an active loyalty card gets this off the price, on every option and branch price.</li>
+                                    <li>Choose pesos or percent. Leave it blank for no loyalty discount.</li>
+                                    <li>Examples: Less ₱200 on a ₱2,500 rebond → ₱2,300. 50% off a ₱400 haircut → ₱200.</li>
+                                </ul>
+                                <p class="mt-2 font-medium text-on-surface" x-cloak x-show="price > 0 && lessValue > 0" x-text="lessSummary()"></p>
+                            </div>
+                            <div class="flex flex-wrap items-start gap-4">
+                                <x-admin.input name="loyalty_discount" type="number" step="0.01" min="0" label="Less" :value="(float) $service->loyalty_discount > 0 ? (float) $service->loyalty_discount : null"
+                                               placeholder="Not used" x-model.number="lessValue" class="w-44" />
+                                <x-admin.select name="loyalty_discount_type" label="Off" :options="['amount' => '₱ (pesos)', 'percent' => '% (percent)']"
+                                                :value="$service->loyalty_discount_type ?? 'amount'" x-model="lessType" class="w-44" />
+                            </div>
+                            <p class="mt-1.5 text-xs text-on-surface-variant">Taken off the regular, option or branch price for every card holder.</p>
+                        </div>
+
+                        <div id="loyalty-panel-tiered" role="tabpanel" aria-labelledby="loyalty-tab-tiered" x-show="mode === 'tiered'" @if ($loyaltyMode !== 'tiered') style="display: none" @endif>
+                            <div class="mb-5 rounded-xl bg-surface-container px-4 py-3 text-sm text-on-surface-variant">
+                                <p class="font-medium text-on-surface">How tiered pricing works</p>
+                                <ul class="mt-1.5 list-disc space-y-1 pl-5">
+                                    <li><span class="font-medium text-on-surface">Lapsed price</span> (no visit within the period): a card holder who has <em>not</em> had this service within the period below pays this. For a first visit, the period counts from when they signed up. Only used when “Enable lapsed price” is ticked.</li>
+                                    <li><span class="font-medium text-on-surface">Maintenance price</span> (visited within the period): a card holder who had this service within the period pays this. With the lapsed price off, every card holder pays it.</li>
+                                    <li>Leave a box blank to not use it. If an option or branch price is already lower, the customer pays that.</li>
+                                    <li>Example: regular ₱1,500, lapsed price ₱1,000, maintenance price ₱500. A card holder who had this service in the last 30 days pays ₱500; one who has not pays ₱1,000.</li>
+                                </ul>
+                                <p class="mt-2 font-medium text-on-surface" x-cloak x-show="price > 0" x-text="summary()"></p>
+                            </div>
+                            <div class="grid gap-5 sm:grid-cols-2">
+                                <x-admin.input name="return_price" type="number" step="0.01" min="0" label="Lapsed price" prefix="₱" :value="$service->return_price" placeholder="Not used"
+                                               x-model.number="returnPrice" hint="No visit within the period: card holder who has not had this service within the period below." />
+                                <x-admin.input name="loyalty_price" type="number" step="0.01" min="0" label="Maintenance price" prefix="₱" :value="$service->loyalty_price" placeholder="Not used"
+                                               x-model.number="cardPrice" hint="Visited within the period: card holder who had this service within the period below." />
+                                <div class="sm:col-span-2 flex flex-wrap items-end gap-4">
+                                    <x-admin.checkbox name="first_visit_discount_enabled" label="Enable lapsed price" :checked="$service->first_visit_discount_enabled ?? false" x-model="returnOn" />
+                                    <x-admin.input name="first_visit_discount_period" type="number" min="1" max="1200" step="1" label="No visit within" :value="$service->first_visit_discount_period ?: 30" x-model.number="period" />
+                                    <x-admin.select name="first_visit_discount_unit" label="Period unit" :options="['days' => 'Days', 'months' => 'Months']" :value="$service->first_visit_discount_unit ?? 'days'" x-model="unit" />
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </x-admin.card>
