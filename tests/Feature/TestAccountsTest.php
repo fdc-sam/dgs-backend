@@ -179,6 +179,11 @@ class TestAccountsTest extends TestCase
         $this->put('/settings', ['salon_name' => 'Hacked'])->assertSessionHas('error');
         $this->put("/admin-accounts/{$this->testAdmin->id}/account-type", ['account_type' => 'live'])->assertSessionHas('error');
         $this->assertTrue($this->testAdmin->fresh()->is_test);
+        // Nor can it move a test customer, with their test bookings and reviews, into live.
+        $this->get("/customers/{$this->testCustomer->id}")->assertOk()->assertDontSee('Test or live');
+        $this->post("/customers/{$this->testCustomer->id}/account-type", ['account_type' => 'live'])->assertSessionHas('error');
+        $this->assertTrue($this->testCustomer->fresh()->is_test);
+        $this->assertTrue(Appointment::withoutGlobalScopes()->find($this->testBooking->id)->is_test);
 
         $this->actingAs($this->liveAdmin);
         $this->get('/services')->assertOk()->assertSee('New service');

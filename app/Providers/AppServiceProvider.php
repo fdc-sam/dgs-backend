@@ -22,6 +22,7 @@ use App\Models\User;
 use App\Policies\ProfilePolicy;
 use App\Services\SettingsService;
 use App\Support\FavoriteLookup;
+use App\Support\LocalDatabase;
 use App\Support\TestMode;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -29,6 +30,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
@@ -46,6 +48,10 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // migrate:fresh / refresh / reset / rollback and db:wipe only run on a database on this machine, never the live
+        // one (a local .env can point at it). Tests and the SQLite preview are local, so they are unaffected.
+        DB::prohibitDestructiveCommands(! LocalDatabase::isLocal());
+
         // Immutable dates avoid accidental mutation in slot arithmetic.
         Date::use(CarbonImmutable::class);
 

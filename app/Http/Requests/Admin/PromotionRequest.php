@@ -25,10 +25,16 @@ class PromotionRequest extends AdminRequest
             'terms_and_conditions' => ['nullable', 'string', 'max:5000'],
             'status' => ['required', Rule::enum(PromotionStatus::class)],
             'image' => $this->imageRules(),
-            'services' => ['nullable', 'array'],
+            // A price (Fixed / Special Price) is for particular services; without any it would price every service.
+            'services' => [Rule::requiredIf(in_array($type, ['fixed', 'special_price'], true)), 'nullable', 'array'],
             'services.*' => ['string', 'exists:services,id'],
             'branches' => ['nullable', 'array'],
             'branches.*' => ['string', 'exists:branches,id'],
         ];
+    }
+
+    public function messages(): array
+    {
+        return ['services.required' => 'Pick the services this price is for. A price can\'t apply to every service.'];
     }
 }

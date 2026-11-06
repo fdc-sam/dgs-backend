@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Promotion;
 use App\Models\Service;
 use App\Models\ServiceCategory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -110,6 +111,12 @@ class CatalogAdminService
         $service->delete();
     }
 
+    /** @param list<string> $picked @return list<string> */
+    private function keepDeletedLinks(BelongsToMany $relation, array $picked): array
+    {
+        return $picked !== [] ? $picked : $relation->onlyTrashed()->pluck($relation->getRelated()->getQualifiedKeyName())->all();
+    }
+
     public function savePromotion(?Promotion $promotion, array $data, ?UploadedFile $image): Promotion
     {
         return DB::transaction(function () use ($promotion, $data, $image) {
@@ -132,8 +139,10 @@ class CatalogAdminService
                 $promotion->image = $this->uploads->storeImage($image, 'promotions', $promotion->image);
             }
             $promotion->save();
-            $promotion->services()->sync($data['services'] ?? []);
-            $promotion->branches()->sync($data['branches'] ?? []);
+            // Links to deleted services/branches are kept while nothing else is picked, so the promotion stays
+            // "applies to nothing" there instead of becoming "every service / every branch" (Promotion::services).
+            $promotion->services()->sync($this->keepDeletedLinks($promotion->services(), $data['services'] ?? []));
+            $promotion->branches()->sync($this->keepDeletedLinks($promotion->branches(), $data['branches'] ?? []));
 
             $this->audit->changes($promotion->wasRecentlyCreated ? 'promotion.created' : 'promotion.updated', $promotion, $original);
 

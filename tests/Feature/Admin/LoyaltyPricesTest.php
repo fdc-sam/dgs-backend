@@ -104,6 +104,15 @@ class LoyaltyPricesTest extends TestCase
         // Back on: the saved discount applies again.
         $save(['loyalty_enabled' => '1']);
         $this->assertSame(800, $this->loyaltyPriceFor($holder));
+
+        // A mistake on the Less tab while Tiered is picked and the switch is off: the form comes back on the Less tab with
+        // the switch on, so the error is not hidden.
+        $this->actingAs($admin, 'web')->from("/services/{$this->service->id}/edit")->followingRedirects()->put("/services/{$this->service->id}", [
+            'category_id' => $this->service->category_id, 'name' => $this->service->name, 'regular_price' => 1000, 'duration_minutes' => 60,
+            'status' => 'active', 'branches' => [$this->branch->id => ['enabled' => '1']], 'staff' => [$this->stylist->id],
+            'loyalty_enabled' => '0', 'loyalty_pricing' => 'tiered', 'loyalty_discount' => '150', 'loyalty_discount_type' => 'percent',
+        ])->assertOk()->assertSee('Please fix the highlighted fields.')->assertSee("mode: 'less'", false)->assertSee('loyaltyOn: true', false);
+        $this->assertSame('200.00', $this->service->refresh()->loyalty_discount); // nothing saved
     }
 
     public function test_less_takes_an_amount_or_percent_off_every_option(): void

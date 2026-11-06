@@ -92,7 +92,10 @@ Route::middleware(['auth', 'auth.session', 'admin'])->group(function () {
         Route::post('customers/{customer}/status', [Admin\CustomerController::class, 'updateStatus'])->name('customers.status');
         Route::post('customers/{customer}/loyalty-card', [Admin\CustomerController::class, 'updateLoyaltyCard'])->name('customers.loyalty-card');
         Route::post('customers/{customer}/loyalty-card/renew', [Admin\CustomerController::class, 'renewLoyaltyCard'])->name('customers.loyalty-card.renew');
-        Route::post('customers/{customer}/account-type', [Admin\CustomerController::class, 'updateAccountType'])->name('customers.account-type');
+        // Moving a customer (and their bookings, reviews, referrals) between test and live: live accounts only, so a
+        // test super admin can't push test data into the live reports.
+        Route::post('customers/{customer}/account-type', [Admin\CustomerController::class, 'updateAccountType'])->name('customers.account-type')
+            ->middleware('live');
 
         Route::get('referrals', [Admin\ReferralController::class, 'index'])->name('referrals.index');
         Route::post('referrals/{referral}/status', [Admin\ReferralController::class, 'status'])->name('referrals.status');

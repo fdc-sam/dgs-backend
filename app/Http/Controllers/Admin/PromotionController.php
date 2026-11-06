@@ -26,7 +26,8 @@ class PromotionController extends Controller
     public function index(Request $request): View
     {
         $now = now();
-        $promotions = Promotion::query()->withCount('services')
+        $promotions = Promotion::query()
+            ->withCount(['services', 'services as live_services_count' => fn ($q) => $q->whereNull('services.deleted_at')])
             ->when($request->query('state') === 'live', fn ($q) => $q->currentlyActive())
             ->when($request->query('state') === 'draft', fn ($q) => $q->where('status', PromotionStatus::Draft->value))
             ->when($request->query('state') === 'expired', fn ($q) => $q->where('end_at', '<', $now))

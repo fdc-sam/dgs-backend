@@ -28,14 +28,15 @@ class PromotionResource extends JsonResource
             'end_at' => Fmt::iso($this->end_at),
             'terms_and_conditions' => $this->terms_and_conditions,
             'status' => $this->when($request->user()?->role?->canAccessAdmin() ?? false, fn () => $this->status->value),
-            'is_active' => $this->isCurrentlyActive(),
-            'services' => $this->whenLoaded('services', fn () => $this->services->map(fn ($s) => [
+            'is_active' => $this->isCurrentlyActive() && ! $this->resource->appliesToNothing(),
+            // Deleted services and branches are not listed (Promotion::services keeps them, for the "applies to" rule).
+            'services' => $this->whenLoaded('services', fn () => $this->services->reject->trashed()->map(fn ($s) => [
                 'id' => $s->id,
                 'name' => $s->name,
                 'price' => Fmt::money($s->regular_price),
                 'image_url' => Fmt::url($s->image),
             ])->values()),
-            'branches' => $this->whenLoaded('branches', fn () => $this->branches->map(fn ($b) => [
+            'branches' => $this->whenLoaded('branches', fn () => $this->branches->reject->trashed()->map(fn ($b) => [
                 'id' => $b->id,
                 'name' => $b->name,
             ])->values()),

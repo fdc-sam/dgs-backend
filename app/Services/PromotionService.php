@@ -12,12 +12,22 @@ use Illuminate\Validation\ValidationException;
 
 class PromotionService
 {
-    /** Currently active promotions, optionally restricted to a branch and/or service. */
+    /**
+     * Currently active promotions, optionally restricted to a branch and/or service. Left out: promotions whose
+     * services or branches were all deleted, and price-setting ones with no services picked (Promotion::appliesToNothing).
+     */
     public function activeQuery(?string $branchId = null, ?string $serviceId = null): Builder
     {
         return Promotion::query()
             ->currentlyActive()
             ->with(['services', 'branches'])
+            ->where(fn (Builder $q) => $q
+                ->where(fn (Builder $q) => $q->whereDoesntHave('services')
+                    ->whereNotIn('discount_type', [DiscountType::Fixed->value, DiscountType::SpecialPrice->value]))
+                ->orWhereHas('services', fn (Builder $s) => $s->whereNull('services.deleted_at')))
+            ->where(fn (Builder $q) => $q
+                ->whereDoesntHave('branches')
+                ->orWhereHas('branches', fn (Builder $b) => $b->whereNull('branches.deleted_at')))
             ->when($branchId, fn (Builder $q) => $q->where(fn (Builder $q) => $q
                 ->whereDoesntHave('branches')
                 ->orWhereHas('branches', fn (Builder $b) => $b->whereKey($branchId))))
@@ -44,6 +54,10 @@ class PromotionService
         }
         if ($promotion->branches->isNotEmpty() && ! $promotion->branches->contains('id', $branch->id)) {
             throw ValidationException::withMessages(['promotion_id' => 'This promotion is not available at the selected branch.']);
+        }
+        // A price for "every service" is never meant: a Fixed / Special Price promotion with no services picked is unused.
+        if ($promotion->setsServicePrices() && $promotion->services->isEmpty()) {
+            throw ValidationException::withMessages(['promotion_id' => 'This promotion does not apply to the selected services.']);
         }
 
         $serviceIds = $promotion->services->pluck('id');

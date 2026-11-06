@@ -5,6 +5,12 @@
     $assignedStaff = old('staff', $service->relationLoaded('staff') ? $service->staff->pluck('id')->all() : []);
     $productRows = old('products', $service->relationLoaded('products') ? $service->products->map(fn ($p) => ['product_id' => $p->id, 'quantity' => (float) $p->pivot->quantity])->values()->all() : []);
     $productCatalog = $products->mapWithKeys(fn ($p) => [$p->id => ['unit' => $p->unit, 'cost' => (float) $p->unit_cost]]);
+    // Loyalty card prices: the switch and the tab. A loyalty field with an error opens its tab (and the switch), so the
+    // message is not hidden on the other tab or behind the Off switch.
+    $lessErrors = $errors->hasAny(['loyalty_discount', 'loyalty_discount_type']);
+    $tieredErrors = $errors->hasAny(['return_price', 'loyalty_price', 'first_visit_discount_enabled', 'first_visit_discount_period', 'first_visit_discount_unit']);
+    $loyaltyMode = $lessErrors ? 'less' : ($tieredErrors ? 'tiered' : (old('loyalty_pricing', $service->loyalty_pricing ?? 'less') === 'tiered' ? 'tiered' : 'less'));
+    $loyaltyOn = $lessErrors || $tieredErrors || (bool) old('loyalty_enabled', $service->loyalty_enabled ?? false);
 @endphp
 <x-admin.layout :title="$editing ? 'Edit service' : 'New service'">
     <x-admin.page-header :title="$editing ? 'Edit '.$service->name : 'New service'" :back="route('services.index')"
@@ -13,8 +19,8 @@
     <form method="POST" action="{{ $editing ? route('services.update', $service) : route('services.store') }}" enctype="multipart/form-data"
           x-data="{
               price: @js((float) old('regular_price', $service->regular_price)),
-              loyaltyOn: @js((bool) old('loyalty_enabled', $service->loyalty_enabled ?? false)),
-              mode: @js(old('loyalty_pricing', $service->loyalty_pricing ?? 'less')),
+              loyaltyOn: @js($loyaltyOn),
+              mode: @js($loyaltyMode),
               lessValue: @js(filled($lessValue = old('loyalty_discount', $service->loyalty_discount)) && (float) $lessValue > 0 ? (float) $lessValue : ''),
               lessType: @js(old('loyalty_discount_type', $service->loyalty_discount_type ?? 'amount')),
               cardPrice: @js(filled($cardPrice = old('loyalty_price', $service->loyalty_price)) ? (float) $cardPrice : ''),
@@ -69,10 +75,6 @@
                     holder who has not had this service within the period. The hidden field sends the chosen tab; the other
                     tab's values are kept so switching back loses nothing. The live lines work it out from the typed prices.
                 --}}
-                @php
-                    $loyaltyMode = old('loyalty_pricing', $service->loyalty_pricing ?? 'less') === 'tiered' ? 'tiered' : 'less';
-                    $loyaltyOn = (bool) old('loyalty_enabled', $service->loyalty_enabled ?? false);
-                @endphp
                 <x-admin.card title="Loyalty card prices" subtitle="What customers with an active (not expired) loyalty card pay for this service. Choose a simple discount, or tiered prices that depend on how recently they had it. Customers without a card, or with an expired card, pay the regular price.">
                     <x-slot:actions>
                         <x-admin.switch name="loyalty_enabled" :checked="$loyaltyOn" x-model="loyaltyOn" ::aria-label="loyaltyOn ? 'Loyalty card prices on' : 'Loyalty card prices off'">

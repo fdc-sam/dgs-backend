@@ -67,7 +67,8 @@
         </div>
 
         <div class="space-y-6">
-            @can('super-admin')
+            {{-- Live super admins only: a test account can't move anyone between the sides (route middleware 'live'). --}}
+            @if (auth()->user()->can('super-admin') && ! auth()->user()->is_test)
                 <x-admin.card title="Test or live" subtitle="Saves as soon as you pick one.">
                     {{-- Picking the other option saves it after its own confirm; cancelling puts the choice back. --}}
                     <form method="POST" action="{{ route('customers.account-type', $customer) }}"
@@ -89,7 +90,7 @@
                         <noscript><x-admin.button type="submit" variant="tonal" icon="save" class="mt-4 w-full">Save account type</x-admin.button></noscript>
                     </form>
                 </x-admin.card>
-            @endcan
+            @endif
             @php
                 $cardExpired = $customer->loyaltyCardExpired();
                 $cardDaysLeft = $customer->loyaltyCardDaysLeft();

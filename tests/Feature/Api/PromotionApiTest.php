@@ -49,6 +49,6 @@ class PromotionApiTest extends TestCase
         $this->getJson('/api/v1/promotions/'.Promotion::factory()->specialPrice(1999)->create()->id)
             ->assertJsonPath('data.discount_label', 'Now ₱1,999.00');
         $this->getJson('/api/v1/promotions/'.Promotion::factory()->fixed(100)->create()->id)
-            ->assertJsonPath('data.discount_label', '₱100.00 off');
+            ->assertJsonPath('data.discount_label', 'Now ₱100.00'); // Fixed Price: the customer pays ₱100
     }
 }

@@ -33,7 +33,16 @@
                             </div>
                         </td>
                         <td class="whitespace-nowrap text-sm">{{ $promo->start_at->format('M j') }} – {{ $promo->end_at->format('M j, Y') }}</td>
-                        <td>{{ $promo->services_count ?: 'All' }}</td>
+                        <td>
+                            {{-- Its services were all deleted (it applies to nothing), or a price with no services picked. --}}
+                            @if ($promo->services_count > 0 && $promo->live_services_count === 0)
+                                <span class="font-medium text-danger" title="Every service this promotion was for has been deleted, so it applies to nothing.">None (deleted)</span>
+                            @elseif ($promo->services_count === 0 && in_array($promo->discount_type, [\App\Enums\DiscountType::Fixed, \App\Enums\DiscountType::SpecialPrice], true))
+                                <span class="font-medium text-danger" title="A price with no services picked is not used. Edit it and pick the services.">None picked</span>
+                            @else
+                                {{ $promo->live_services_count ?: 'All' }}
+                            @endif
+                        </td>
                         <td>
                             @if ($live)<x-admin.badge tone="success" icon="circle">Live</x-admin.badge>
                             @elseif ($expired)<x-admin.badge>Expired</x-admin.badge>

@@ -133,14 +133,24 @@ class AppointmentBookingTest extends TestCase
     public function test_special_price_and_fixed_promotions(): void
     {
         $special = Promotion::factory()->specialPrice(750)->create();
+        $special->services()->attach($this->service->id); // a price is for particular services
         $this->actingAsCustomer();
         $this->postJson('/api/v1/appointments', $this->bookingPayload(['promotion_id' => $special->id]))
             ->assertCreated()->assertJsonPath('data.total_amount', 750);
 
-        $fixed = Promotion::factory()->fixed(5000)->create();
+        // "Fixed" is the price the customer pays (Fixed Price), not an amount off: ₱600 for the ₱1,000 service, and a
+        // fixed price above the service's own price changes nothing.
+        $fixed = Promotion::factory()->fixed(600)->create();
+        $fixed->services()->attach($this->service->id);
         $this->actingAsCustomer();
         $this->postJson('/api/v1/appointments', $this->bookingPayload(['promotion_id' => $fixed->id, 'start_time' => '13:00']))
-            ->assertCreated()->assertJsonPath('data.total_amount', 0); // never negative
+            ->assertCreated()->assertJsonPath('data.total_amount', 600);
+
+        $above = Promotion::factory()->fixed(5000)->create();
+        $above->services()->attach($this->service->id);
+        $this->actingAsCustomer();
+        $this->postJson('/api/v1/appointments', $this->bookingPayload(['promotion_id' => $above->id, 'start_time' => '15:00']))
+            ->assertCreated()->assertJsonPath('data.total_amount', 1000);
     }
 
     public function test_expired_or_other_branch_promotion_is_rejected(): void

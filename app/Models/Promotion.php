@@ -35,14 +35,36 @@ class Promotion extends Model
         ];
     }
 
+    /**
+     * The services it is for; none = every service. Deleted services stay in the list, so a promotion made for a
+     * service that was deleted later applies to nothing, instead of looking like "every service".
+     */
     public function services(): BelongsToMany
     {
-        return $this->belongsToMany(Service::class, 'promotion_service');
+        return $this->belongsToMany(Service::class, 'promotion_service')->withTrashed();
     }
 
+    /** The branches it is for; none = every branch. Deleted branches stay in the list, as for [services]. */
     public function branches(): BelongsToMany
     {
-        return $this->belongsToMany(Branch::class, 'promotion_branch');
+        return $this->belongsToMany(Branch::class, 'promotion_branch')->withTrashed();
+    }
+
+    /** A Fixed Price or Special Price promotion sets the price of particular services, so it needs some picked. */
+    public function setsServicePrices(): bool
+    {
+        return in_array($this->discount_type, [DiscountType::Fixed, DiscountType::SpecialPrice], true);
+    }
+
+    /**
+     * It can't be used: every service (or branch) it was for has been deleted, or it sets a price but no services
+     * are picked (which would put that price on every service).
+     */
+    public function appliesToNothing(): bool
+    {
+        return ($this->services->isNotEmpty() && $this->services->every->trashed())
+            || ($this->branches->isNotEmpty() && $this->branches->every->trashed())
+            || ($this->setsServicePrices() && $this->services->isEmpty());
     }
 
     public function appointments(): HasMany
