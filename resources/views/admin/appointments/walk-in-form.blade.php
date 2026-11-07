@@ -29,7 +29,7 @@
                 <x-admin.card>
                     <section x-show="step === 0" x-cloak>
                         <h2 class="text-lg font-semibold">Choose branch and services</h2>
-                        <p class="mt-1 text-sm text-on-surface-variant">Select the branch and all services the guest is receiving now.</p>
+                        <p class="mt-1 text-sm text-on-surface-variant">Select the branch and services. You can link an existing member in the next step.</p>
                         <div class="mt-5">
                             <label for="walkInBranch" class="label">Branch</label>
                             <select id="walkInBranch" name="branch_id" class="field" required x-model="branchId" @change="updateAvailability()">
@@ -64,10 +64,33 @@
 
                     <section x-show="step === 1" x-cloak>
                         <h2 class="text-lg font-semibold">Guest and stylists</h2>
-                        <p class="mt-1 text-sm text-on-surface-variant">Assign each service to a stylist who offers it. Stylist assignments are optional.</p>
+                        <p class="mt-1 text-sm text-on-surface-variant">Find the member account to apply eligible loyalty prices. The customer does not need their phone.</p>
+                        <div class="mt-5 rounded-xl border border-outline-variant p-4">
+                            <label for="memberSearch" class="label">Find existing customer (optional)</label>
+                            <div class="flex gap-2">
+                                <input id="memberSearch" class="field" type="search" autocomplete="off" placeholder="Name, phone, email, or loyalty card number" x-model="customerQuery" @input.debounce.300ms="searchCustomers()" @keydown.escape="customerResults = []">
+                                <button type="button" class="rounded-lg border border-outline-variant px-3 text-sm" x-show="customer" @click="clearCustomer()">Clear</button>
+                            </div>
+                            <input type="hidden" name="customer_id" :value="customer?.id || ''">
+                            <div x-show="customerResults.length" x-cloak class="mt-2 max-h-56 overflow-auto rounded-lg border border-outline-variant bg-white">
+                                <template x-for="result in customerResults" :key="result.id">
+                                    <button type="button" class="block w-full border-b border-outline-variant px-3 py-2 text-left last:border-0 hover:bg-surface-container" @click="selectCustomer(result)">
+                                        <span class="block font-medium" x-text="result.name"></span>
+                                        <span class="block text-xs text-on-surface-variant" x-text="[result.phone, result.email, result.card_number ? `Card ${result.card_number}` : 'No card'].filter(Boolean).join(' · ')"></span>
+                                    </button>
+                                </template>
+                            </div>
+                            <p x-show="customerMessage" x-text="customerMessage" class="mt-2 text-sm text-on-surface-variant" role="status"></p>
+                            <div x-show="customer" x-cloak class="mt-3 rounded-lg bg-surface-container p-3 text-sm">
+                                <p class="font-medium" x-text="customer?.name"></p>
+                                <p x-show="customer?.card_active" class="mt-1 text-success">Active loyalty card · eligible service prices are applied below</p>
+                                <p x-show="customer && !customer.card_active" class="mt-1 text-on-surface-variant">No active loyalty card · regular prices apply</p>
+                            </div>
+                            <p x-show="customerError" x-text="customerError" class="mt-2 text-sm text-danger" role="alert"></p>
+                        </div>
                         <div class="mt-5 grid gap-5 sm:grid-cols-2">
-                            <x-admin.input name="guest_name" label="Guest name (optional)" :value="old('guest_name')" placeholder="Walk-in guest" />
-                            <x-admin.input name="phone" type="tel" label="Phone (optional)" :value="old('phone')" placeholder="09xx xxx xxxx" />
+                            <x-admin.input name="guest_name" label="Guest name (optional)" :value="old('guest_name')" placeholder="Walk-in guest" x-model="guestName" />
+                            <x-admin.input name="phone" type="tel" label="Phone (optional)" :value="old('phone')" placeholder="09xx xxx xxxx" x-model="guestPhone" />
                             <div class="sm:col-span-2">
                                 <p class="label">Stylist for each selected service</p>
                                 <div id="walkInServiceStaff" class="space-y-3"></div>
@@ -84,7 +107,7 @@
                         <h2 class="text-lg font-semibold">Review walk-in</h2>
                         <p class="mt-1 text-sm text-on-surface-variant">Confirm the services and record the visit. No appointment date or time is needed.</p>
                         <dl class="mt-5 space-y-3 rounded-xl bg-surface-container p-4 text-sm">
-                            <div class="flex justify-between gap-4"><dt class="text-on-surface-variant">Guest</dt><dd class="font-medium" x-text="guestName || 'Walk-in guest' "></dd></div>
+                            <div class="flex justify-between gap-4"><dt class="text-on-surface-variant">Customer</dt><dd class="font-medium" x-text="customer ? `${customer.name}${customer.card_active ? ' · loyalty card' : ''}` : (guestName || 'Walk-in guest')"></dd></div>
                             <div class="flex justify-between gap-4"><dt class="text-on-surface-variant">Branch</dt><dd class="font-medium" x-text="branchName"></dd></div>
                             <div class="border-t border-outline-variant pt-3">
                                 <dt class="mb-2 text-on-surface-variant">Services and stylists</dt>
@@ -120,6 +143,8 @@
                 steps: ['Services', 'Guest & stylists', 'Review'],
                 branchId: @js($selectedBranch),
                 guestName: @js(old('guest_name', '')),
+                guestPhone: @js(old('phone', '')),
+                customerQuery: '', customer: null, customerResults: [], customerMessage: '', customerError: '',
                 staffSelections: @js(old('staff_by_service', [])),
                 staffOptions: @js($staff->map(fn ($profile) => ['id' => $profile->id, 'name' => $profile->user?->name.($profile->position ? ' · '.$profile->position : ''), 'branchIds' => $profile->branches->pluck('id')->all(), 'serviceIds' => $profile->services->pluck('id')->all()])->values()),
                 branchName: '',
@@ -136,6 +161,42 @@
                     });
                     this.renderServiceStaff();
                     this.updateTotal();
+                    if (this.customerQuery.length >= 2) this.searchCustomers();
+                },
+                async searchCustomers() {
+                    this.customerError = '';
+                    if (this.customerQuery.trim().length < 2) { this.customerResults = []; return; }
+                    try {
+                        const url = new URL(@js(route('walk-ins.customers')), window.location.origin);
+                        url.searchParams.set('q', this.customerQuery.trim());
+                        if (this.branchId) url.searchParams.set('branch_id', this.branchId);
+                        const response = await fetch(url, { headers: { Accept: 'application/json' } });
+                        if (!response.ok) throw new Error('Search failed. Please try again.');
+                        const data = await response.json();
+                        this.customerResults = data.data;
+                        if (this.customer) {
+                            const refreshed = data.data.find(person => person.id === this.customer.id);
+                            if (refreshed) { this.customer = refreshed; this.cards().forEach(card => this.updateCardPrice(card)); this.updateTotal(); }
+                        }
+                        this.customerMessage = data.data.length ? '' : 'No customer accounts found. You can continue as a guest.';
+                    } catch (error) { this.customerError = error.message; }
+                },
+                selectCustomer(person) {
+                    this.customer = person; this.customerResults = []; this.customerQuery = person.name; this.customerMessage = '';
+                    this.guestName = person.name; this.guestPhone = person.phone || '';
+                    this.cards().forEach(card => this.updateCardPrice(card)); this.updateTotal();
+                },
+                clearCustomer() {
+                    this.customer = null; this.customerQuery = ''; this.customerMessage = ''; this.cards().forEach(card => this.updateCardPrice(card)); this.updateTotal();
+                },
+                basePrice(card) { return Number(JSON.parse(card.dataset.branchPrices || '{}')[this.branchId] ?? 0); },
+                priceFor(card) {
+                    const serviceId = card.querySelector('input').value;
+                    return Number(this.customer?.loyalty_prices?.[serviceId] ?? this.basePrice(card));
+                },
+                updateCardPrice(card) {
+                    const base = this.basePrice(card), price = this.priceFor(card), node = card.querySelector('.walkin-service-price');
+                    node.textContent = this.money(price) + (price < base ? ` · save ${this.money(base - price)}` : '');
                 },
                 servicesChanged() { this.renderServiceStaff(); this.updateTotal(); },
                 renderServiceStaff() {
@@ -170,7 +231,8 @@
                     container.replaceChildren(...rows);
                 },
                 updateTotal() {
-                    const total = this.selected().reduce((sum, card) => sum + Number(JSON.parse(card.dataset.branchPrices || '{}')[this.branchId] ?? 0), 0);
+                    this.cards().forEach(card => this.updateCardPrice(card));
+                    const total = this.selected().reduce((sum, card) => sum + this.priceFor(card), 0);
                     ['walkInTotal', 'walkInSidebarTotal'].forEach(id => { const node = document.getElementById(id); if (node) node.textContent = this.money(total); });
                 },
                 next() {
@@ -195,7 +257,8 @@
                         const stylist = this.staffOptions.find(person => person.id === this.staffSelections[serviceId])?.name || 'Any qualified stylist';
                         name.textContent = `${serviceName} · ${stylist}`;
                         const price = document.createElement('span');
-                        price.textContent = this.money(Number(JSON.parse(card.dataset.branchPrices || '{}')[this.branchId] ?? 0));
+                        const base = this.basePrice(card), amount = this.priceFor(card);
+                        price.textContent = this.money(amount) + (amount < base ? ` (member; saves ${this.money(base - amount)})` : '');
                         row.append(name, price);
                         return row;
                     }));

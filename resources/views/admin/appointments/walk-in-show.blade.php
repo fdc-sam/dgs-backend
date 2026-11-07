@@ -14,7 +14,7 @@
         <div class="space-y-6 lg:col-span-2">
             <x-admin.card title="Walk-in details">
                 <dl class="grid gap-x-6 gap-y-4 sm:grid-cols-2">
-                    <div><dt class="text-sm text-on-surface-variant">Guest</dt><dd class="font-medium">{{ $visit->guest_name ?: 'Walk-in guest' }}</dd></div>
+                    <div><dt class="text-sm text-on-surface-variant">Customer</dt><dd class="font-medium">{{ $visit->customer?->name ?? $visit->guest_name ?? 'Walk-in guest' }} @if ($visit->customer?->loyalty_number)<span class="text-xs text-primary">· loyalty card {{ $visit->customer->hasActiveLoyaltyCard() ? 'active' : 'expired' }}</span>@endif</dd></div>
                     <div><dt class="text-sm text-on-surface-variant">Phone</dt><dd class="font-medium">{{ $visit->phone ?: 'No phone provided' }}</dd></div>
                     <div><dt class="text-sm text-on-surface-variant">Branch</dt><dd class="font-medium">{{ $visit->branch?->name ?? '—' }}</dd></div>
                     <div><dt class="text-sm text-on-surface-variant">Stylists</dt><dd class="font-medium">{{ $assignedStylists ?: ($visit->staff?->user?->name ?? 'Unassigned') }}</dd></div>

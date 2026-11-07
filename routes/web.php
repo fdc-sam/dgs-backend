@@ -59,6 +59,7 @@ Route::middleware(['auth', 'auth.session', 'admin'])->group(function () {
 
         Route::get('walk-ins', [Admin\WalkInVisitController::class, 'index'])->name('walk-ins.index');
         Route::get('walk-ins/create', [Admin\WalkInVisitController::class, 'create'])->name('walk-ins.create');
+        Route::get('walk-ins/customers', [Admin\WalkInVisitController::class, 'customers'])->name('walk-ins.customers');
         Route::post('walk-ins', [Admin\WalkInVisitController::class, 'store'])->name('walk-ins.store');
         Route::get('walk-ins/{walkInVisit}', [Admin\WalkInVisitController::class, 'show'])->name('walk-ins.show');
         Route::put('walk-ins/{walkInVisit}/items/{item}', [Admin\WalkInVisitController::class, 'updateItem'])->name('walk-ins.items.update');

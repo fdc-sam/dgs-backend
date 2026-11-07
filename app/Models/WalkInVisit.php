@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['guest_name', 'phone', 'branch_id', 'staff_profile_id', 'created_by', 'visited_at', 'status', 'completed_at', 'total_amount', 'notes'])]
+#[Fillable(['customer_id', 'guest_name', 'phone', 'branch_id', 'staff_profile_id', 'created_by', 'visited_at', 'status', 'completed_at', 'total_amount', 'notes'])]
 class WalkInVisit extends Model
 {
     use HasUlids, SeparatesTestData;
@@ -27,6 +27,11 @@ class WalkInVisit extends Model
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class)->withTrashed();
+    }
+
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'customer_id')->withTrashed();
     }
 
     public function staff(): BelongsTo

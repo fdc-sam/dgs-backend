@@ -126,6 +126,20 @@ class Service extends Model
             ->filter()
             ->max();
 
+        $lastWalkIn = WalkInVisitItem::query()
+            ->where('service_id', $this->id)
+            ->whereHas('visit', fn ($query) => $query
+                ->where('customer_id', $customer->id)
+                ->where('status', 'completed'))
+            ->with('visit:id,completed_at,visited_at')
+            ->get()
+            ->map(fn (WalkInVisitItem $item) => $item->visit?->completed_at ?? $item->visit?->visited_at)
+            ->filter()
+            ->max();
+        if ($lastWalkIn && (! $lastVisit || CarbonImmutable::parse($lastWalkIn)->greaterThan($lastVisit))) {
+            $lastVisit = $lastWalkIn;
+        }
+
         $periodStart = $lastVisit
             ? CarbonImmutable::parse($lastVisit)
             : CarbonImmutable::parse($customer->created_at);

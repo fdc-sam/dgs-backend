@@ -9,10 +9,12 @@ use App\Models\Service;
 use App\Models\StaffProfile;
 use App\Models\WalkInVisit;
 use App\Models\WalkInVisitItem;
+use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\InventoryService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -24,12 +26,13 @@ class WalkInVisitController extends Controller
     {
         $filters = $request->validate(['search' => ['nullable', 'string', 'max:100']]);
         $visits = WalkInVisit::query()
-            ->with(['branch', 'staff.user', 'items.staff.user'])
+            ->with(['branch', 'customer', 'staff.user', 'items.staff.user'])
             ->when($filters['search'] ?? null, function ($query, $term) {
                 $like = '%'.addcslashes($term, '%_\\').'%';
                 $query->where(fn ($q) => $q
                     ->whereLike('guest_name', $like)
                     ->orWhereLike('phone', $like)
+                    ->orWhereHas('customer', fn ($customer) => $customer->whereLike('name', $like)->orWhereLike('email', $like))
                     ->orWhereHas('items', fn ($items) => $items->whereLike('service_name', $like)));
             })
             ->latest('visited_at')
@@ -55,9 +58,38 @@ class WalkInVisitController extends Controller
         ]);
     }
 
+    /** Search existing member accounts at the counter; customer devices are not needed. */
+    public function customers(Request $request): JsonResponse
+    {
+        $data = $request->validate(['q' => ['required', 'string', 'min:2', 'max:100'], 'branch_id' => ['nullable', 'string', 'exists:branches,id']]);
+        $term = trim($data['q']);
+        $like = '%'.addcslashes($term, '%_\\').'%';
+        $customers = User::customers()
+            ->where(fn ($query) => $query->whereLike('name', $like)->orWhereLike('email', $like)->orWhereLike('phone', $like)
+                ->orWhere('loyalty_number', preg_replace('/\\D/', '', $term)))
+            ->orderBy('name')->limit(10)->get();
+
+        $services = filled($request->input('branch_id')) ? Service::active()->availableAtBranch($request->input('branch_id'))
+            ->with(['branches' => fn ($query) => $query->where('branches.id', $request->input('branch_id'))])->get() : collect();
+        return response()->json(['data' => $customers->map(fn (User $customer) => [
+            'id' => $customer->id,
+            'name' => $customer->name,
+            'email' => $customer->email,
+            'phone' => $customer->phone,
+            'card_number' => $customer->loyalty_number,
+            'card_active' => $customer->hasActiveLoyaltyCard(),
+            'card_expires' => $customer->loyalty_expires_at?->toDateString(),
+            'loyalty_prices' => $customer->hasActiveLoyaltyCard() ? $services->mapWithKeys(function (Service $service) use ($customer, $request) {
+                $base = (float) ($service->branches->first()?->pivot?->custom_price ?? $service->regular_price);
+                $price = $service->loyaltyPriceFor($customer, $base);
+                return $price !== null ? [$service->id => $price] : [];
+            }) : [],
+        ])]);
+    }
+
     public function show(WalkInVisit $walkInVisit): View
     {
-        $walkInVisit->load(['branch', 'staff.user', 'creator', 'items.staff.user']);
+        $walkInVisit->load(['branch', 'customer', 'staff.user', 'creator', 'items.staff.user']);
         $services = Service::query()->active()->availableAtBranch($walkInVisit->branch_id)
             ->with(['branches' => fn ($query) => $query->where('branches.id', $walkInVisit->branch_id)])
             ->orderBy('name')->get();
@@ -200,6 +232,7 @@ class WalkInVisitController extends Controller
     public function store(Request $request, AuditLogger $audit): RedirectResponse
     {
         $data = $request->validate([
+            'customer_id' => ['nullable', 'string', Rule::exists('users', 'id')->where('role', 'customer')],
             'guest_name' => ['nullable', 'string', 'max:120'],
             'phone' => ['nullable', 'string', 'max:30'],
             'branch_id' => ['required', 'string', Rule::exists('branches', 'id')->where('status', 'active')],
@@ -211,6 +244,7 @@ class WalkInVisitController extends Controller
         ]);
 
         $branch = Branch::active()->findOrFail($data['branch_id']);
+        $customer = ! empty($data['customer_id']) ? User::customers()->findOrFail($data['customer_id']) : null;
         $serviceIds = array_values(array_unique($data['services']));
         $services = Service::query()
             ->active()
@@ -244,20 +278,23 @@ class WalkInVisitController extends Controller
             $staffByService[$service->id] = $staff;
         }
 
-        $pricedServices = $services->map(function (Service $service) use ($branch, $staffByService) {
+        $pricedServices = $services->map(function (Service $service) use ($branch, $staffByService, $customer) {
             $branchService = $service->branches->firstWhere('id', $branch->id);
             $price = $branchService?->pivot?->custom_price ?? $service->regular_price;
 
-            return [$service, number_format((float) $price, 2, '.', ''), $staffByService[$service->id] ?? null];
+            $regular = (float) $price;
+            $price = $service->loyaltyPriceFor($customer, $regular) ?? $regular;
+            return [$service, number_format($price, 2, '.', ''), $staffByService[$service->id] ?? null];
         });
         $totalCents = $pricedServices->sum(fn ($entry) => (int) round((float) $entry[1] * 100));
         $assignedStaffIds = $staffByService ? collect($staffByService)->pluck('id')->unique()->values() : collect();
         $visitStaffId = $assignedStaffIds->count() === 1 ? $assignedStaffIds->first() : null;
 
-        $visit = DB::transaction(function () use ($data, $request, $branch, $visitStaffId, $pricedServices, $totalCents) {
+        $visit = DB::transaction(function () use ($data, $request, $branch, $customer, $visitStaffId, $pricedServices, $totalCents) {
             $visit = WalkInVisit::create([
-                'guest_name' => filled($data['guest_name'] ?? null) ? trim($data['guest_name']) : null,
-                'phone' => filled($data['phone'] ?? null) ? trim($data['phone']) : null,
+                'customer_id' => $customer?->id,
+                'guest_name' => filled($data['guest_name'] ?? null) ? trim($data['guest_name']) : $customer?->name,
+                'phone' => filled($data['phone'] ?? null) ? trim($data['phone']) : $customer?->phone,
                 'branch_id' => $branch->id,
                 'staff_profile_id' => $visitStaffId,
                 'created_by' => $request->user()->id,
@@ -283,6 +320,7 @@ class WalkInVisitController extends Controller
 
         $audit->log('walk_in_visit.created', $visit, null, [
             'guest_name' => $visit->guest_name,
+            'customer_id' => $visit->customer_id,
             'branch_id' => $visit->branch_id,
             'service_names' => $pricedServices->map(fn ($entry) => $entry[0]->name)->values()->all(),
             'staff_by_service' => $pricedServices->mapWithKeys(fn ($entry) => [$entry[0]->id => $entry[2]?->id])->all(),

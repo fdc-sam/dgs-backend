@@ -1,12 +1,12 @@
 <x-admin.layout title="Walk-in Customers">
-    <x-admin.page-header title="Walk-in Customers" subtitle="Guest service visits recorded at the salon. These do not create appointments or customer accounts.">
+    <x-admin.page-header title="Walk-in Customers" subtitle="Service visits recorded at the salon, for guests and existing customers.">
         <x-slot:actions>
             <x-admin.button :href="route('walk-ins.create')" icon="add">Record walk-in</x-admin.button>
         </x-slot:actions>
     </x-admin.page-header>
 
     <x-admin.filter-bar :action="route('walk-ins.index')" :collapse="false">
-        <x-admin.input name="search" label="Search" :value="request('search')" placeholder="Guest name, phone or service" class="w-full sm:w-72" />
+        <x-admin.input name="search" label="Search" :value="request('search')" placeholder="Customer, phone or service" class="w-full sm:w-72" />
     </x-admin.filter-bar>
 
     <x-admin.card :padding="false" class="min-w-0 max-w-full">
@@ -20,7 +20,8 @@
                 @foreach ($visits as $visit)
                     <tr role="link" tabindex="0" data-href="{{ route('walk-ins.show', $visit) }}" onclick="window.location.href = this.dataset.href" onkeydown="if (event.key === 'Enter') window.location.href = this.dataset.href" class="cursor-pointer hover:bg-surface-container/60 focus-visible:outline-2 focus-visible:outline-primary">
                         <td>
-                            <p class="font-medium">{{ $visit->guest_name ?: 'Walk-in guest' }}</p>
+                            <p class="font-medium">{{ $visit->customer?->name ?? $visit->guest_name ?? 'Walk-in guest' }}</p>
+                            @if ($visit->customer?->loyalty_number)<p class="text-xs text-primary">Member · {{ $visit->customer->hasActiveLoyaltyCard() ? 'active loyalty card' : 'card expired' }}</p>@endif
                             <p class="text-xs text-on-surface-variant">{{ $visit->phone ?: 'No phone provided' }}</p>
                         </td>
                         <td class="max-w-64 whitespace-normal break-words">{{ $visit->items->map(fn ($item) => $item->service_name.($item->staff?->user?->name ? ' · '.$item->staff->user->name : ''))->join(', ') }}</td>
