@@ -7,6 +7,7 @@ use App\Enums\ReferralStatus;
 use App\Models\Appointment;
 use App\Models\Achievement;
 use App\Models\Branch;
+use App\Models\LoyaltyCard;
 use App\Models\Payment;
 use App\Models\AppointmentItem;
 use App\Models\Product;
@@ -68,6 +69,7 @@ class AppServiceProvider extends ServiceProvider
             'referral' => Referral::class,
             'achievement' => Achievement::class,
             'walk_in_visit' => WalkInVisit::class,
+            'loyalty_card' => LoyaltyCard::class,
             'payment' => Payment::class,
             'product' => Product::class,
             'appointment_item' => AppointmentItem::class,
