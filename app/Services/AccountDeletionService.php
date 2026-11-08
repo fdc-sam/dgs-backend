@@ -6,6 +6,7 @@ use App\Enums\AppointmentStatus;
 use App\Enums\ReferralStatus;
 use App\Enums\UserStatus;
 use App\Models\Appointment;
+use App\Models\LoyaltyCard;
 use App\Models\ReviewImage;
 use App\Models\User;
 use App\Support\TestMode;
@@ -80,6 +81,7 @@ class AccountDeletionService
             $user->reviews()->withTrashed()->forceDelete();
             $user->notifications()->delete();
             $user->customerProfile()->delete();
+            LoyaltyCard::withoutGlobalScopes()->where('customer_id', $user->id)->update(['customer_id' => null]);
             DB::table('password_reset_tokens')->where('email', $email)->delete();
 
             $user->forceFill([

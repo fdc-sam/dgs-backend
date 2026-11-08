@@ -6,6 +6,7 @@ use App\Enums\AppointmentStatus;
 use App\Enums\UserStatus;
 use App\Http\Controllers\Controller;
 use App\Models\AppointmentItem;
+use App\Models\LoyaltyCard;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\CustomerQrService;
@@ -14,7 +15,9 @@ use App\Support\LoyaltyNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class CustomerController extends Controller
@@ -51,6 +54,7 @@ class CustomerController extends Controller
 
         return view('admin.customers.show', [
             'customer' => $customer,
+            'loyaltyCards' => LoyaltyCard::query()->where(fn ($q) => $q->whereNull('customer_id')->orWhere('customer_id', $customer->id))->orderBy('number')->get(),
             'appointments' => $customer->appointments()->with(['items', 'branch', 'staff.user'])->orderByDesc('starts_at')->paginate(self::PER_PAGE),
             'completedServices' => AppointmentItem::query()
                 ->whereHas('appointment', fn ($q) => $q->where('customer_id', $customer->id)->where('status', AppointmentStatus::Completed->value))
@@ -76,20 +80,47 @@ class CustomerController extends Controller
         return $qr->response($customer, $request, download: $request->boolean('download'));
     }
 
-    /**
-     * Link, change or clear the customer's loyalty card, e.g. when they buy one at the counter. Empty clears it.
-     * Only the salon links cards. A new number starts a fresh year (see User::booted); the same number keeps its date.
-     */
+    /** Assign an available inventory card, accept an existing printed number, or clear the customer's card. */
     public function updateLoyaltyCard(Request $request, User $customer, AuditLogger $audit): RedirectResponse
     {
         abort_unless($customer->isCustomer(), 404);
         $this->authorize('update', $customer);
         $request->merge(['loyalty_number' => LoyaltyNumber::normalize($request->input('loyalty_number'))]);
-        $data = $request->validate(['loyalty_number' => $request->filled('loyalty_number') ? LoyaltyNumber::rules($customer) : ['nullable']],
-            LoyaltyNumber::messages());
+        $data = $request->validate([
+            'loyalty_card_id' => ['nullable', 'string', 'exists:loyalty_cards,id'],
+            'loyalty_number' => $request->filled('loyalty_number') ? LoyaltyNumber::rules($customer) : ['nullable'],
+        ], LoyaltyNumber::messages());
 
         $old = $this->cardValues($customer);
-        $customer->forceFill(['loyalty_number' => $data['loyalty_number'] ?: null])->save();
+        $number = DB::transaction(function () use ($customer, $data) {
+            $number = $data['loyalty_number'] ?: null;
+            $card = null;
+            if (! empty($data['loyalty_card_id'])) {
+                $card = LoyaltyCard::query()->whereKey($data['loyalty_card_id'])->lockForUpdate()->firstOrFail();
+                if ($card->customer_id && $card->customer_id !== $customer->id) {
+                    throw ValidationException::withMessages(['loyalty_card_id' => 'That card is already assigned to another customer.']);
+                }
+                $number = $card->number;
+            } elseif ($number) {
+                $card = LoyaltyCard::withoutGlobalScopes()->where('number', $number)->lockForUpdate()->first();
+                if ($card && $card->customer_id && $card->customer_id !== $customer->id) {
+                    throw ValidationException::withMessages(['loyalty_number' => 'That card is already assigned to another customer.']);
+                }
+                $card ??= LoyaltyCard::create(['number' => $number, 'created_by' => auth()->id(), 'is_test' => $customer->is_test]);
+            }
+
+            $previous = LoyaltyCard::withoutGlobalScopes()->where('customer_id', $customer->id)->lockForUpdate()->first();
+            if ($previous && $previous->number !== $number) {
+                $previous->update(['customer_id' => null]);
+            }
+
+            $customer->forceFill(['loyalty_number' => $number])->save();
+            if ($card && $card->customer_id !== $customer->id) {
+                $card->update(['customer_id' => $customer->id, 'is_test' => $customer->is_test]);
+            }
+
+            return $number;
+        });
         $audit->log('customer.loyalty_number', $customer, $old, $this->cardValues($customer));
 
         return back()->with('success', $customer->loyalty_number

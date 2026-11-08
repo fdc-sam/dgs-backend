@@ -96,7 +96,7 @@
                 $cardDaysLeft = $customer->loyaltyCardDaysLeft();
                 $validity = \App\Support\LoyaltyNumber::validity();
             @endphp
-            <x-admin.card title="Loyalty card" subtitle="Enter the number on the card the customer bought. Only the salon can link a card; it is good for {{ $validity }} and shows in the customer's app.">
+            <x-admin.card title="Loyalty card" subtitle="Assign an available card from Loyalty Cards. The card is good for {{ $validity }} and shows in the customer's app.">
                 <x-admin.loyalty-card :number="$customer->loyalty_number" :name="$customer->name" :expired="$cardExpired" :class="$customer->loyalty_number ? 'mb-4' : 'mb-3 opacity-60'" />
                 @unless ($customer->loyalty_number)
                     <p class="mb-4 text-sm text-on-surface-variant">No loyalty card linked yet.</p>
@@ -128,20 +128,24 @@
                     @endif
                     <form method="POST" action="{{ route('customers.loyalty-card', $customer) }}" class="space-y-3">
                         @csrf
-                        <x-admin.input name="loyalty_number" :label="$customer->loyalty_number ? 'Change card number' : 'Card number'" inputmode="numeric"
-                                       autocomplete="off" placeholder="e.g. LC-0000353" :value="old('loyalty_number')"
-                                       :hint="$customer->loyalty_number ? 'A new number counts as a new card and starts a fresh '.$validity.'.' : 'The card is good for '.$validity.' from today.'" />
+                        <label for="loyaltyCardSelect" class="label">Select card</label>
+                        <select id="loyaltyCardSelect" name="loyalty_card_id" class="field">
+                            <option value="">No loyalty card</option>
+                            @foreach ($loyaltyCards as $card)
+                                <option value="{{ $card->id }}" @selected(old('loyalty_card_id', $customer->loyalty_number ? $loyaltyCards->firstWhere('number', $customer->loyalty_number)?->id : '') === $card->id)>
+                                    {{ \App\Support\LoyaltyNumber::format($card->number) }}{{ $card->customer_id === $customer->id ? ' · Current card' : ' · Available' }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('loyalty_card_id')<p class="text-xs font-medium text-danger">{{ $message }}</p>@enderror
+                        @if ($loyaltyCards->whereNull('customer_id')->isEmpty())
+                            <p class="text-xs text-on-surface-variant">No available cards. Generate cards on the Loyalty Cards page first.</p>
+                        @endif
+                        <p class="text-xs text-on-surface-variant">{{ $customer->loyalty_number ? 'Assigning a different card starts a fresh '.$validity.' term.' : 'The card is good for '.$validity.' from today.' }}</p>
                         <div class="flex flex-wrap gap-2">
-                            <x-admin.button type="submit" variant="tonal" size="sm" icon="credit_card">{{ $customer->loyalty_number ? 'Save new number' : 'Link card' }}</x-admin.button>
+                            <x-admin.button type="submit" variant="tonal" size="sm" icon="credit_card">{{ $customer->loyalty_number ? 'Save card assignment' : 'Link card' }}</x-admin.button>
                         </div>
                     </form>
-                    @if ($customer->loyalty_number)
-                        <form method="POST" action="{{ route('customers.loyalty-card', $customer) }}" class="mt-2" data-confirm="Remove loyalty card {{ \App\Support\LoyaltyNumber::format($customer->loyalty_number) }} from {{ $customer->name }}?">
-                            @csrf
-                            <input type="hidden" name="loyalty_number" value="">
-                            <x-admin.button type="submit" variant="danger-text" size="sm">Remove card</x-admin.button>
-                        </form>
-                    @endif
                 @endcan
             </x-admin.card>
             <x-admin.card title="Customer QR code">

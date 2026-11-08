@@ -66,6 +66,10 @@ Route::middleware(['auth', 'auth.session', 'admin'])->group(function () {
         Route::delete('walk-ins/{walkInVisit}/items/{item}', [Admin\WalkInVisitController::class, 'destroyItem'])->name('walk-ins.items.destroy');
         Route::post('walk-ins/{walkInVisit}/complete', [Admin\WalkInVisitController::class, 'complete'])->name('walk-ins.complete');
 
+        Route::get('loyalty-cards', [Admin\LoyaltyCardController::class, 'index'])->name('loyalty-cards.index');
+        Route::post('loyalty-cards/generate', [Admin\LoyaltyCardController::class, 'generate'])->name('loyalty-cards.generate');
+        Route::post('loyalty-cards/{loyaltyCard}/disconnect', [Admin\LoyaltyCardController::class, 'disconnect'])->name('loyalty-cards.disconnect');
+
         // Shared salon setup: test accounts can open these pages but not change them.
         Route::middleware('live')->group(function () {
             Route::resource('services', Admin\ServiceController::class)->except('show');

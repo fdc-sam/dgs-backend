@@ -19,6 +19,7 @@
         ],
         'People' => [
             ['customers.index', 'Customers', 'groups', $manager, 'customers.*'],
+            ['loyalty-cards.index', 'Loyalty cards', 'credit_card', $manager, 'loyalty-cards.*'],
             ['staff.index', 'Staff', 'badge', $manager, 'staff.*'],
             ['my-schedule', 'My Schedule', 'schedule', $user->isStaff()],
             ['branches.index', 'Branches', 'storefront', $manager, 'branches.*'],
