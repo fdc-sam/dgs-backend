@@ -69,6 +69,12 @@ Route::middleware(['auth', 'auth.session', 'admin'])->group(function () {
         Route::get('loyalty-cards', [Admin\LoyaltyCardController::class, 'index'])->name('loyalty-cards.index');
         Route::post('loyalty-cards/generate', [Admin\LoyaltyCardController::class, 'generate'])->name('loyalty-cards.generate');
         Route::post('loyalty-cards/{loyaltyCard}/disconnect', [Admin\LoyaltyCardController::class, 'disconnect'])->name('loyalty-cards.disconnect');
+        // Cards asked for in the app through a friend: check the GCash receipt, then approve or reject.
+        Route::get('loyalty-cards/requests', [Admin\LoyaltyCardRequestController::class, 'index'])->name('loyalty-cards.requests.index');
+        Route::get('loyalty-cards/requests/{cardRequest}', [Admin\LoyaltyCardRequestController::class, 'show'])->name('loyalty-cards.requests.show');
+        Route::get('loyalty-cards/requests/{cardRequest}/proof', [Admin\LoyaltyCardRequestController::class, 'proof'])->name('loyalty-cards.requests.proof');
+        Route::post('loyalty-cards/requests/{cardRequest}/approve', [Admin\LoyaltyCardRequestController::class, 'approve'])->name('loyalty-cards.requests.approve');
+        Route::post('loyalty-cards/requests/{cardRequest}/reject', [Admin\LoyaltyCardRequestController::class, 'reject'])->name('loyalty-cards.requests.reject');
 
         // Shared salon setup: test accounts can open these pages but not change them.
         Route::middleware('live')->group(function () {

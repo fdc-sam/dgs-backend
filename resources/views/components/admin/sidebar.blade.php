@@ -79,6 +79,9 @@
                                     @if ($link[0] === 'referrals.index')
                                         <span data-live-badge="new_referrals" data-live-count @if ($newReferrals <= 0) hidden @endif class="rounded-full bg-gold px-2 py-0.5 text-xs font-semibold text-on-surface" title="New referrals">{{ $newReferrals > 99 ? '99+' : $newReferrals }}</span>
                                     @endif
+                                    @if ($link[0] === 'loyalty-cards.index')
+                                        <span data-live-badge="card_requests_to_verify" data-live-count @if ($cardRequestsToVerify <= 0) hidden @endif class="rounded-full bg-gold px-2 py-0.5 text-xs font-semibold text-on-surface" title="Loyalty card requests to verify">{{ $cardRequestsToVerify > 99 ? '99+' : $cardRequestsToVerify }}</span>
+                                    @endif
                                     @if ($link[0] === 'payments.index')
                                         <span data-live-badge="payments_to_verify" data-live-count @if ($paymentsToVerify <= 0) hidden @endif class="rounded-full bg-gold px-2 py-0.5 text-xs font-semibold text-on-surface" title="Payments to verify">{{ $paymentsToVerify > 99 ? '99+' : $paymentsToVerify }}</span>
                                     @endif

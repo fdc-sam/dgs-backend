@@ -10,6 +10,7 @@ use App\Models\LoyaltyCard;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\CustomerQrService;
+use App\Services\LoyaltyCardRequestService;
 use App\Support\CustomerCode;
 use App\Support\LoyaltyNumber;
 use Illuminate\Http\RedirectResponse;
@@ -54,7 +55,10 @@ class CustomerController extends Controller
 
         return view('admin.customers.show', [
             'customer' => $customer,
-            'loyaltyCards' => LoyaltyCard::query()->where(fn ($q) => $q->whereNull('customer_id')->orWhere('customer_id', $customer->id))->orderBy('number')->get(),
+            // Free cards, minus the ones set aside for other customers' requests through a friend.
+            'loyaltyCards' => LoyaltyCard::query()->where(fn ($q) => $q->whereNull('customer_id')->orWhere('customer_id', $customer->id))
+                ->whereNotIn('id', LoyaltyCardRequestService::reservedCardIds()->where('customer_id', '!=', $customer->id))
+                ->orderBy('number')->get(),
             'appointments' => $customer->appointments()->with(['items', 'branch', 'staff.user'])->orderByDesc('starts_at')->paginate(self::PER_PAGE),
             'completedServices' => AppointmentItem::query()
                 ->whereHas('appointment', fn ($q) => $q->where('customer_id', $customer->id)->where('status', AppointmentStatus::Completed->value))

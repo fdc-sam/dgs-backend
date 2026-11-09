@@ -18,6 +18,7 @@ enum NotificationType: string
     case PaymentRefunded = 'PAYMENT_REFUNDED';
     case Promotion = 'PROMOTION';
     case Referral = 'REFERRAL';
+    case LoyaltyCard = 'LOYALTY_CARD';
     case General = 'GENERAL';
 
     public function label(): string
@@ -37,6 +38,7 @@ enum NotificationType: string
             self::PaymentRefunded => 'Payment Refunded',
             self::Promotion => 'Promotion',
             self::Referral => 'Referral',
+            self::LoyaltyCard => 'Loyalty Card',
             self::General => 'General',
         };
     }

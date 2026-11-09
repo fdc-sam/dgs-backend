@@ -1,6 +1,6 @@
 /**
  * Live admin pages: polls GET /live (App\Services\AdminLiveStatus) while the tab is visible.
- *  - Badges marked data-live-badge="unread|new_referrals|payments_to_verify" follow the latest counts
+ *  - Badges marked data-live-badge="unread|new_referrals|payments_to_verify|card_requests_to_verify" follow the latest counts
  *    (data-live-count shows the number; without it the badge is only shown or hidden, like the bell dot).
  *  - A page that watches a list (<x-admin.layout live="appointments">) notices when that list changed: it reloads
  *    by itself if nobody is using the page, otherwise it shows a "New updates · Refresh" alert.

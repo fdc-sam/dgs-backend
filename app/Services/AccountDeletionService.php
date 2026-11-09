@@ -3,10 +3,12 @@
 namespace App\Services;
 
 use App\Enums\AppointmentStatus;
+use App\Enums\LoyaltyCardRequestStatus;
 use App\Enums\ReferralStatus;
 use App\Enums\UserStatus;
 use App\Models\Appointment;
 use App\Models\LoyaltyCard;
+use App\Models\LoyaltyCardRequest;
 use App\Models\ReviewImage;
 use App\Models\User;
 use App\Support\TestMode;
@@ -82,6 +84,9 @@ class AccountDeletionService
             $user->notifications()->delete();
             $user->customerProfile()->delete();
             LoyaltyCard::withoutGlobalScopes()->where('customer_id', $user->id)->update(['customer_id' => null]);
+            // Card requests not yet approved go; approved ones stay with the payment records.
+            LoyaltyCardRequest::withoutGlobalScopes()->where('customer_id', $user->id)
+                ->where('status', '!=', LoyaltyCardRequestStatus::Approved->value)->delete();
             DB::table('password_reset_tokens')->where('email', $email)->delete();
 
             $user->forceFill([

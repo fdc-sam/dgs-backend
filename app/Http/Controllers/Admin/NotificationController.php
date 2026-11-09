@@ -28,8 +28,13 @@ class NotificationController extends Controller
         $model->markAsRead();
 
         $appointmentId = $model->data['data']['appointment_id'] ?? null;
+        $cardRequestId = $model->data['data']['loyalty_card_request_id'] ?? null;
 
-        return $appointmentId ? redirect()->route('appointments.show', $appointmentId) : back();
+        return match (true) {
+            $appointmentId !== null => redirect()->route('appointments.show', $appointmentId),
+            $cardRequestId !== null && $request->user()->isManager() => redirect()->route('loyalty-cards.requests.show', $cardRequestId),
+            default => back(),
+        };
     }
 
     public function readAll(Request $request): RedirectResponse

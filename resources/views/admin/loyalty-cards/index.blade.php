@@ -2,9 +2,12 @@
     <x-admin.page-header title="Loyalty Cards" subtitle="Generate numbered cards, see which are available, and find each card holder.">
         <x-slot:actions>
             <span class="rounded-full bg-surface-container px-3 py-1.5 text-sm">{{ number_format($availableCount) }} available</span>
+            @if ($reservedCount > 0)<span class="rounded-full bg-surface-container px-3 py-1.5 text-sm">{{ number_format($reservedCount) }} reserved</span>@endif
             <span class="rounded-full bg-surface-container px-3 py-1.5 text-sm">{{ number_format($assignedCount) }} assigned</span>
         </x-slot:actions>
     </x-admin.page-header>
+
+    @include('admin.loyalty-cards.partials.tabs')
 
     <x-admin.card title="Generate loyalty cards" subtitle="Creates the next unused card numbers with the configured prefix and number length." class="mb-6">
         <form method="POST" action="{{ route('loyalty-cards.generate') }}" class="flex flex-wrap items-end gap-3">
@@ -29,13 +32,21 @@
                            :mobile-order="['Card number' => 0, 'Status' => 1, 'Customer holder' => 2, 'Phone' => 3, 'Expires' => 4, 'Actions' => 5]"
                            :mobile-summary="['Status', 'Customer holder']">
                 @foreach ($cards as $card)
-                    @php $holder = $card->customer; @endphp
+                    @php $holder = $card->customer; $reservation = $holder ? null : ($reservations[$card->id] ?? null); @endphp
                     <tr>
                         <td class="font-mono font-semibold tracking-wide">{{ \App\Support\LoyaltyNumber::format($card->number) }}</td>
-                        <td><x-admin.badge :tone="$holder ? ($holder->hasActiveLoyaltyCard() ? 'success' : 'warning') : 'info'">{{ $holder ? ($holder->hasActiveLoyaltyCard() ? 'Assigned · active' : 'Assigned · expired') : 'Available' }}</x-admin.badge></td>
+                        <td>
+                            @if ($reservation)
+                                <x-admin.badge tone="warning">Reserved · request</x-admin.badge>
+                            @else
+                                <x-admin.badge :tone="$holder ? ($holder->hasActiveLoyaltyCard() ? 'success' : 'warning') : 'info'">{{ $holder ? ($holder->hasActiveLoyaltyCard() ? 'Assigned · active' : 'Assigned · expired') : 'Available' }}</x-admin.badge>
+                            @endif
+                        </td>
                         <td>
                             @if ($holder)
                                 <a href="{{ route('customers.show', $holder) }}" class="font-medium text-primary hover:underline">{{ $holder->name }}</a>
+                            @elseif ($reservation)
+                                <a href="{{ route('loyalty-cards.requests.show', $reservation) }}" class="font-medium text-primary hover:underline">For {{ $reservation->customer?->name }}</a>
                             @else
                                 <span class="text-on-surface-variant">—</span>
                             @endif

@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\LoyaltyCard;
+use App\Models\LoyaltyCardRequest;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\LoyaltyCardRequestService;
 use App\Support\LoyaltyNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -33,9 +35,16 @@ class LoyaltyCardController extends Controller
             })
             ->orderBy('number')->paginate(self::PER_PAGE)->withQueryString();
 
+        // Free cards set aside for a request through a friend, by card id (only the ones on this page).
+        $reservations = LoyaltyCardRequest::query()->pending()->whereIn('loyalty_card_id', $cards->getCollection()->pluck('id'))
+            ->with('customer')->get()->keyBy('loyalty_card_id');
+        $reservedCount = LoyaltyCard::query()->whereNull('customer_id')->whereIn('id', LoyaltyCardRequestService::reservedCardIds())->count();
+
         return view('admin.loyalty-cards.index', [
             'cards' => $cards,
-            'availableCount' => LoyaltyCard::query()->whereNull('customer_id')->count(),
+            'reservations' => $reservations,
+            'availableCount' => LoyaltyCard::query()->whereNull('customer_id')->count() - $reservedCount,
+            'reservedCount' => $reservedCount,
             'assignedCount' => LoyaltyCard::query()->whereNotNull('customer_id')->count(),
         ]);
     }

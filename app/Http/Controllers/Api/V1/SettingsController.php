@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Api\ApiController;
+use App\Services\LoyaltyCardRequestService;
 use App\Services\LoyaltyProgram;
 use App\Services\PaymentService;
 use App\Services\SettingsService;
@@ -18,7 +19,7 @@ class SettingsController extends ApiController
         'cancellation_policy', 'terms_and_conditions', 'privacy_policy',
     ];
 
-    public function __invoke(SettingsService $settings, PaymentService $payments, LoyaltyProgram $loyalty): JsonResponse
+    public function __invoke(SettingsService $settings, PaymentService $payments, LoyaltyProgram $loyalty, LoyaltyCardRequestService $cardRequests): JsonResponse
     {
         $all = $settings->all();
         $gcash = $payments->isEnabled();
@@ -43,6 +44,8 @@ class SettingsController extends ApiController
             'loyalty_service_prices' => $loyalty->servicePrices(),
             'loyalty_card_perks' => [],
             'referral_rewards' => $loyalty->referralRewards(),
+            // Loyalty card through a friend: the offer on the app's loyalty card screen and its payment screen.
+            'loyalty_endorsement' => $cardRequests->appSettings(),
         ]);
     }
 }

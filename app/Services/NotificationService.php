@@ -8,12 +8,14 @@ use App\Enums\ReferralStatus;
 use App\Enums\UserStatus;
 use App\Models\Appointment;
 use App\Models\DeviceToken;
+use App\Models\LoyaltyCardRequest;
 use App\Models\Payment;
 use App\Models\Referral;
 use App\Models\User;
 use App\Notifications\AppointmentNotification;
 use App\Notifications\BroadcastNotification;
 use App\Support\Fmt;
+use App\Support\LoyaltyNumber;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Notification;
 
@@ -153,6 +155,42 @@ class NotificationService
         $referral->referrer?->notify(new BroadcastNotification(NotificationType::Referral, $title, $body, ['referral_id' => $referral->id]));
     }
 
+    /** A customer sent a GCash receipt for a loyalty card through a friend: the admins check it, the friend knows cash is due. */
+    public function loyaltyCardRequested(LoyaltyCardRequest $request): void
+    {
+        $customer = $request->customer?->name;
+        $endorser = $request->endorser?->name;
+        $recipients = User::managers()->where('is_test', $request->is_test)->get();
+        Notification::send($recipients, new BroadcastNotification(NotificationType::LoyaltyCard, 'Loyalty card request to verify',
+            "{$customer} sent {$this->peso($request->gcash_amount)} by GCash (ref {$request->reference_number}) for a loyalty card, endorsed by {$endorser}. Check it in GCash, then approve or reject.",
+            ['loyalty_card_request_id' => $request->id]));
+
+        $request->endorser?->notify(new BroadcastNotification(NotificationType::LoyaltyCard, 'A friend is getting a loyalty card',
+            "{$customer} asked for a loyalty card through you. Once the salon approves it, you've earned the {$this->peso($request->endorser_cash)} cash from {$customer}.",
+            ['loyalty_card_request_id' => $request->id, 'screen' => 'endorsements']));
+    }
+
+    public function loyaltyCardRequestApproved(LoyaltyCardRequest $request): void
+    {
+        $number = LoyaltyNumber::format($request->loyaltyCard?->number);
+        $expires = $request->customer?->loyalty_expires_at?->format('M j, Y');
+        $request->customer?->notify(new BroadcastNotification(NotificationType::LoyaltyCard, 'Your loyalty card is active',
+            "Loyalty card {$number} is now in your app (Profile → Loyalty card). It expires on {$expires}. Enjoy your card holder prices!",
+            ['loyalty_card_request_id' => $request->id, 'screen' => 'loyalty_card']));
+
+        $customer = $request->customer?->name;
+        $request->endorser?->notify(new BroadcastNotification(NotificationType::LoyaltyCard, "You've earned {$this->peso($request->endorser_cash)}",
+            "{$customer}'s loyalty card was approved. Thank you for endorsing DGS! The {$this->peso($request->endorser_cash)} cash from {$customer} is yours.",
+            ['loyalty_card_request_id' => $request->id, 'screen' => 'endorsements']));
+    }
+
+    public function loyaltyCardRequestRejected(LoyaltyCardRequest $request): void
+    {
+        $request->customer?->notify(new BroadcastNotification(NotificationType::LoyaltyCard, 'We could not verify your payment',
+            "Your loyalty card request was not approved: {$this->sentence($request->rejection_reason)} You can send a new GCash receipt from Profile → Loyalty card.",
+            ['loyalty_card_request_id' => $request->id, 'screen' => 'loyalty_card']));
+    }
+
     /** Send an announcement/promotion to every active customer. Returns the recipient count. */
     public function broadcastToCustomers(NotificationType $type, string $title, string $body, array $data = []): int
     {
@@ -201,6 +239,14 @@ class NotificationService
     private function time(\DateTimeInterface $moment): string
     {
         return CarbonImmutable::instance($moment)->format('g:i A');
+    }
+
+    /** "Wrong amount" → "Wrong amount." so a reason reads well inside a longer message. */
+    private function sentence(?string $text): string
+    {
+        $text = trim((string) $text);
+
+        return $text === '' || preg_match('/[.!?]$/', $text) ? $text : $text.'.';
     }
 
     private function peso(mixed $amount): string

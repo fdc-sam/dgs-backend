@@ -9,6 +9,7 @@
     // Things a manager should act on, most urgent first; only non-zero ones are listed.
     $attention = $isStaff ? [] : array_filter([
         ['count' => $paymentsToVerify, 'icon' => 'receipt_long', 'title' => 'GCash payments to verify', 'text' => 'Customers sent a receipt — confirm or reject it.', 'href' => route('payments.index')],
+        ['count' => $cardRequestsToVerify, 'icon' => 'credit_card', 'title' => 'loyalty card requests to verify', 'text' => 'Customers paid by GCash for a card through a friend — approve or reject it.', 'href' => route('loyalty-cards.requests.index')],
         ['count' => $stats['pending_count'], 'icon' => 'pending_actions', 'title' => 'bookings awaiting confirmation', 'text' => 'Upcoming appointments still marked pending.',
             'href' => route('appointments.index', array_filter(['status' => 'pending', 'branch_id' => $stats['branch_id']]))],
         ['count' => $lowStockCount, 'icon' => 'inventory_2', 'title' => 'products low or out of stock', 'text' => 'At or below their restock alert.', 'href' => route('products.index', ['stock' => 'low'])],

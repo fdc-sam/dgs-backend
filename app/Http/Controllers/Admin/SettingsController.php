@@ -23,6 +23,7 @@ class SettingsController extends Controller
             'loyaltyServicePrices' => $loyalty->servicePrices(),
             'logoUrl' => $settings->logoUrl(),
             'paymentQrUrl' => Fmt::url($settings->get('payment_gcash_qr') ?: null),
+            'loyaltyEndorsementQrUrl' => Fmt::url($settings->get('loyalty_endorsement_gcash_qr') ?: null),
         ]);
     }
 
@@ -74,6 +75,10 @@ class SettingsController extends Controller
             'referral_rewards' => ['sometimes', 'array', 'max:20'],
             'referral_rewards.*.service' => ['required', 'string', 'max:60', 'distinct:ignore_case'],
             'referral_rewards.*.amount' => ['required', 'numeric', 'min:1', 'max:100000'],
+            'loyalty_endorsement_enabled' => ['boolean'],
+            'loyalty_endorsement_gcash_amount' => ['sometimes', 'required', 'integer', 'min:1', 'max:100000'],
+            'loyalty_endorsement_endorser_cash' => ['sometimes', 'required', 'integer', 'min:0', 'max:100000'],
+            'loyalty_endorsement_qr' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:'.config('salon.uploads.max_kilobytes')],
         ], [
             'facebook_url.regex' => 'Enter the Facebook page link, e.g. https://www.facebook.com/yourpage.',
             'google_site_verification.regex' => 'Paste only the code from the content="…" part of the Google meta tag.',
@@ -103,6 +108,10 @@ class SettingsController extends Controller
             $data['payment_gcash_qr'] = $uploads->storeImage($request->file('payment_qr'), 'payments', $old['payment_gcash_qr'] ?: null, lossless: true);
         }
         unset($data['payment_qr']);
+        if ($request->hasFile('loyalty_endorsement_qr')) {
+            $data['loyalty_endorsement_gcash_qr'] = $uploads->storeImage($request->file('loyalty_endorsement_qr'), 'payments', $old['loyalty_endorsement_gcash_qr'] ?: null, lossless: true);
+        }
+        unset($data['loyalty_endorsement_qr']);
         if (array_key_exists('payment_deposit_value', $data) && $data['payment_deposit_value'] === null) {
             $data['payment_deposit_value'] = $old['payment_deposit_value']; // "full" hides the field
         }
@@ -132,6 +141,10 @@ class SettingsController extends Controller
             $hasQr = $request->hasFile('payment_qr') || $settings->get('payment_gcash_qr');
             if (! empty($data['payment_gcash_enabled']) && ! $hasQr && empty($data['payment_gcash_number'])) {
                 $v->errors()->add('payment_qr', 'Upload the GCash QR code or enter the GCash number so customers know where to pay.');
+            }
+            $hasCardQr = $hasQr || $request->hasFile('loyalty_endorsement_qr') || $settings->get('loyalty_endorsement_gcash_qr');
+            if (! empty($data['loyalty_endorsement_enabled']) && ! $hasCardQr && empty($data['payment_gcash_number'])) {
+                $v->errors()->add('loyalty_endorsement_qr', 'Upload a GCash QR or enter the GCash number above so customers know where to pay for the card.');
             }
         });
         $validator->validate();

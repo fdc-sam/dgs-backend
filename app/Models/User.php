@@ -188,7 +188,7 @@ class User extends Authenticatable
 
     /**
      * Move the account to the test side (it then sees, and is seen by, test accounts only) or back to live.
-     * A customer's bookings and reviews move with them; walk-ins stay where the admin recorded them.
+     * A customer's bookings, reviews and loyalty card requests move with them; walk-ins stay where the admin recorded them.
      */
     public function setTestAccount(bool $test): void
     {
@@ -199,6 +199,7 @@ class User extends Authenticatable
                 Review::withoutGlobalScopes()->where('customer_id', $this->id)->update(['is_test' => $test]);
                 Referral::withoutGlobalScopes()->where('referrer_id', $this->id)->update(['is_test' => $test]);
                 LoyaltyCard::withoutGlobalScopes()->where('customer_id', $this->id)->update(['is_test' => $test]);
+                LoyaltyCardRequest::withoutGlobalScopes()->where('customer_id', $this->id)->update(['is_test' => $test]);
             }
         });
     }

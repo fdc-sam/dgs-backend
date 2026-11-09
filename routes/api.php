@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\AvailabilityController;
 use App\Http\Controllers\Api\V1\BranchController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\FavoriteController;
+use App\Http\Controllers\Api\V1\LoyaltyCardRequestController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PromotionController;
 use App\Http\Controllers\Api\V1\ReferralController;
@@ -115,6 +116,12 @@ Route::prefix('v1')->name('api.v1.')->middleware('throttle:api')->group(function
         Route::get('referrals', [ReferralController::class, 'index'])->name('referrals.index');
         Route::post('referrals', [ReferralController::class, 'store'])->middleware('throttle:bookings')->name('referrals.store');
         Route::delete('referrals/{referral}', [ReferralController::class, 'destroy'])->name('referrals.destroy');
+
+        // Loyalty card through a friend: scan their QR, pay the salon's share by GCash; the friend's earnings.
+        Route::get('loyalty-card-requests', [LoyaltyCardRequestController::class, 'index'])->name('loyalty-card-requests.index');
+        Route::get('loyalty-card-requests/endorser', [LoyaltyCardRequestController::class, 'endorser'])->middleware('throttle:30,1')->name('loyalty-card-requests.endorser');
+        Route::post('loyalty-card-requests', [LoyaltyCardRequestController::class, 'store'])->middleware('throttle:bookings')->name('loyalty-card-requests.store');
+        Route::get('loyalty-endorsements', [LoyaltyCardRequestController::class, 'endorsements'])->name('loyalty-endorsements');
         Route::post('reviews', [ReviewController::class, 'store'])->name('reviews.store');
 
         Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');

@@ -117,6 +117,22 @@
                     <x-admin.button variant="tonal" icon="add" size="sm" class="mt-1" @click="rows.push({ service: '', amount: '' })">Add reward</x-admin.button>
                 </div>
             </div>
+
+            {{-- Loyalty card through a friend (App\Services\LoyaltyCardRequestService); requests are checked under Loyalty cards → Requests. --}}
+            <div class="mt-6 border-t border-outline-variant/60 pt-5" x-data="{ on: @js((bool) old('loyalty_endorsement_enabled', $s['loyalty_endorsement_enabled'])), gcash: @js((int) old('loyalty_endorsement_gcash_amount', $s['loyalty_endorsement_gcash_amount'])), cash: @js((int) old('loyalty_endorsement_endorser_cash', $s['loyalty_endorsement_endorser_cash'])) }">
+                <p class="label">Loyalty card through a friend</p>
+                <p class="mb-3 text-xs text-on-surface-variant">A customer scans the QR code of a friend who has an active card (Profile → My QR), pays the salon's share by GCash in the app and gives the friend their share in cash. You check the receipt under
+                    <a href="{{ route('loyalty-cards.requests.index') }}" class="font-semibold underline">Loyalty cards → Requests</a>; once approved the digital card shows in the customer's app.</p>
+                <x-admin.checkbox name="loyalty_endorsement_enabled" label="Let customers get a card through a friend in the app" :checked="$s['loyalty_endorsement_enabled']" x-model="on" />
+                <div x-show="on" class="mt-3 grid gap-5 sm:grid-cols-2">
+                    <x-admin.input name="loyalty_endorsement_gcash_amount" type="number" min="1" max="100000" label="Paid to the salon by GCash" prefix="₱" :value="$s['loyalty_endorsement_gcash_amount']" x-model.number="gcash" required />
+                    <x-admin.input name="loyalty_endorsement_endorser_cash" type="number" min="0" max="100000" label="Paid to the friend in cash" prefix="₱" :value="$s['loyalty_endorsement_endorser_cash']" x-model.number="cash" required
+                                   hint="What the friend earns for each approved card." />
+                    <p class="text-sm sm:col-span-2">Card price in the app: <span class="font-semibold">₱<span x-text="(gcash || 0) + (cash || 0)"></span></span></p>
+                    <x-admin.image-field name="loyalty_endorsement_qr" label="GCash QR for the card (optional)" :current="$loyaltyEndorsementQrUrl" class="sm:col-span-2" />
+                    <p class="-mt-3 text-xs text-on-surface-variant sm:col-span-2">E.g. a fixed-amount GCash QR for the salon's share. Without one, the app shows the salon GCash QR and number from the GCash section above.</p>
+                </div>
+            </div>
         </x-admin.card>
 
         <x-admin.card title="Website & Google" id="website"

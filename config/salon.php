@@ -50,6 +50,14 @@ return [
         // under the customer's loyalty card (whose perks come from each service's loyalty prices); the rewards also
         // pre-fill the amount when a referral is completed (App\Services\LoyaltyProgram).
         'referral_rewards' => ['value' => '[{"service":"Haircut","amount":20},{"service":"Rebond","amount":200},{"service":"Manicure","amount":50},{"service":"Brazilian botox","amount":200}]', 'type' => 'json'],
+        // Loyalty card through a friend (App\Services\LoyaltyCardRequestService): a customer scans the QR of a friend who
+        // has an active card, pays gcash_amount to the salon by GCash in the app and endorser_cash in cash to the friend;
+        // the admin checks the receipt and approves. The card price is the two together. The QR is optional (e.g. a
+        // fixed-amount GCash QR for the salon's share); without it the salon GCash QR / number is shown.
+        'loyalty_endorsement_enabled' => ['value' => '1', 'type' => 'boolean'],
+        'loyalty_endorsement_gcash_amount' => ['value' => '100', 'type' => 'integer'],
+        'loyalty_endorsement_endorser_cash' => ['value' => '100', 'type' => 'integer'],
+        'loyalty_endorsement_gcash_qr' => ['value' => '', 'type' => 'string'],
     ],
 
     'uploads' => [

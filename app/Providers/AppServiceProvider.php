@@ -8,6 +8,7 @@ use App\Models\Appointment;
 use App\Models\Achievement;
 use App\Models\Branch;
 use App\Models\LoyaltyCard;
+use App\Models\LoyaltyCardRequest;
 use App\Models\Payment;
 use App\Models\AppointmentItem;
 use App\Models\Product;
@@ -70,6 +71,7 @@ class AppServiceProvider extends ServiceProvider
             'achievement' => Achievement::class,
             'walk_in_visit' => WalkInVisit::class,
             'loyalty_card' => LoyaltyCard::class,
+            'loyalty_card_request' => LoyaltyCardRequest::class,
             'payment' => Payment::class,
             'product' => Product::class,
             'appointment_item' => AppointmentItem::class,
@@ -105,6 +107,9 @@ class AppServiceProvider extends ServiceProvider
             // Referrals nobody has acted on yet (sidebar badge).
             $view->with('newReferrals', once(fn () => auth()->user()?->isManager()
                 ? Referral::query()->where('status', ReferralStatus::Pending->value)->count() : 0));
+            // Loyalty card requests (through a friend) with a GCash receipt to check (sidebar badge).
+            $view->with('cardRequestsToVerify', once(fn () => auth()->user()?->isManager()
+                ? LoyaltyCardRequest::query()->pending()->count() : 0));
         });
         // Super admins can do everything, except change the shared setup from a test account.
         Gate::before(fn (User $user, string $ability) => $user->isSuperAdmin() && $user->isActive() && $ability !== 'change-setup' ? true : null);
