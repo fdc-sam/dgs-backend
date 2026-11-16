@@ -39,14 +39,15 @@ final class PrivacyPolicy
         • Account details: your name, email address, mobile number and password. Passwords are stored only in hashed form.
         • Profile details you choose to add: profile photo, date of birth, gender, address and emergency contact.
         • Bookings: the services, branch, staff, dates and times you book, cancel or reschedule, and any notes you add.
-        • Payments: photos of GCash payment receipts you upload for booking deposits, and their status. We do not collect card or bank account details.
+        • Payments: the GCash or bank reference numbers you send for booking deposits and loyalty cards, and their status. We do not collect card or bank account details.
+        • Earnings: your referral and card endorsement rewards, and the GCash number and account name you give us when you cash them out.
         • Reviews (with any photos) and favorites you add.
         • Device information: a push notification token, so we can send you booking updates.
 
         HOW WE USE IT
         • To create and secure your account and sign you in.
         • To book, confirm, remind you of and manage your appointments.
-        • To verify deposits and keep accounting records.
+        • To verify payments, send your cashed-out earnings and keep accounting records.
         • To send booking updates and salon notifications. You can turn notifications off in your phone's settings.
         • To identify you at the salon with your personal QR code.
         We do not sell your personal information, and we do not use it for advertising.
@@ -57,7 +58,7 @@ final class PrivacyPolicy
         • Government authorities, when the law requires it.
 
         SECURITY
-        All data is sent over encrypted (HTTPS) connections. Payment receipts are stored privately and only authorised salon staff can view them.
+        All data is sent over encrypted (HTTPS) connections. Payment records are stored privately and only authorised salon staff can view them.
 
         KEEPING AND DELETING YOUR DATA
         We keep your information for as long as you have an account. You can delete your account at any time:

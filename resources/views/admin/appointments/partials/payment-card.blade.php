@@ -26,7 +26,7 @@
 
     @if ($waiting)
         <div class="mt-5 border-t border-outline-variant/60 pt-4">
-            <p class="text-sm font-semibold">Receipt to check</p>
+            <p class="text-sm font-semibold">Payment to check</p>
             <p class="mt-1 text-sm">Ref No. <span class="font-mono font-semibold">{{ $waiting->reference_number }}</span></p>
             <p class="text-xs text-on-surface-variant">Sent {{ $waiting->created_at->format('M j, g:i A') }}</p>
             @if ($waiting->proof_path)
@@ -78,7 +78,7 @@
                             {{ $r->created_at->format('M j, g:i A') }}
                             @if ($r->amount_received) · ₱{{ number_format($r->amount_received, 2) }} @endif
                             @if ($r->reviewer) · {{ $r->reviewer->name }} @endif
-                            @if ($r->proof_path) · <a href="{{ route('payments.proof', $r) }}" target="_blank" rel="noopener" class="text-primary hover:underline">screenshot</a> @else · recorded by staff @endif
+                            @if ($r->proof_path) · <a href="{{ route('payments.proof', $r) }}" target="_blank" rel="noopener" class="text-primary hover:underline">screenshot</a> @elseif ($r->reviewed_at && $r->created_at && $r->reviewed_at->diffInSeconds($r->created_at, true) < 5) · recorded by staff @endif
                         </p>
                         @if ($r->rejection_reason)<p class="text-xs text-danger">“{{ $r->rejection_reason }}”</p>@endif
                     </li>

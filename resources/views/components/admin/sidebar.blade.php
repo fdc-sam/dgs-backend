@@ -9,6 +9,7 @@
             ['walk-ins.index', 'Walk-in Customers', 'how_to_reg', $manager, 'walk-ins.*'],
             ['payments.index', 'Payments', 'payments', $manager, 'payments.*'],
             ['referrals.index', 'Referrals', 'group_add', $manager, 'referrals.*'],
+            ['cash-outs.index', 'Cash-outs', 'account_balance_wallet', $manager, 'cash-outs.*'],
         ],
         'Catalog' => [
             ['services.index', 'Services', 'content_cut', $manager, 'services.*'],
@@ -78,6 +79,9 @@
                                     @endif
                                     @if ($link[0] === 'referrals.index')
                                         <span data-live-badge="new_referrals" data-live-count @if ($newReferrals <= 0) hidden @endif class="rounded-full bg-gold px-2 py-0.5 text-xs font-semibold text-on-surface" title="New referrals">{{ $newReferrals > 99 ? '99+' : $newReferrals }}</span>
+                                    @endif
+                                    @if ($link[0] === 'cash-outs.index')
+                                        <span data-live-badge="cash_outs_to_send" data-live-count @if ($cashOutsToSend <= 0) hidden @endif class="rounded-full bg-gold px-2 py-0.5 text-xs font-semibold text-on-surface" title="Cash-outs to send">{{ $cashOutsToSend > 99 ? '99+' : $cashOutsToSend }}</span>
                                     @endif
                                     @if ($link[0] === 'loyalty-cards.index')
                                         <span data-live-badge="card_requests_to_verify" data-live-count @if ($cardRequestsToVerify <= 0) hidden @endif class="rounded-full bg-gold px-2 py-0.5 text-xs font-semibold text-on-surface" title="Loyalty card requests to verify">{{ $cardRequestsToVerify > 99 ? '99+' : $cardRequestsToVerify }}</span>

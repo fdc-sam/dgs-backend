@@ -96,7 +96,7 @@ class ReferralTest extends TestCase
         $this->assertNull(Referral::find($first));
     }
 
-    public function test_admin_accepts_works_on_and_completes_the_referral_with_a_gcash_reward(): void
+    public function test_admin_accepts_works_on_and_completes_the_referral_adding_the_reward_to_the_earnings(): void
     {
         $referrer = $this->actingAsCustomer($this->customer(['name' => 'Ana Reyes', 'email' => 'ana@example.com', 'phone' => '09170000001']));
         $this->refer();
@@ -109,7 +109,7 @@ class ReferralTest extends TestCase
 
         $this->actingAs(User::factory()->admin()->create(), 'web');
         $this->get('/dashboard')->assertSee('Referrals');
-        $this->get('/referrals')->assertOk()->assertSee('Maria Santos')->assertSee('Ana Reyes')->assertSee('GCash: 09170000001')
+        $this->get('/referrals')->assertOk()->assertSee('Maria Santos')->assertSee('Ana Reyes')->assertSee('09170000001')->assertDontSee('GCash: 09170000001')
             ->assertSee('1 completed visit')->assertSee('Has an app account')->assertSee('Accept');
 
         $this->post("/referrals/{$referral->id}/status", ['status' => 'accepted'])->assertRedirect();
@@ -120,18 +120,21 @@ class ReferralTest extends TestCase
         $inProgress = $referrer->notifications()->get()->firstWhere('data.title', 'Referral in progress');
         $this->assertStringContainsString($this->service->name, $inProgress->data['body']);
 
-        // Complete: the dialog shows who to pay and where.
-        $this->get('/referrals?status=in_progress')->assertSee('Complete referral')->assertSee('ana@example.com');
+        // Complete: the dialog only asks for the reward; nothing is sent to GCash here.
+        $this->get('/referrals?status=in_progress')->assertSee('Complete referral')->assertSee('ana@example.com')
+            ->assertSee('Reward the referrer earns')->assertDontSee('GCash reference no.')->assertDontSee('Copy number');
         $this->post("/referrals/{$referral->id}/complete", [])->assertSessionHasErrors('amount');
         $this->post("/referrals/{$referral->id}/complete", ['amount' => 150, 'note' => 'Thank you!'])->assertRedirect()->assertSessionHas('success');
         $referral->refresh();
         $this->assertSame(ReferralStatus::Completed, $referral->status);
         $this->assertSame('150.00', $referral->reward_amount);
-        $this->assertNull($referral->reward_reference); // optional
+        $this->assertNull($referral->reward_reference);
+        $this->assertFalse($referral->reward_paid_directly);
         $this->assertNotNull($referral->rewarded_at);
+        $this->get('/referrals?status=completed')->assertSee('₱150.00 added to earnings');
 
         $done = $referrer->notifications()->get()->firstWhere('data.title', 'Referral successful!');
-        $this->assertSame('Your referral of Maria Santos was successful. We sent ₱150.00 to your GCash number 09170000001. Please check your GCash. Thank you!', $done->data['body']);
+        $this->assertSame('Your referral of Maria Santos was successful. We added ₱150.00 to your earnings. You can cash it out to GCash in Profile → My referrals → Cash out. Thank you!', $done->data['body']);
         $this->assertSame($referral->id, $done->data['data']['referral_id']);
         $this->assertSame('REFERRAL', $done->type);
 
@@ -143,19 +146,24 @@ class ReferralTest extends TestCase
         Sanctum::actingAs($referrer);
         $this->getJson('/api/v1/referrals')->assertJsonPath('data.0.status', 'completed')->assertJsonPath('data.0.status_label', 'Completed')
             ->assertJsonPath('data.0.reward_amount', 150);
+        $this->getJson('/api/v1/earnings')->assertJsonPath('data.balance', 150)->assertJsonPath('data.referral_rewards', 150);
     }
 
-    public function test_completing_records_the_gcash_reference_when_given(): void
+    public function test_a_reward_sent_to_gcash_before_earnings_moved_into_the_app_is_not_counted_again(): void
     {
         $referrer = $this->actingAsCustomer();
         $this->refer();
         $referral = Referral::sole();
+        // As the migration marks rewards completed the old way.
+        $referral->update(['status' => ReferralStatus::Completed, 'reward_amount' => 200, 'reward_reference' => '1009882334',
+            'reward_paid_directly' => true, 'rewarded_at' => now()]);
 
         $this->actingAs(User::factory()->admin()->create(), 'web');
-        $this->post("/referrals/{$referral->id}/complete", ['amount' => 200, 'reference' => '1009 882 334'])->assertRedirect();
+        $this->get('/referrals?status=completed')->assertSee('₱200.00 sent to GCash')->assertSee('Ref 1009882334');
 
-        $this->assertSame('1009 882 334', $referral->fresh()->reward_reference);
-        $this->assertStringContainsString('Reference no. 1009 882 334.', $referrer->notifications()->sole()->data['body']);
+        Sanctum::actingAs($referrer);
+        $this->getJson('/api/v1/earnings')->assertJsonPath('data.balance', 0)->assertJsonPath('data.referral_rewards', 200)
+            ->assertJsonPath('data.total_earned', 200);
     }
 
     public function test_old_referral_statuses_are_renamed(): void

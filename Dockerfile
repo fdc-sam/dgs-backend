@@ -30,6 +30,7 @@ RUN cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 COPY docker/php.ini $PHP_INI_DIR/conf.d/99-dgs.ini
 COPY docker/php-fpm.conf /usr/local/etc/php-fpm.d/zz-dgs.conf
 COPY docker/nginx.conf /etc/nginx/conf.d/dgs.conf
+COPY docker/nginx-error-pages.conf /etc/nginx/snippets/dgs-error-pages.conf
 COPY docker/supervisord.conf /etc/supervisor/dgs.conf
 COPY --from=vendor /var/www/html/vendor ./vendor
 COPY . .

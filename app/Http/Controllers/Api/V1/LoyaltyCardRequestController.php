@@ -12,8 +12,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * Loyalty card through a friend, in the app: look up the friend behind a scanned QR, send the GCash receipt, follow the
- * request; and, for the friend, what endorsing others has earned them.
+ * Loyalty card through a friend, in the app: look up the friend behind a scanned QR, send the payment's reference number,
+ * follow the request; and, for the friend, what endorsing others has earned them.
  */
 class LoyaltyCardRequestController extends ApiController
 {
@@ -39,13 +39,13 @@ class LoyaltyCardRequestController extends ApiController
 
     public function store(SubmitLoyaltyCardRequest $request): JsonResponse
     {
-        $created = $this->requests->submit($request->user(), $request->input('code'), $request->input('reference_number'), $request->file('proof'));
+        $created = $this->requests->submit($request->user(), $request->input('code'), $request->input('payment_method'), $request->input('reference_number'));
 
         return $this->created(new LoyaltyCardRequestResource($created->load(['endorser', 'loyaltyCard'])),
-            "Request sent! We'll activate your card once we've checked your GCash payment.");
+            "Request sent! We'll activate your card once we've checked your payment.");
     }
 
-    /** The endorser's side: cash earned from friends' approved cards, what is still waiting, and the full log. */
+    /** The endorser's side: rewards earned from friends' approved cards, what is still waiting, and the full log. */
     public function endorsements(Request $request): JsonResponse
     {
         $data = $this->requests->endorsements($request->user());
@@ -53,6 +53,7 @@ class LoyaltyCardRequestController extends ApiController
         return $this->ok([
             'can_endorse' => $data['can_endorse'],
             'endorser_cash' => $data['endorser_cash'],
+            'endorser_reward' => $data['endorser_cash'],
             'summary' => $data['summary'],
             'items' => $data['items']->map(fn (LoyaltyCardRequest $r) => [
                 'id' => $r->id,

@@ -29,10 +29,12 @@ class NotificationController extends Controller
 
         $appointmentId = $model->data['data']['appointment_id'] ?? null;
         $cardRequestId = $model->data['data']['loyalty_card_request_id'] ?? null;
+        $cashOutId = $model->data['data']['cash_out_id'] ?? null;
 
         return match (true) {
             $appointmentId !== null => redirect()->route('appointments.show', $appointmentId),
             $cardRequestId !== null && $request->user()->isManager() => redirect()->route('loyalty-cards.requests.show', $cardRequestId),
+            $cashOutId !== null && $request->user()->isManager() => redirect()->route('cash-outs.index', ['status' => 'all', 'search' => $cashOutId]),
             default => back(),
         };
     }

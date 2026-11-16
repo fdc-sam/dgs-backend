@@ -3,11 +3,13 @@
 namespace App\Services;
 
 use App\Enums\AppointmentStatus;
+use App\Enums\CashOutStatus;
 use App\Enums\LoyaltyCardRequestStatus;
 use App\Enums\ReferralStatus;
 use App\Enums\UserStatus;
 use App\Models\Appointment;
 use App\Models\LoyaltyCard;
+use App\Models\CashOutRequest;
 use App\Models\LoyaltyCardRequest;
 use App\Models\ReviewImage;
 use App\Models\User;
@@ -87,6 +89,9 @@ class AccountDeletionService
             // Card requests not yet approved go; approved ones stay with the payment records.
             LoyaltyCardRequest::withoutGlobalScopes()->where('customer_id', $user->id)
                 ->where('status', '!=', LoyaltyCardRequestStatus::Approved->value)->delete();
+            // A cash-out not sent yet is dropped; sent ones stay as payment records.
+            CashOutRequest::withoutGlobalScopes()->where('customer_id', $user->id)
+                ->where('status', CashOutStatus::Pending->value)->update(['status' => CashOutStatus::Cancelled->value]);
             DB::table('password_reset_tokens')->where('email', $email)->delete();
 
             $user->forceFill([

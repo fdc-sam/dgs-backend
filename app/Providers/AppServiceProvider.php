@@ -8,6 +8,7 @@ use App\Models\Appointment;
 use App\Models\Achievement;
 use App\Models\Branch;
 use App\Models\LoyaltyCard;
+use App\Models\CashOutRequest;
 use App\Models\LoyaltyCardRequest;
 use App\Models\Payment;
 use App\Models\AppointmentItem;
@@ -72,6 +73,7 @@ class AppServiceProvider extends ServiceProvider
             'walk_in_visit' => WalkInVisit::class,
             'loyalty_card' => LoyaltyCard::class,
             'loyalty_card_request' => LoyaltyCardRequest::class,
+            'cash_out_request' => CashOutRequest::class,
             'payment' => Payment::class,
             'product' => Product::class,
             'appointment_item' => AppointmentItem::class,
@@ -110,6 +112,9 @@ class AppServiceProvider extends ServiceProvider
             // Loyalty card requests (through a friend) with a GCash receipt to check (sidebar badge).
             $view->with('cardRequestsToVerify', once(fn () => auth()->user()?->isManager()
                 ? LoyaltyCardRequest::query()->pending()->count() : 0));
+            // Customers waiting for their earnings in GCash (sidebar badge).
+            $view->with('cashOutsToSend', once(fn () => auth()->user()?->isManager()
+                ? CashOutRequest::query()->pending()->count() : 0));
         });
         // Super admins can do everything, except change the shared setup from a test account.
         Gate::before(fn (User $user, string $ability) => $user->isSuperAdmin() && $user->isActive() && $ability !== 'change-setup' ? true : null);

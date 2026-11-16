@@ -5,7 +5,7 @@ namespace App\Services;
 use App\Enums\ReferralStatus;
 use App\Models\Referral;
 
-/** Admin side of referrals: moving them along and recording the GCash reward. The referrer is told at each step. */
+/** Admin side of referrals: moving them along and setting the reward added to the referrer's earnings. The referrer is told at each step. */
 class ReferralService
 {
     public function __construct(
@@ -26,22 +26,21 @@ class ReferralService
         return $referral;
     }
 
-    /** The owner sent the reward to the referrer's GCash: record the amount and tell the referrer to check GCash. */
-    public function complete(Referral $referral, float $amount, ?string $reference = null, ?string $note = null): Referral
+    /** The referral is done: the reward is added to the referrer's in-app earnings (they cash it out later, see EarningsService). */
+    public function complete(Referral $referral, float $amount, ?string $note = null): Referral
     {
         $old = ['status' => $referral->status->value];
         $referral->update([
             'status' => ReferralStatus::Completed,
             'reward_amount' => $amount,
-            'reward_reference' => filled($reference) ? trim($reference) : null,
+            'reward_reference' => null,
+            'reward_paid_directly' => false,
             'rewarded_at' => now(),
             'admin_note' => filled($note) ? trim($note) : null,
         ]);
         $this->audit->log('referral.completed', $referral, $old, [
             'status' => ReferralStatus::Completed->value,
             'reward_amount' => $amount,
-            'reward_reference' => $referral->reward_reference,
-            'gcash_number' => $referral->referrer?->phone,
         ]);
         $this->notifications->referralUpdated($referral);
 

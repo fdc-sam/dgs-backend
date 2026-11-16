@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Services\AuditLogger;
 use App\Services\FileUploadService;
+use App\Services\LoyaltyCardRequestService;
 use App\Services\LoyaltyProgram;
 use App\Services\SettingsService;
 use App\Support\Fmt;
@@ -15,7 +16,7 @@ use Illuminate\View\View;
 
 class SettingsController extends Controller
 {
-    public function edit(SettingsService $settings, LoyaltyProgram $loyalty): View
+    public function edit(SettingsService $settings, LoyaltyProgram $loyalty, LoyaltyCardRequestService $cardRequests): View
     {
         return view('admin.settings.edit', [
             'settings' => $settings->all(),
@@ -24,6 +25,8 @@ class SettingsController extends Controller
             'logoUrl' => $settings->logoUrl(),
             'paymentQrUrl' => Fmt::url($settings->get('payment_gcash_qr') ?: null),
             'loyaltyEndorsementQrUrl' => Fmt::url($settings->get('loyalty_endorsement_gcash_qr') ?: null),
+            'loyaltyBankQrUrl' => Fmt::url($cardRequests->bankQrPath()),
+            'loyaltyCardPrice' => $cardRequests->cardPrice(),
         ]);
     }
 
@@ -76,9 +79,13 @@ class SettingsController extends Controller
             'referral_rewards.*.service' => ['required', 'string', 'max:60', 'distinct:ignore_case'],
             'referral_rewards.*.amount' => ['required', 'numeric', 'min:1', 'max:100000'],
             'loyalty_endorsement_enabled' => ['boolean'],
-            'loyalty_endorsement_gcash_amount' => ['sometimes', 'required', 'integer', 'min:1', 'max:100000'],
+            'loyalty_endorsement_card_price' => ['sometimes', 'required', 'integer', 'min:1', 'max:100000'],
             'loyalty_endorsement_endorser_cash' => ['sometimes', 'required', 'integer', 'min:0', 'max:100000'],
             'loyalty_endorsement_qr' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:'.config('salon.uploads.max_kilobytes')],
+            'loyalty_endorsement_bank_qr' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:'.config('salon.uploads.max_kilobytes')],
+            'loyalty_endorsement_bank_name' => ['nullable', 'string', 'max:80'],
+            'loyalty_endorsement_bank_account_name' => ['nullable', 'string', 'max:120'],
+            'loyalty_endorsement_bank_account_number' => ['nullable', 'string', 'max:40'],
         ], [
             'facebook_url.regex' => 'Enter the Facebook page link, e.g. https://www.facebook.com/yourpage.',
             'google_site_verification.regex' => 'Paste only the code from the content="…" part of the Google meta tag.',
@@ -112,6 +119,15 @@ class SettingsController extends Controller
             $data['loyalty_endorsement_gcash_qr'] = $uploads->storeImage($request->file('loyalty_endorsement_qr'), 'payments', $old['loyalty_endorsement_gcash_qr'] ?: null, lossless: true);
         }
         unset($data['loyalty_endorsement_qr']);
+        unset($data['loyalty_endorsement_bank_qr']); // the upload; the stored path has the same key
+        if ($request->hasFile('loyalty_endorsement_bank_qr')) {
+            $data['loyalty_endorsement_bank_qr'] = $uploads->storeImage($request->file('loyalty_endorsement_bank_qr'), 'payments', $old['loyalty_endorsement_bank_qr'] ?: null, lossless: true);
+        }
+        foreach (['loyalty_endorsement_bank_name', 'loyalty_endorsement_bank_account_name', 'loyalty_endorsement_bank_account_number'] as $key) {
+            if (array_key_exists($key, $data)) {
+                $data[$key] = trim((string) $data[$key]);
+            }
+        }
         if (array_key_exists('payment_deposit_value', $data) && $data['payment_deposit_value'] === null) {
             $data['payment_deposit_value'] = $old['payment_deposit_value']; // "full" hides the field
         }
@@ -143,8 +159,10 @@ class SettingsController extends Controller
                 $v->errors()->add('payment_qr', 'Upload the GCash QR code or enter the GCash number so customers know where to pay.');
             }
             $hasCardQr = $hasQr || $request->hasFile('loyalty_endorsement_qr') || $settings->get('loyalty_endorsement_gcash_qr');
-            if (! empty($data['loyalty_endorsement_enabled']) && ! $hasCardQr && empty($data['payment_gcash_number'])) {
-                $v->errors()->add('loyalty_endorsement_qr', 'Upload a GCash QR or enter the GCash number above so customers know where to pay for the card.');
+            $hasBank = $request->hasFile('loyalty_endorsement_bank_qr') || $settings->get('loyalty_endorsement_bank_qr')
+                || filled($data['loyalty_endorsement_bank_account_number'] ?? null);
+            if (! empty($data['loyalty_endorsement_enabled']) && ! $hasCardQr && empty($data['payment_gcash_number']) && ! $hasBank) {
+                $v->errors()->add('loyalty_endorsement_qr', 'Upload a GCash or bank QR code (or enter a GCash or account number) so customers know where to pay for the card.');
             }
         });
         $validator->validate();

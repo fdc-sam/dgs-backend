@@ -46,18 +46,25 @@ return [
         'google_site_verification' => ['value' => '', 'type' => 'string'],
         'terms_and_conditions' => ['value' => '', 'type' => 'text'],
         'privacy_policy' => ['value' => '', 'type' => 'text'],
-        // The GCash reward a referrer earns when the person they referred gets one of these services. Shown in the app
+        // The reward a referrer earns (added to their in-app earnings) when the person they referred gets one of these services. Shown in the app
         // under the customer's loyalty card (whose perks come from each service's loyalty prices); the rewards also
         // pre-fill the amount when a referral is completed (App\Services\LoyaltyProgram).
         'referral_rewards' => ['value' => '[{"service":"Haircut","amount":20},{"service":"Rebond","amount":200},{"service":"Manicure","amount":50},{"service":"Brazilian botox","amount":200}]', 'type' => 'json'],
         // Loyalty card through a friend (App\Services\LoyaltyCardRequestService): a customer scans the QR of a friend who
-        // has an active card, pays gcash_amount to the salon by GCash in the app and endorser_cash in cash to the friend;
-        // the admin checks the receipt and approves. The card price is the two together. The QR is optional (e.g. a
-        // fixed-amount GCash QR for the salon's share); without it the salon GCash QR / number is shown.
+        // has an active card, pays card_price to the salon by GCash or bank in the app (reference number only) and the
+        // admin approves; the friend then earns endorser_cash in their in-app earnings. card_price 0 = not saved yet:
+        // the old split (gcash_amount + endorser_cash, when the friend got their share in cash) stays the price.
+        // The GCash QR is optional (e.g. a fixed-amount QR); without it the salon GCash QR / number is shown. Bank
+        // transfer is offered once a bank QR or account number is set.
         'loyalty_endorsement_enabled' => ['value' => '1', 'type' => 'boolean'],
+        'loyalty_endorsement_card_price' => ['value' => '0', 'type' => 'integer'],
         'loyalty_endorsement_gcash_amount' => ['value' => '100', 'type' => 'integer'],
         'loyalty_endorsement_endorser_cash' => ['value' => '100', 'type' => 'integer'],
         'loyalty_endorsement_gcash_qr' => ['value' => '', 'type' => 'string'],
+        'loyalty_endorsement_bank_qr' => ['value' => '', 'type' => 'string'],
+        'loyalty_endorsement_bank_name' => ['value' => '', 'type' => 'string'],
+        'loyalty_endorsement_bank_account_name' => ['value' => '', 'type' => 'string'],
+        'loyalty_endorsement_bank_account_number' => ['value' => '', 'type' => 'string'],
     ],
 
     'uploads' => [

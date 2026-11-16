@@ -101,7 +101,7 @@
                 <div x-data="{ rows: @js($rewardRows) }">
                     <input type="hidden" name="referral_rewards_shown" value="1">
                     <p class="label">Direct referral rewards</p>
-                    <p class="mb-3 text-xs text-on-surface-variant">Sent to the referrer's GCash when the person they referred gets the service. "Haircut" also covers services like "Men's Haircut".</p>
+                    <p class="mb-3 text-xs text-on-surface-variant">Added to the referrer's earnings in the app when the person they referred gets the service; they cash it out to GCash under <a href="{{ route('cash-outs.index') }}" class="font-semibold underline">Cash-outs</a>. "Haircut" also covers services like "Men's Haircut".</p>
                     {{-- A row left blank is ignored on save; a half-filled one must be finished. --}}
                     <template x-for="(row, i) in rows" :key="i">
                         <div class="mb-2 grid grid-cols-12 gap-2">
@@ -119,18 +119,27 @@
             </div>
 
             {{-- Loyalty card through a friend (App\Services\LoyaltyCardRequestService); requests are checked under Loyalty cards → Requests. --}}
-            <div class="mt-6 border-t border-outline-variant/60 pt-5" x-data="{ on: @js((bool) old('loyalty_endorsement_enabled', $s['loyalty_endorsement_enabled'])), gcash: @js((int) old('loyalty_endorsement_gcash_amount', $s['loyalty_endorsement_gcash_amount'])), cash: @js((int) old('loyalty_endorsement_endorser_cash', $s['loyalty_endorsement_endorser_cash'])) }">
+            <div class="mt-6 border-t border-outline-variant/60 pt-5" x-data="{ on: @js((bool) old('loyalty_endorsement_enabled', $s['loyalty_endorsement_enabled'])) }">
                 <p class="label">Loyalty card through a friend</p>
-                <p class="mb-3 text-xs text-on-surface-variant">A customer scans the QR code of a friend who has an active card (Profile → My QR), pays the salon's share by GCash in the app and gives the friend their share in cash. You check the receipt under
-                    <a href="{{ route('loyalty-cards.requests.index') }}" class="font-semibold underline">Loyalty cards → Requests</a>; once approved the digital card shows in the customer's app.</p>
+                <p class="mb-3 text-xs text-on-surface-variant">A customer scans the QR code of a friend who has an active card (Profile → My QR), pays the card price to the salon by GCash or bank transfer in the app and types the reference number. You check the payment under
+                    <a href="{{ route('loyalty-cards.requests.index') }}" class="font-semibold underline">Loyalty cards → Requests</a>; once approved the digital card shows in the customer's app and the friend's reward is added to their earnings.</p>
                 <x-admin.checkbox name="loyalty_endorsement_enabled" label="Let customers get a card through a friend in the app" :checked="$s['loyalty_endorsement_enabled']" x-model="on" />
                 <div x-show="on" class="mt-3 grid gap-5 sm:grid-cols-2">
-                    <x-admin.input name="loyalty_endorsement_gcash_amount" type="number" min="1" max="100000" label="Paid to the salon by GCash" prefix="₱" :value="$s['loyalty_endorsement_gcash_amount']" x-model.number="gcash" required />
-                    <x-admin.input name="loyalty_endorsement_endorser_cash" type="number" min="0" max="100000" label="Paid to the friend in cash" prefix="₱" :value="$s['loyalty_endorsement_endorser_cash']" x-model.number="cash" required
-                                   hint="What the friend earns for each approved card." />
-                    <p class="text-sm sm:col-span-2">Card price in the app: <span class="font-semibold">₱<span x-text="(gcash || 0) + (cash || 0)"></span></span></p>
+                    <x-admin.input name="loyalty_endorsement_card_price" type="number" min="1" max="100000" label="Paid to the salon" prefix="₱" :value="(int) $loyaltyCardPrice" required
+                                   hint="The card price the customer pays by GCash or bank in the app." />
+                    <x-admin.input name="loyalty_endorsement_endorser_cash" type="number" min="0" max="100000" label="Friend's reward" prefix="₱" :value="$s['loyalty_endorsement_endorser_cash']" required
+                                   hint="Added to the endorsing friend's earnings for each approved card. 0 = no reward." />
+
+                    <p class="eyebrow -mb-2 border-t border-outline-variant/60 pt-4 sm:col-span-2">Pay by GCash</p>
                     <x-admin.image-field name="loyalty_endorsement_qr" label="GCash QR for the card (optional)" :current="$loyaltyEndorsementQrUrl" class="sm:col-span-2" />
-                    <p class="-mt-3 text-xs text-on-surface-variant sm:col-span-2">E.g. a fixed-amount GCash QR for the salon's share. Without one, the app shows the salon GCash QR and number from the GCash section above.</p>
+                    <p class="-mt-3 text-xs text-on-surface-variant sm:col-span-2">E.g. a fixed-amount GCash QR for the card price. Without one, the app shows the salon GCash QR and number from the GCash section above.</p>
+
+                    <p class="eyebrow -mb-2 border-t border-outline-variant/60 pt-4 sm:col-span-2">Pay by bank transfer</p>
+                    <x-admin.image-field name="loyalty_endorsement_bank_qr" label="Bank QR code" :current="$loyaltyBankQrUrl" class="sm:col-span-2" />
+                    <x-admin.input name="loyalty_endorsement_bank_name" label="Bank name" :value="$s['loyalty_endorsement_bank_name']" placeholder="e.g. BPI" maxlength="80" />
+                    <x-admin.input name="loyalty_endorsement_bank_account_name" label="Account name" :value="$s['loyalty_endorsement_bank_account_name']" placeholder="e.g. DGS HAIR SALON" maxlength="120" />
+                    <x-admin.input name="loyalty_endorsement_bank_account_number" label="Account number" :value="$s['loyalty_endorsement_bank_account_number']" maxlength="40" class="sm:col-span-2"
+                                   hint="Customers can choose bank transfer once a bank QR code or account number is set. Leave both empty to accept GCash only." />
                 </div>
             </div>
         </x-admin.card>

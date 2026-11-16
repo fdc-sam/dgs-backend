@@ -2,7 +2,7 @@
 
 namespace App\Enums;
 
-/** New → Accepted → In progress → Completed (reward sent to the referrer's GCash), or Not eligible before that. */
+/** New → Accepted → In progress → Completed (reward added to the referrer's earnings), or Not eligible before that. */
 enum ReferralStatus: string
 {
     case Pending = 'pending';

@@ -101,7 +101,7 @@ class PaymentTest extends TestCase
             ->assertJsonPath('data.payment.due_at', '2026-10-01T10:00:00+08:00');
     }
 
-    public function test_customer_uploads_a_receipt_for_staff_to_verify(): void
+    public function test_customer_sends_the_reference_number_for_staff_to_verify(): void
     {
         $customer = $this->actingAsCustomer();
         $appointment = $this->book();
@@ -117,9 +117,9 @@ class PaymentTest extends TestCase
         $payment = Payment::sole();
         $this->assertSame($customer->id, $payment->customer_id);
         $this->assertSame('200.00', $payment->amount);
-        Storage::disk('local')->assertExists($payment->proof_path);
-        $this->assertContains($payment->proof_path, Storage::disk('local')->allFiles(), 'exact-case match for Linux servers');
-        Storage::disk('public')->assertMissing($payment->proof_path);
+        // Only the number is kept: an older app's screenshot is not stored.
+        $this->assertNull($payment->proof_path);
+        $this->assertSame([], Storage::disk('local')->allFiles());
         Notification::assertSentTo($this->admin, AppointmentNotification::class, fn ($n) => $n->type->value === 'PAYMENT_SUBMITTED');
         Notification::assertNotSentTo($this->stylist->user, AppointmentNotification::class, fn ($n) => $n->type->value === 'PAYMENT_SUBMITTED');
 
@@ -132,7 +132,7 @@ class PaymentTest extends TestCase
         $appointment = $this->book();
 
         $this->postJson("/api/v1/appointments/{$appointment->id}/payment", ['reference_number' => '12#45'])
-            ->assertUnprocessable()->assertJsonValidationErrors(['reference_number', 'proof']);
+            ->assertUnprocessable()->assertJsonValidationErrors(['reference_number'])->assertJsonMissingValidationErrors(['proof']);
 
         $this->actingAsCustomer();
         $this->pay($appointment)->assertForbidden();
@@ -316,16 +316,19 @@ class PaymentTest extends TestCase
         ])->assertCreated()->assertJsonPath('data.payment.status', 'not_required');
     }
 
-    public function test_receipt_image_is_for_managers_only(): void
+    public function test_a_receipt_image_from_before_is_for_managers_only(): void
     {
         $this->actingAsCustomer();
         $appointment = $this->book();
         $this->pay($appointment)->assertOk();
         $payment = Payment::sole();
+        // Screenshots sent by older app versions stay viewable.
+        Storage::disk('local')->put('payments/old.png', UploadedFile::fake()->image('old.png')->getContent());
+        $payment->update(['proof_path' => 'payments/old.png']);
 
         $this->actingAs($this->admin, 'web')->get("/payments/{$payment->id}/proof")->assertOk();
         $this->get('/payments')->assertOk()->assertSee($appointment->appointment_number);
-        $this->get("/appointments/{$appointment->id}")->assertOk()->assertSee('Receipt to check');
+        $this->get("/appointments/{$appointment->id}")->assertOk()->assertSee('Payment to check');
 
         $this->actingAs($this->stylist->user, 'web')->get("/payments/{$payment->id}/proof")->assertForbidden();
     }

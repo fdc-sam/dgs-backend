@@ -19,6 +19,7 @@ enum NotificationType: string
     case Promotion = 'PROMOTION';
     case Referral = 'REFERRAL';
     case LoyaltyCard = 'LOYALTY_CARD';
+    case CashOut = 'CASH_OUT';
     case General = 'GENERAL';
 
     public function label(): string
@@ -39,6 +40,7 @@ enum NotificationType: string
             self::Promotion => 'Promotion',
             self::Referral => 'Referral',
             self::LoyaltyCard => 'Loyalty Card',
+            self::CashOut => 'Cash Out',
             self::General => 'General',
         };
     }

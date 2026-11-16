@@ -22,8 +22,15 @@
                         @if ($r->status === LoyaltyCardRequestStatus::Approved && $r->customer?->loyalty_expires_at)
                             <div><dt class="text-on-surface-variant">Expires on</dt><dd class="font-medium">{{ $r->customer->loyalty_expires_at->format('M j, Y') }}</dd></div>
                         @endif
-                        <div><dt class="text-on-surface-variant">Card price</dt><dd class="font-medium">{{ Fmt::peso((float) $r->gcash_amount + (float) $r->endorser_cash) }}
-                            <span class="text-on-surface-variant">= {{ Fmt::peso($r->gcash_amount) }} GCash to the salon + {{ Fmt::peso($r->endorser_cash) }} cash to the endorser</span></dd></div>
+                        @if ($r->endorser_paid_directly)
+                            <div><dt class="text-on-surface-variant">Card price</dt><dd class="font-medium">{{ Fmt::peso((float) $r->gcash_amount + (float) $r->endorser_cash) }}
+                                <span class="text-on-surface-variant">= {{ Fmt::peso($r->gcash_amount) }} GCash to the salon + {{ Fmt::peso($r->endorser_cash) }} cash to the endorser</span></dd></div>
+                        @else
+                            <div><dt class="text-on-surface-variant">Card price</dt><dd class="font-medium">{{ Fmt::peso($r->gcash_amount) }} <span class="text-on-surface-variant">paid to the salon</span></dd></div>
+                            @if ((float) $r->endorser_cash > 0)
+                                <div><dt class="text-on-surface-variant">Endorser's reward</dt><dd>{{ Fmt::peso($r->endorser_cash) }} <span class="text-on-surface-variant">added to their earnings when you approve</span></dd></div>
+                            @endif
+                        @endif
                         <div><dt class="text-on-surface-variant">Digital card</dt><dd>Shows in the customer's app (Profile → Loyalty card). No plastic card to hand over.</dd></div>
                     </dl>
                 </div>
@@ -58,21 +65,25 @@
         </div>
 
         <div class="space-y-6">
-            <x-admin.card title="GCash payment" id="payment">
+            @php $bank = $r->payment_method === \App\Models\LoyaltyCardRequest::METHOD_BANK; @endphp
+            <x-admin.card :title="$bank ? 'Bank payment' : 'GCash payment'" id="payment">
                 <dl class="space-y-2 text-sm">
+                    <div class="flex justify-between gap-3"><dt class="text-on-surface-variant">Paid by</dt><dd class="font-semibold">{{ $bank ? 'Bank transfer' : 'GCash' }}</dd></div>
                     <div class="flex justify-between gap-3"><dt class="text-on-surface-variant">Amount to the salon</dt><dd class="font-semibold">{{ Fmt::peso($r->gcash_amount) }}</dd></div>
                     <div class="flex justify-between gap-3"><dt class="text-on-surface-variant">Ref No.</dt><dd class="font-mono font-semibold">{{ $r->reference_number }}</dd></div>
                     <div class="flex justify-between gap-3"><dt class="text-on-surface-variant">Sent</dt><dd>{{ $r->created_at->format('M j, g:i A') }}</dd></div>
-                    <div class="flex justify-between gap-3"><dt class="text-on-surface-variant">Cash to endorser</dt><dd>{{ Fmt::peso($r->endorser_cash) }} <span class="text-on-surface-variant">(customer confirmed)</span></dd></div>
+                    @if ($r->endorser_paid_directly)
+                        <div class="flex justify-between gap-3"><dt class="text-on-surface-variant">Cash to endorser</dt><dd>{{ Fmt::peso($r->endorser_cash) }} <span class="text-on-surface-variant">(customer confirmed)</span></dd></div>
+                    @endif
                 </dl>
                 @if ($r->proof_path)
                     <a href="{{ route('loyalty-cards.requests.proof', $r) }}" target="_blank" rel="noopener" class="mt-4 block" title="Open full size">
-                        <img src="{{ route('loyalty-cards.requests.proof', $r) }}" alt="GCash receipt uploaded by the customer" class="max-h-96 w-full rounded-xl border border-outline-variant bg-surface-container object-contain">
+                        <img src="{{ route('loyalty-cards.requests.proof', $r) }}" alt="Receipt uploaded by the customer" class="max-h-96 w-full rounded-xl border border-outline-variant bg-surface-container object-contain">
                     </a>
                 @endif
 
                 @if ($r->isPending())
-                    <p class="mt-4 rounded-xl bg-gold-soft px-3 py-2 text-xs">Open the salon's GCash app and find this Ref No. and amount in the transaction history before approving.</p>
+                    <p class="mt-4 rounded-xl bg-gold-soft px-3 py-2 text-xs">Open the salon's {{ $bank ? 'bank' : 'GCash' }} app and find this Ref No. and amount in the transaction history before approving.</p>
                     <form method="POST" action="{{ route('loyalty-cards.requests.approve', $r) }}" class="mt-4"
                           data-confirm="Approve and activate {{ LoyaltyNumber::format($r->loyaltyCard?->number) ?? 'a loyalty card' }} for {{ $r->customer?->name }}?">
                         @csrf
@@ -93,11 +104,11 @@
         <x-admin.modal name="reject-card-request" title="Reject loyalty card request">
             <form method="POST" action="{{ route('loyalty-cards.requests.reject', $r) }}" class="space-y-4">
                 @csrf
-                <p class="text-sm text-on-surface-variant">The customer sees this reason in the app and can send a new GCash receipt. The card number goes back to the available cards.</p>
+                <p class="text-sm text-on-surface-variant">The customer sees this reason in the app and can send a new reference number. The card number goes back to the available cards.</p>
                 <x-admin.textarea name="reason" id="card_request_reject_reason" label="Reason (shared with the customer)" rows="3" required
-                                  placeholder="e.g. We couldn't find this Ref No. in our GCash history." />
+                                  placeholder="e.g. We couldn't find this Ref No. in our payment history." />
                 <div class="flex flex-wrap gap-2 text-xs">
-                    @foreach (['We couldn\'t find this Ref No. in our GCash history.', 'The amount sent is less than '.Fmt::peso($r->gcash_amount).'.', 'The screenshot is unreadable. Please send a clearer one.'] as $preset)
+                    @foreach (['We couldn\'t find this Ref No. in our '.($bank ? 'bank' : 'GCash').' history.', 'The amount sent is less than '.Fmt::peso($r->gcash_amount).'.', 'This Ref No. doesn\'t match a payment to the salon. Please check it and send it again.'] as $preset)
                         <button type="button" class="rounded-full border border-outline-variant px-3 py-1.5 hover:bg-surface-container"
                                 @click="$el.closest('form').querySelector('textarea').value = @js($preset)">{{ $preset }}</button>
                     @endforeach

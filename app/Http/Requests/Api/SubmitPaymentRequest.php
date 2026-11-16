@@ -4,7 +4,7 @@ namespace App\Http\Requests\Api;
 
 use App\Services\PaymentService;
 
-/** GCash receipt for an appointment's deposit: the reference number plus a screenshot. */
+/** GCash receipt for an appointment's deposit: the reference number. Older app versions also send a screenshot, which is ignored. */
 class SubmitPaymentRequest extends ApiRequest
 {
     protected function prepareForValidation(): void
@@ -18,7 +18,6 @@ class SubmitPaymentRequest extends ApiRequest
     {
         return [
             'reference_number' => ['required', 'string', 'regex:/^[A-Z0-9]{6,30}$/'],
-            'proof' => ['required', 'file', 'image', 'mimes:'.implode(',', config('salon.uploads.mimes')), 'max:'.config('salon.uploads.max_kilobytes'), 'dimensions:max_width=8000,max_height=8000'],
         ];
     }
 
@@ -26,7 +25,7 @@ class SubmitPaymentRequest extends ApiRequest
     {
         return [
             'reference_number.regex' => 'Enter the Ref No. exactly as shown on your GCash receipt.',
-            'proof.required' => 'Attach a screenshot of your GCash receipt.',
+            'reference_number.required' => 'Enter the Ref No. from your GCash receipt.',
         ];
     }
 }

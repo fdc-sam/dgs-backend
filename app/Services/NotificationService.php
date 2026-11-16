@@ -7,6 +7,7 @@ use App\Enums\PaymentStatus;
 use App\Enums\ReferralStatus;
 use App\Enums\UserStatus;
 use App\Models\Appointment;
+use App\Models\CashOutRequest;
 use App\Models\DeviceToken;
 use App\Models\LoyaltyCardRequest;
 use App\Models\Payment;
@@ -130,7 +131,7 @@ class NotificationService
             "We refunded your deposit for {$appointment->appointment_number} to your GCash account.");
     }
 
-    /** Tells the referrer where their referral stands: accepted, in progress, completed with the GCash reward, or not eligible. */
+    /** Tells the referrer where their referral stands: accepted, in progress, completed (reward added to their balance), or not eligible. */
     public function referralUpdated(Referral $referral): void
     {
         $name = $referral->name;
@@ -141,9 +142,8 @@ class NotificationService
             ReferralStatus::InProgress => ['Referral in progress',
                 "Your referral of {$name} is now in progress for {$referral->services->pluck('name')->join(', ', ' and ')}. We will let you know once it is complete."],
             ReferralStatus::Completed => ['Referral successful!',
-                "Your referral of {$name} was successful. We sent {$this->peso($referral->reward_amount)} to your GCash number"
-                .($referral->referrer?->phone ? " {$referral->referrer->phone}" : '').'. Please check your GCash.'
-                .($referral->reward_reference ? " Reference no. {$referral->reward_reference}." : '').$note],
+                "Your referral of {$name} was successful. We added {$this->peso($referral->reward_amount)} to your earnings. "
+                .'You can cash it out to GCash in Profile → My referrals → Cash out.'.$note],
             ReferralStatus::Declined => ['Referral not eligible',
                 "Your referral of {$name} is not eligible for a reward.{$note}"],
             default => [null, null],
@@ -155,19 +155,22 @@ class NotificationService
         $referral->referrer?->notify(new BroadcastNotification(NotificationType::Referral, $title, $body, ['referral_id' => $referral->id]));
     }
 
-    /** A customer sent a GCash receipt for a loyalty card through a friend: the admins check it, the friend knows cash is due. */
+    /** A customer paid for a loyalty card through a friend: the admins check the payment, the friend knows a reward is coming. */
     public function loyaltyCardRequested(LoyaltyCardRequest $request): void
     {
         $customer = $request->customer?->name;
         $endorser = $request->endorser?->name;
+        $method = $request->payment_method === LoyaltyCardRequest::METHOD_BANK ? 'bank' : 'GCash';
         $recipients = User::managers()->where('is_test', $request->is_test)->get();
         Notification::send($recipients, new BroadcastNotification(NotificationType::LoyaltyCard, 'Loyalty card request to verify',
-            "{$customer} sent {$this->peso($request->gcash_amount)} by GCash (ref {$request->reference_number}) for a loyalty card, endorsed by {$endorser}. Check it in GCash, then approve or reject.",
+            "{$customer} paid {$this->peso($request->gcash_amount)} by {$request->paymentMethodLabel()} (ref {$request->reference_number}) for a loyalty card, endorsed by {$endorser}. Find it in the salon's {$method} history, then approve or reject.",
             ['loyalty_card_request_id' => $request->id]));
 
-        $request->endorser?->notify(new BroadcastNotification(NotificationType::LoyaltyCard, 'A friend is getting a loyalty card',
-            "{$customer} asked for a loyalty card through you. Once the salon approves it, you've earned the {$this->peso($request->endorser_cash)} cash from {$customer}.",
-            ['loyalty_card_request_id' => $request->id, 'screen' => 'endorsements']));
+        if ((float) $request->endorser_cash > 0) {
+            $request->endorser?->notify(new BroadcastNotification(NotificationType::LoyaltyCard, 'A friend is getting a loyalty card',
+                "{$customer} asked for a loyalty card through you. Once the salon approves it, {$this->peso($request->endorser_cash)} is added to your earnings.",
+                ['loyalty_card_request_id' => $request->id, 'screen' => 'endorsements']));
+        }
     }
 
     public function loyaltyCardRequestApproved(LoyaltyCardRequest $request): void
@@ -178,17 +181,45 @@ class NotificationService
             "Loyalty card {$number} is now in your app (Profile → Loyalty card). It expires on {$expires}. Enjoy your card holder prices!",
             ['loyalty_card_request_id' => $request->id, 'screen' => 'loyalty_card']));
 
-        $customer = $request->customer?->name;
-        $request->endorser?->notify(new BroadcastNotification(NotificationType::LoyaltyCard, "You've earned {$this->peso($request->endorser_cash)}",
-            "{$customer}'s loyalty card was approved. Thank you for endorsing DGS! The {$this->peso($request->endorser_cash)} cash from {$customer} is yours.",
-            ['loyalty_card_request_id' => $request->id, 'screen' => 'endorsements']));
+        if ((float) $request->endorser_cash > 0) {
+            $customer = $request->customer?->name;
+            $body = $request->endorser_paid_directly
+                ? "{$customer}'s loyalty card was approved. Thank you for endorsing DGS! The {$this->peso($request->endorser_cash)} cash from {$customer} is yours."
+                : "{$customer}'s loyalty card was approved. Thank you for endorsing DGS! We added {$this->peso($request->endorser_cash)} to your earnings. You can cash it out to GCash in Profile → My referrals → Cash out.";
+            $request->endorser?->notify(new BroadcastNotification(NotificationType::LoyaltyCard, "You've earned {$this->peso($request->endorser_cash)}", $body,
+                ['loyalty_card_request_id' => $request->id, 'screen' => 'endorsements']));
+        }
     }
 
     public function loyaltyCardRequestRejected(LoyaltyCardRequest $request): void
     {
         $request->customer?->notify(new BroadcastNotification(NotificationType::LoyaltyCard, 'We could not verify your payment',
-            "Your loyalty card request was not approved: {$this->sentence($request->rejection_reason)} You can send a new GCash receipt from Profile → Loyalty card.",
+            "Your loyalty card request was not approved: {$this->sentence($request->rejection_reason)} You can send a new reference number from Profile → Loyalty card.",
             ['loyalty_card_request_id' => $request->id, 'screen' => 'loyalty_card']));
+    }
+
+    /** A customer asked for their earnings: the admins send it to their GCash. */
+    public function cashOutRequested(CashOutRequest $cashOut): void
+    {
+        $recipients = User::managers()->where('is_test', $cashOut->is_test)->get();
+        Notification::send($recipients, new BroadcastNotification(NotificationType::CashOut, 'Cash-out to send',
+            "{$cashOut->customer?->name} asked for {$this->peso($cashOut->amount)} of their earnings to GCash {$cashOut->gcash_number}. Send it, then enter the reference number under Cash-outs.",
+            ['cash_out_id' => $cashOut->id]));
+    }
+
+    public function cashOutCompleted(CashOutRequest $cashOut): void
+    {
+        $cashOut->customer?->notify(new BroadcastNotification(NotificationType::CashOut, 'Cash out sent',
+            "We sent {$this->peso($cashOut->amount)} to your GCash {$cashOut->gcash_number}. Reference no. {$cashOut->reference_number}."
+            .($cashOut->admin_note ? " {$this->sentence($cashOut->admin_note)}" : ''),
+            ['cash_out_id' => $cashOut->id]));
+    }
+
+    public function cashOutRejected(CashOutRequest $cashOut): void
+    {
+        $cashOut->customer?->notify(new BroadcastNotification(NotificationType::CashOut, 'Cash out not sent',
+            "We could not send your {$this->peso($cashOut->amount)} cash out: {$this->sentence($cashOut->admin_note)} The amount is still in your earnings, so you can request it again.",
+            ['cash_out_id' => $cashOut->id]));
     }
 
     /** Send an announcement/promotion to every active customer. Returns the recipient count. */

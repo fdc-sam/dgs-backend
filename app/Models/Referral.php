@@ -10,19 +10,23 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
-/** Someone a customer referred to the salon; the referrer earns a GCash reward once that person completes a service. */
-#[Fillable(['referrer_id', 'name', 'phone', 'notes', 'status', 'admin_note', 'reward_amount', 'reward_reference', 'rewarded_at'])]
+/**
+ * Someone a customer referred to the salon; the referrer earns a reward, added to their in-app earnings, once that
+ * person completes a service. Rewards from before in-app earnings were sent straight to GCash (reward_paid_directly).
+ */
+#[Fillable(['referrer_id', 'name', 'phone', 'notes', 'status', 'admin_note', 'reward_amount', 'reward_reference', 'reward_paid_directly', 'rewarded_at'])]
 class Referral extends Model
 {
     use HasUlids, SeparatesTestData;
 
-    protected $attributes = ['status' => 'pending'];
+    protected $attributes = ['status' => 'pending', 'reward_paid_directly' => false];
 
     protected function casts(): array
     {
         return [
             'status' => ReferralStatus::class,
             'reward_amount' => 'decimal:2',
+            'reward_paid_directly' => 'boolean',
             'rewarded_at' => 'datetime',
             'is_test' => 'boolean',
         ];

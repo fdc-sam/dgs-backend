@@ -13,57 +13,92 @@ use App\Support\CustomerCode;
 use App\Support\Fmt;
 use App\Support\LoyaltyNumber;
 use Illuminate\Database\QueryException;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
  * Loyalty card through a friend. A customer without a card scans the QR code of a friend who has an active card (the
- * endorser), pays the salon's share by GCash and uploads the receipt, and gives the endorser their share in cash. The
- * next free card number is set aside for the request; the admin checks the receipt against the salon's GCash and
- * approves (the card is linked for a year, the endorser has earned their share) or rejects it with a reason.
- * The card is digital: it shows in the app as soon as it is linked.
+ * endorser), pays the card price to the salon by GCash or bank transfer and types the reference number (no receipt
+ * screenshot is kept). The next free card number is set aside for the request; the admin checks the payment and
+ * approves (the card is linked for a year, the endorser's reward is added to their earnings, see EarningsService) or
+ * rejects it with a reason. The card is digital: it shows in the app as soon as it is linked.
  */
 class LoyaltyCardRequestService
 {
     public function __construct(
         private readonly SettingsService $settings,
-        private readonly FileUploadService $uploads,
         private readonly NotificationService $notifications,
         private readonly AuditLogger $audit,
     ) {}
 
-    /** Switched on in Settings, and the customer has somewhere to send the GCash payment. */
+    /** Switched on in Settings, with a price, and the customer has somewhere to send the payment. */
     public function isEnabled(): bool
     {
         return $this->settings->bool('loyalty_endorsement_enabled')
-            && $this->gcashAmount() > 0
-            && ($this->qrPath() !== null || filled($this->settings->get('payment_gcash_number')));
+            && $this->cardPrice() > 0
+            && ($this->gcashEnabled() || $this->bankEnabled());
     }
 
-    public function gcashAmount(): float
+    /**
+     * What the customer pays the salon for the card. Before the whole price went to the salon it was split into a GCash
+     * half and a cash half for the friend; until the admin saves a card price, the two together keep the price the same.
+     */
+    public function cardPrice(): float
     {
-        return (float) max(0, $this->settings->int('loyalty_endorsement_gcash_amount'));
+        $price = $this->settings->int('loyalty_endorsement_card_price');
+
+        return (float) max(0, $price > 0 ? $price
+            : $this->settings->int('loyalty_endorsement_gcash_amount') + $this->settings->int('loyalty_endorsement_endorser_cash'));
     }
 
-    public function endorserCash(): float
+    /** What the endorsing friend earns (added to their in-app earnings) when the card is approved. */
+    public function endorserReward(): float
     {
         return (float) max(0, $this->settings->int('loyalty_endorsement_endorser_cash'));
+    }
+
+    public function gcashEnabled(): bool
+    {
+        return $this->qrPath() !== null || filled($this->settings->get('payment_gcash_number'));
+    }
+
+    public function bankEnabled(): bool
+    {
+        return $this->bankQrPath() !== null || filled($this->settings->get('loyalty_endorsement_bank_account_number'));
+    }
+
+    public function methodEnabled(string $method): bool
+    {
+        return match ($method) {
+            LoyaltyCardRequest::METHOD_GCASH => $this->gcashEnabled(),
+            LoyaltyCardRequest::METHOD_BANK => $this->bankEnabled(),
+            default => false,
+        };
     }
 
     /** What the app needs to show the offer and the payment screen (GET /settings → loyalty_endorsement). */
     public function appSettings(): array
     {
         $enabled = $this->isEnabled();
+        $gcash = $enabled && $this->gcashEnabled();
+        $bank = $enabled && $this->bankEnabled();
 
         return [
             'enabled' => $enabled,
-            'card_price' => $this->gcashAmount() + $this->endorserCash(),
-            'gcash_amount' => $this->gcashAmount(),
-            'endorser_cash' => $this->endorserCash(),
-            'gcash_account_name' => $enabled ? ($this->settings->get('payment_gcash_account_name') ?: null) : null,
-            'gcash_number' => $enabled ? ($this->settings->get('payment_gcash_number') ?: null) : null,
-            'gcash_qr_url' => $enabled ? Fmt::url($this->qrPath()) : null,
+            'card_price' => $this->cardPrice(),
+            // Older app versions: the whole price is paid to the salon now, nothing in cash to the friend.
+            'gcash_amount' => $this->cardPrice(),
+            'endorser_cash' => 0,
+            'endorser_reward' => $this->endorserReward(),
+            'gcash_enabled' => $gcash,
+            'gcash_account_name' => $gcash ? ($this->settings->get('payment_gcash_account_name') ?: null) : null,
+            'gcash_number' => $gcash ? ($this->settings->get('payment_gcash_number') ?: null) : null,
+            'gcash_qr_url' => $gcash ? Fmt::url($this->qrPath()) : null,
+            'bank_enabled' => $bank,
+            'bank_name' => $bank ? ($this->settings->get('loyalty_endorsement_bank_name') ?: null) : null,
+            'bank_account_name' => $bank ? ($this->settings->get('loyalty_endorsement_bank_account_name') ?: null) : null,
+            'bank_account_number' => $bank ? ($this->settings->get('loyalty_endorsement_bank_account_number') ?: null) : null,
+            'bank_qr_url' => $bank ? Fmt::url($this->bankQrPath()) : null,
         ];
     }
 
@@ -71,6 +106,11 @@ class LoyaltyCardRequestService
     public function qrPath(): ?string
     {
         return ($this->settings->get('loyalty_endorsement_gcash_qr') ?: null) ?? ($this->settings->get('payment_gcash_qr') ?: null);
+    }
+
+    public function bankQrPath(): ?string
+    {
+        return $this->settings->get('loyalty_endorsement_bank_qr') ?: null;
     }
 
     /**
@@ -102,15 +142,19 @@ class LoyaltyCardRequestService
         return $endorser;
     }
 
-    /** The customer's GCash receipt and their friend's code: a new request waiting for the admin, with a card number set aside. */
-    public function submit(User $customer, string $code, string $reference, UploadedFile $proof): LoyaltyCardRequest
+    /** The payment's reference number and the friend's code: a new request waiting for the admin, with a card number set aside. */
+    public function submit(User $customer, string $code, string $method, string $reference): LoyaltyCardRequest
     {
         $reference = PaymentService::normalizeReference($reference);
         $endorser = $this->endorserFor($customer, $code);
+        if (! $this->methodEnabled($method)) {
+            throw ValidationException::withMessages(['payment_method' => $method === LoyaltyCardRequest::METHOD_BANK
+                ? 'Paying by bank is not available right now. Please pay by GCash.'
+                : 'Paying by GCash is not available right now. Please pay by bank transfer.']);
+        }
         $this->assertReferenceUnused($reference);
 
-        $path = $this->uploads->storePrivateImage($proof, 'payments');
-        $request = DB::transaction(function () use ($customer, $endorser, $reference, $path) {
+        $request = DB::transaction(function () use ($customer, $endorser, $method, $reference) {
             // Two taps at once: the second one finds the first request.
             User::query()->whereKey($customer->id)->lockForUpdate()->first();
             $this->assertCanRequest($customer->fresh());
@@ -119,16 +163,17 @@ class LoyaltyCardRequestService
                 'customer_id' => $customer->id,
                 'endorser_id' => $endorser->id,
                 'loyalty_card_id' => $this->reserveCard($customer)?->id,
-                'gcash_amount' => $this->gcashAmount(),
-                'endorser_cash' => $this->endorserCash(),
+                'gcash_amount' => $this->cardPrice(),
+                'endorser_cash' => $this->endorserReward(),
+                'payment_method' => $method,
                 'reference_number' => $reference,
-                'proof_path' => $path,
                 'is_test' => (bool) $customer->is_test,
             ]);
         });
 
         $this->audit->log('loyalty_card_request.submitted', $request, null, [
             'endorser_id' => $endorser->id,
+            'payment_method' => $method,
             'reference_number' => $reference,
             'gcash_amount' => (float) $request->gcash_amount,
             'card_number' => LoyaltyNumber::format($request->loyaltyCard?->number),
@@ -189,7 +234,7 @@ class LoyaltyCardRequestService
         return $approved;
     }
 
-    /** The payment could not be verified: the customer sees the reason and can send a new receipt; the card number is freed. */
+    /** The payment could not be verified: the customer sees the reason and can send a new reference number; the card number is freed. */
     public function reject(LoyaltyCardRequest $request, User $actor, string $reason): LoyaltyCardRequest
     {
         $reason = trim($reason);
@@ -218,7 +263,7 @@ class LoyaltyCardRequestService
     }
 
     /**
-     * The endorser's earnings: cash from friends whose cards were approved, what is still waiting, and every request.
+     * The endorser's earnings: rewards from friends whose cards were approved, what is still waiting, and every request.
      *
      * @return array{can_endorse: bool, endorser_cash: float, summary: array<string, int|float>, items: \Illuminate\Support\Collection<int, LoyaltyCardRequest>}
      */
@@ -231,7 +276,7 @@ class LoyaltyCardRequestService
 
         return [
             'can_endorse' => $this->isEnabled() && $endorser->hasActiveLoyaltyCard(),
-            'endorser_cash' => $this->endorserCash(),
+            'endorser_cash' => $this->endorserReward(),
             'summary' => [
                 'earned' => round((float) $approved->sum('endorser_cash'), 2),
                 'approved_count' => $approved->count(),
@@ -270,7 +315,7 @@ class LoyaltyCardRequestService
         return ApiException::validation($message, ['code' => [$message]]);
     }
 
-    /** A GCash Ref No. pays for one thing: not reused from a booking deposit or another card request (unless rejected). */
+    /** A reference number pays for one thing: not reused from a booking deposit or another card request (unless rejected). */
     private function assertReferenceUnused(string $reference): void
     {
         $taken = Payment::query()->where('reference_number', $reference)->where('status', '!=', Payment::REJECTED)->exists()

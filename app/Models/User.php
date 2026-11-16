@@ -200,6 +200,7 @@ class User extends Authenticatable
                 Referral::withoutGlobalScopes()->where('referrer_id', $this->id)->update(['is_test' => $test]);
                 LoyaltyCard::withoutGlobalScopes()->where('customer_id', $this->id)->update(['is_test' => $test]);
                 LoyaltyCardRequest::withoutGlobalScopes()->where('customer_id', $this->id)->update(['is_test' => $test]);
+                CashOutRequest::withoutGlobalScopes()->where('customer_id', $this->id)->update(['is_test' => $test]);
             }
         });
     }

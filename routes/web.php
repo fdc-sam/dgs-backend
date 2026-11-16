@@ -112,6 +112,11 @@ Route::middleware(['auth', 'auth.session', 'admin'])->group(function () {
         Route::post('referrals/{referral}/status', [Admin\ReferralController::class, 'status'])->name('referrals.status');
         Route::post('referrals/{referral}/complete', [Admin\ReferralController::class, 'complete'])->name('referrals.complete');
 
+        // Customers asking for their earnings in GCash: send it, then record the reference number.
+        Route::get('cash-outs', [Admin\CashOutController::class, 'index'])->name('cash-outs.index');
+        Route::post('cash-outs/{cashOut}/complete', [Admin\CashOutController::class, 'complete'])->name('cash-outs.complete');
+        Route::post('cash-outs/{cashOut}/reject', [Admin\CashOutController::class, 'reject'])->name('cash-outs.reject');
+
         Route::get('reviews', [Admin\ReviewController::class, 'index'])->name('reviews.index');
         Route::post('reviews/{review}/approve', [Admin\ReviewController::class, 'approve'])->name('reviews.approve');
         Route::post('reviews/{review}/reject', [Admin\ReviewController::class, 'reject'])->name('reviews.reject');

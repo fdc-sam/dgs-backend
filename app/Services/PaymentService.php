@@ -13,15 +13,13 @@ use App\Support\Booking\ServiceSelection;
 use App\Support\Fmt;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Manual GCash deposits (no payment gateway). The customer books, pays a GCash QR, then uploads the receipt
- * with its reference number; staff check it against the GCash app and approve or reject it. Until then the
+ * Manual GCash deposits (no payment gateway). The customer books, pays a GCash QR, then sends the receipt's
+ * reference number (no screenshot is kept); staff check it against the GCash app and approve or reject it. Until then the
  * slot is held, and the scheduler releases it once payment_due_at passes.
  *
  * Where the deposit comes from: a service with its own QR (generated in GCash for a fixed downpayment, e.g. ₱50
@@ -42,7 +40,6 @@ class PaymentService
     public function __construct(
         private readonly SettingsService $settings,
         private readonly NotificationService $notifications,
-        private readonly FileUploadService $uploads,
         private readonly AuditLogger $audit,
     ) {}
 
@@ -173,44 +170,35 @@ class PaymentService
             && ! $appointment->checked_in_at;
     }
 
-    public function submitProof(Appointment $appointment, User $customer, string $reference, UploadedFile $proof): Appointment
+    /** The customer's reference number for the deposit (no receipt screenshot is kept, only the number staff look up). */
+    public function submitProof(Appointment $appointment, User $customer, string $reference): Appointment
     {
         $reference = self::normalizeReference($reference);
-        $path = null;
 
-        try {
-            $payment = DB::transaction(function () use ($appointment, $customer, $reference, $proof, &$path) {
-                $locked = $this->lock($appointment);
-                if (! $this->canSubmit($locked)) {
-                    throw ApiException::conflict($this->submitBlockedReason($locked));
-                }
-                $this->assertReferenceUnused($reference, $locked->id);
-
-                $path = $this->uploads->storePrivateImage($proof, 'payments');
-                $payment = $locked->payments()->create([
-                    'customer_id' => $customer->id,
-                    'method' => Payment::METHOD_GCASH,
-                    'amount' => $locked->deposit_amount,
-                    'reference_number' => $reference,
-                    'proof_path' => $path,
-                    'status' => Payment::SUBMITTED,
-                ]);
-
-                $old = $locked->payment_status->value;
-                $locked->update(['payment_status' => PaymentStatus::Submitted]);
-                $this->audit->log('appointment.payment_submitted', $locked, ['payment_status' => $old], [
-                    'payment_status' => PaymentStatus::Submitted->value,
-                    'reference_number' => $reference,
-                ]);
-
-                return $payment;
-            });
-        } catch (\Throwable $e) {
-            if ($path) {
-                Storage::disk(FileUploadService::privateDisk())->delete($path);
+        $payment = DB::transaction(function () use ($appointment, $customer, $reference) {
+            $locked = $this->lock($appointment);
+            if (! $this->canSubmit($locked)) {
+                throw ApiException::conflict($this->submitBlockedReason($locked));
             }
-            throw $e;
-        }
+            $this->assertReferenceUnused($reference, $locked->id);
+
+            $payment = $locked->payments()->create([
+                'customer_id' => $customer->id,
+                'method' => Payment::METHOD_GCASH,
+                'amount' => $locked->deposit_amount,
+                'reference_number' => $reference,
+                'status' => Payment::SUBMITTED,
+            ]);
+
+            $old = $locked->payment_status->value;
+            $locked->update(['payment_status' => PaymentStatus::Submitted]);
+            $this->audit->log('appointment.payment_submitted', $locked, ['payment_status' => $old], [
+                'payment_status' => PaymentStatus::Submitted->value,
+                'reference_number' => $reference,
+            ]);
+
+            return $payment;
+        });
 
         $appointment = $this->fresh($appointment);
         $this->notifications->paymentSubmitted($appointment, $payment);

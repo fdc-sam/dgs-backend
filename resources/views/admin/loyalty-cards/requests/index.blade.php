@@ -1,13 +1,13 @@
 @php use App\Enums\LoyaltyCardRequestStatus; use App\Support\Fmt; use App\Support\LoyaltyNumber; @endphp
 <x-admin.layout title="Loyalty card requests">
-    <x-admin.page-header title="Loyalty Cards" subtitle="Customers who asked for a card in the app through a friend. Check each GCash receipt, then approve to activate the card in their app." />
+    <x-admin.page-header title="Loyalty Cards" subtitle="Customers who asked for a card in the app through a friend. Find each payment's reference number in the salon's GCash or bank history, then approve to activate the card in their app." />
 
     @include('admin.loyalty-cards.partials.tabs')
 
     @unless ($enabled)
         <div class="mb-4 flex items-start gap-3 rounded-card border border-warning/40 bg-warning-container px-4 py-3 text-sm text-warning" role="status">
             <span class="material-symbols-outlined" aria-hidden="true">info</span>
-            <p>Customers can't ask for a card through a friend right now. Turn it on and add a GCash QR or number in
+            <p>Customers can't ask for a card through a friend right now. Turn it on, set the card price and add a GCash or bank QR (or number) in
                 @can('super-admin')<a href="{{ route('settings.edit') }}#loyalty" class="font-semibold underline">Settings → Loyalty card &amp; referrals</a>@else Settings (super admin) @endcan.</p>
         </div>
     @endunless
@@ -29,10 +29,10 @@
     <x-admin.card :padding="false">
         @if ($items->isEmpty())
             <x-admin.empty-state icon="credit_card" :title="$status === LoyaltyCardRequestStatus::Pending ? 'No requests to check' : 'Nothing here'"
-                                 :message="$status === LoyaltyCardRequestStatus::Pending ? 'When a customer scans a friend\'s QR in the app and sends their GCash receipt, it shows here.' : null" />
+                                 :message="$status === LoyaltyCardRequestStatus::Pending ? 'When a customer scans a friend\'s QR in the app and sends their payment\'s reference number, it shows here.' : null" />
         @else
-            <x-admin.table :headers="['Customer', 'Endorsed by', '>GCash amount', 'Ref No.', 'Card no.', $status === LoyaltyCardRequestStatus::Pending ? 'Sent' : 'Reviewed', 'Status', '>Actions']"
-                           :mobile-order="['Customer' => 0, 'GCash amount' => 1, 'Status' => 2, 'Sent' => 3, 'Reviewed' => 3, 'Endorsed by' => 4, 'Ref No.' => 5, 'Card no.' => 6, 'Actions' => 7]"
+            <x-admin.table :headers="['Customer', 'Endorsed by', '>Paid', 'Ref No.', 'Card no.', $status === LoyaltyCardRequestStatus::Pending ? 'Sent' : 'Reviewed', 'Status', '>Actions']"
+                           :mobile-order="['Customer' => 0, 'Paid' => 1, 'Status' => 2, 'Sent' => 3, 'Reviewed' => 3, 'Endorsed by' => 4, 'Ref No.' => 5, 'Card no.' => 6, 'Actions' => 7]"
                            :mobile-summary="['Status', $status === LoyaltyCardRequestStatus::Pending ? 'Sent' : 'Reviewed']"
                            :mobile-labels="['Ref No.' => 'Reference number', 'Card no.' => 'Card number']">
                 @foreach ($items as $r)
@@ -43,9 +43,14 @@
                         </td>
                         <td>
                             <p class="font-medium">{{ $r->endorser?->name }}</p>
-                            <p class="text-xs text-on-surface-variant">gets {{ Fmt::peso($r->endorser_cash) }} cash</p>
+                            @if ((float) $r->endorser_cash > 0)
+                                <p class="text-xs text-on-surface-variant">{{ $r->endorser_paid_directly ? 'gets '.Fmt::peso($r->endorser_cash).' cash' : 'earns '.Fmt::peso($r->endorser_cash) }}</p>
+                            @endif
                         </td>
-                        <td class="whitespace-nowrap text-right font-medium">{{ Fmt::peso($r->gcash_amount) }}</td>
+                        <td class="whitespace-nowrap text-right">
+                            <p class="font-medium">{{ Fmt::peso($r->gcash_amount) }}</p>
+                            <p class="text-xs text-on-surface-variant">{{ $r->payment_method === \App\Models\LoyaltyCardRequest::METHOD_BANK ? 'Bank' : 'GCash' }}</p>
+                        </td>
                         <td class="font-mono text-xs">{{ $r->reference_number }}</td>
                         <td class="whitespace-nowrap font-mono text-xs font-semibold">{{ LoyaltyNumber::format($r->loyaltyCard?->number) ?? '—' }}</td>
                         <td class="whitespace-nowrap">

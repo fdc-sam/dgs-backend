@@ -21,6 +21,7 @@ class LoyaltyCardRequestResource extends JsonResource
             'endorser_name' => LoyaltyCardRequest::shortName($this->endorser?->name),
             'gcash_amount' => (float) $this->gcash_amount,
             'endorser_cash' => (float) $this->endorser_cash,
+            'payment_method' => $this->payment_method,
             'reference_number' => $this->reference_number,
             // The number set aside is the admin's business until the card is actually linked.
             'card_number' => $this->status === LoyaltyCardRequestStatus::Approved ? LoyaltyNumber::format($this->loyaltyCard?->number) : null,

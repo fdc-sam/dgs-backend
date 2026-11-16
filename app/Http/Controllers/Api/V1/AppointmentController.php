@@ -73,9 +73,9 @@ class AppointmentController extends ApiController
     {
         $this->authorize('pay', $appointment);
 
-        $appointment = $payments->submitProof($appointment, $request->user(), $request->input('reference_number'), $request->file('proof'));
+        $appointment = $payments->submitProof($appointment, $request->user(), $request->input('reference_number'));
 
-        return $this->ok(new AppointmentResource($appointment), "Receipt sent! We'll confirm your booking once we've checked the payment.");
+        return $this->ok(new AppointmentResource($appointment), "Reference number sent! We'll confirm your booking once we've checked the payment.");
     }
 
     public function reschedule(RescheduleAppointmentRequest $request, Appointment $appointment): JsonResponse

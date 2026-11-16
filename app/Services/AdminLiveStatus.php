@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\PaymentStatus;
 use App\Enums\ReferralStatus;
 use App\Models\Appointment;
+use App\Models\CashOutRequest;
 use App\Models\LoyaltyCardRequest;
 use App\Models\Referral;
 use App\Models\User;
@@ -18,9 +19,9 @@ use Illuminate\Database\Eloquent\Builder;
 class AdminLiveStatus
 {
     /** Lists a page can watch for changes. */
-    public const WATCHABLE = ['appointments', 'referrals'];
+    public const WATCHABLE = ['appointments', 'referrals', 'cash_outs'];
 
-    /** @return array{unread: int, new_referrals: int, payments_to_verify: int, card_requests_to_verify: int, markers: array<string, ?string>} */
+    /** @return array{unread: int, new_referrals: int, payments_to_verify: int, card_requests_to_verify: int, cash_outs_to_send: int, markers: array<string, ?string>} */
     public function snapshot(User $user): array
     {
         $manager = $user->isManager();
@@ -30,6 +31,7 @@ class AdminLiveStatus
             'new_referrals' => $manager ? Referral::query()->where('status', ReferralStatus::Pending->value)->count() : 0,
             'payments_to_verify' => $manager ? Appointment::query()->where('payment_status', PaymentStatus::Submitted->value)->count() : 0,
             'card_requests_to_verify' => $manager ? LoyaltyCardRequest::query()->pending()->count() : 0,
+            'cash_outs_to_send' => $manager ? CashOutRequest::query()->pending()->count() : 0,
             'markers' => array_combine(self::WATCHABLE, array_map(fn ($list) => $this->marker($user, $list), self::WATCHABLE)),
         ];
     }
@@ -40,6 +42,7 @@ class AdminLiveStatus
         $query = match ($list) {
             'appointments' => $this->appointmentsFor($user),
             'referrals' => $user->isManager() ? Referral::query() : null,
+            'cash_outs' => $user->isManager() ? CashOutRequest::query() : null,
             default => null,
         };
         if ($query === null) {

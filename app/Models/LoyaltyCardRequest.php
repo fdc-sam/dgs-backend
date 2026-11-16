@@ -11,19 +11,24 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * A customer's request for a digital loyalty card through a friend who has one (the endorser): the customer pays
- * gcash_amount to the salon's GCash (receipt attached) and endorser_cash in cash to the endorser, which is what the
- * endorser earns once the admin approves. See App\Services\LoyaltyCardRequestService.
+ * A customer's request for a digital loyalty card through a friend who has one (the endorser): the customer pays the
+ * card price (gcash_amount, whatever the payment_method) to the salon by GCash or bank and types the reference number;
+ * the endorser earns endorser_cash, added to their in-app earnings once the admin approves. Requests from before that
+ * (endorser_paid_directly) had the customer hand the endorser their share in cash. See App\Services\LoyaltyCardRequestService.
  */
 #[Fillable([
-    'customer_id', 'endorser_id', 'loyalty_card_id', 'gcash_amount', 'endorser_cash', 'reference_number', 'proof_path',
-    'status', 'rejection_reason', 'reviewed_by', 'reviewed_at', 'is_test',
+    'customer_id', 'endorser_id', 'loyalty_card_id', 'gcash_amount', 'endorser_cash', 'payment_method', 'reference_number',
+    'proof_path', 'endorser_paid_directly', 'status', 'rejection_reason', 'reviewed_by', 'reviewed_at', 'is_test',
 ])]
 class LoyaltyCardRequest extends Model
 {
     use HasUlids, SeparatesTestData;
 
-    protected $attributes = ['status' => 'pending'];
+    public const METHOD_GCASH = 'gcash';
+
+    public const METHOD_BANK = 'bank';
+
+    protected $attributes = ['status' => 'pending', 'payment_method' => self::METHOD_GCASH, 'endorser_paid_directly' => false];
 
     protected function casts(): array
     {
@@ -31,6 +36,7 @@ class LoyaltyCardRequest extends Model
             'status' => LoyaltyCardRequestStatus::class,
             'gcash_amount' => 'decimal:2',
             'endorser_cash' => 'decimal:2',
+            'endorser_paid_directly' => 'boolean',
             'reviewed_at' => 'datetime',
             'is_test' => 'boolean',
         ];
@@ -60,6 +66,12 @@ class LoyaltyCardRequest extends Model
     public function reviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by')->withTrashed();
+    }
+
+    /** "GCash" or "bank transfer", as the admin and the notifications say it. */
+    public function paymentMethodLabel(): string
+    {
+        return $this->payment_method === self::METHOD_BANK ? 'bank transfer' : 'GCash';
     }
 
     public function isPending(): bool
