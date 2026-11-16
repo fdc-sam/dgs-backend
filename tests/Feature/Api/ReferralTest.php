@@ -134,7 +134,7 @@ class ReferralTest extends TestCase
         $this->get('/referrals?status=completed')->assertSee('₱150.00 added to earnings');
 
         $done = $referrer->notifications()->get()->firstWhere('data.title', 'Referral successful!');
-        $this->assertSame('Your referral of Maria Santos was successful. We added ₱150.00 to your earnings. You can cash it out to GCash in Profile → My referrals → Cash out. Thank you!', $done->data['body']);
+        $this->assertSame('Your referral of Maria Santos was successful. We added ₱150.00 to your earnings. You can cash it out to GCash in Profile → Earnings & cash out. Thank you!', $done->data['body']);
         $this->assertSame($referral->id, $done->data['data']['referral_id']);
         $this->assertSame('REFERRAL', $done->type);
 

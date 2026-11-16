@@ -5,7 +5,7 @@
         @foreach (['pending' => 'Pending', 'approved' => 'Approved', 'rejected' => 'Rejected', 'all' => 'All'] as $key => $label)
             <a href="{{ route('reviews.index', ['status' => $key]) }}" role="tab" @if ($status === $key) aria-selected="true" @endif
                @class(['inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-medium', 'bg-secondary-container text-on-secondary-container' => $status === $key, 'border border-outline-variant hover:bg-surface-container' => $status !== $key])>
-                {{ $label }} @if ($key !== 'all')<span class="text-xs opacity-70">{{ $counts[$key] ?? 0 }}</span>@endif
+                {{ $label }} @if ($key !== 'all')<x-admin.tab-count :count="$counts[$key] ?? 0" />@endif
             </a>
         @endforeach
     </div>

@@ -143,7 +143,7 @@ class NotificationService
                 "Your referral of {$name} is now in progress for {$referral->services->pluck('name')->join(', ', ' and ')}. We will let you know once it is complete."],
             ReferralStatus::Completed => ['Referral successful!',
                 "Your referral of {$name} was successful. We added {$this->peso($referral->reward_amount)} to your earnings. "
-                .'You can cash it out to GCash in Profile → My referrals → Cash out.'.$note],
+                .'You can cash it out to GCash in Profile → Earnings & cash out.'.$note],
             ReferralStatus::Declined => ['Referral not eligible',
                 "Your referral of {$name} is not eligible for a reward.{$note}"],
             default => [null, null],
@@ -185,7 +185,7 @@ class NotificationService
             $customer = $request->customer?->name;
             $body = $request->endorser_paid_directly
                 ? "{$customer}'s loyalty card was approved. Thank you for endorsing DGS! The {$this->peso($request->endorser_cash)} cash from {$customer} is yours."
-                : "{$customer}'s loyalty card was approved. Thank you for endorsing DGS! We added {$this->peso($request->endorser_cash)} to your earnings. You can cash it out to GCash in Profile → My referrals → Cash out.";
+                : "{$customer}'s loyalty card was approved. Thank you for endorsing DGS! We added {$this->peso($request->endorser_cash)} to your earnings. You can cash it out to GCash in Profile → Earnings & cash out.";
             $request->endorser?->notify(new BroadcastNotification(NotificationType::LoyaltyCard, "You've earned {$this->peso($request->endorser_cash)}", $body,
                 ['loyalty_card_request_id' => $request->id, 'screen' => 'endorsements']));
         }

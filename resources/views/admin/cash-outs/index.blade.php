@@ -13,7 +13,7 @@
         @foreach ([...array_combine(CashOutStatus::values(), array_map(fn ($s) => $s->label(), CashOutStatus::cases())), 'all' => 'All'] as $key => $label)
             <a href="{{ route('cash-outs.index', ['status' => $key]) }}" role="tab" @if ($status === $key) aria-selected="true" @endif
                @class(['inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-medium', 'bg-secondary-container text-on-secondary-container' => $status === $key, 'border border-outline-variant hover:bg-surface-container' => $status !== $key])>
-                {{ $label }} @if ($key !== 'all')<span class="text-xs opacity-70">{{ $counts[$key] ?? 0 }}</span>@endif
+                {{ $label }} @if ($key !== 'all')<x-admin.tab-count :count="$counts[$key] ?? 0" />@endif
             </a>
         @endforeach
     </div>
@@ -27,7 +27,7 @@
         <x-admin.card :padding="false">
             @if ($items->isEmpty())
                 <x-admin.empty-state icon="account_balance_wallet" :title="$status === CashOutStatus::Pending->value ? 'No cash-outs to send' : 'Nothing here'"
-                                     :message="$status === CashOutStatus::Pending->value ? 'Customers ask for their earnings from Profile → My referrals → Cash out in the app.' : null" />
+                                     :message="$status === CashOutStatus::Pending->value ? 'Customers ask for their earnings from Profile → Earnings &amp; cash out → Cash out in the app.' : null" />
             @else
                 <x-admin.table :headers="['Customer', 'Send to GCash', '>Amount', 'Requested', 'Status', '>Actions']"
                                :mobile-order="['Customer' => 0, 'Amount' => 1, 'Status' => 2, 'Send to GCash' => 3, 'Requested' => 4, 'Actions' => 5]"

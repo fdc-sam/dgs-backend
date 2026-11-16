@@ -6,7 +6,7 @@
         @foreach ([...array_combine(ReferralStatus::values(), array_map(fn ($s) => $s->label(), ReferralStatus::cases())), 'all' => 'All'] as $key => $label)
             <a href="{{ route('referrals.index', ['status' => $key]) }}" role="tab" @if ($status === $key) aria-selected="true" @endif
                @class(['inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-medium', 'bg-secondary-container text-on-secondary-container' => $status === $key, 'border border-outline-variant hover:bg-surface-container' => $status !== $key])>
-                {{ $label }} @if ($key !== 'all')<span class="text-xs opacity-70">{{ $counts[$key] ?? 0 }}</span>@endif
+                {{ $label }} @if ($key !== 'all')<x-admin.tab-count :count="$counts[$key] ?? 0" />@endif
             </a>
         @endforeach
     </div>
@@ -19,7 +19,7 @@
     <div x-data="{ target: { name: '', services: '', referrer: '', email: '', status: '', complete: '', suggested: null, suggestion: '' } }">
         <x-admin.card :padding="false">
             @if ($referrals->isEmpty())
-                <x-admin.empty-state icon="group_add" title="No referrals here" message="Customers add referrals from Profile → My referrals in the app." />
+                <x-admin.empty-state icon="group_add" title="No referrals here" message="Customers add referrals from Profile → Earnings &amp; cash out in the app." />
             @else
                 <x-admin.table :headers="['Referred person', 'Referred by', 'Services', 'Visits', 'Status', '>Actions']" :wide="['Services']"
                                :mobile-order="['Referred person' => 0, 'Status' => 1, 'Visits' => 2, 'Referred by' => 3, 'Services' => 4, 'Actions' => 5]"

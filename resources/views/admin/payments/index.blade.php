@@ -14,7 +14,7 @@
         @foreach ($tabs as $tab)
             <a href="{{ route('payments.index', ['status' => $tab->value]) }}" role="tab" @if ($status === $tab) aria-selected="true" @endif
                @class(['-mb-px inline-flex shrink-0 max-sm:mb-0 items-center gap-2 whitespace-nowrap border-b-2 pb-3 pt-1 text-[0.9375rem] font-medium transition-colors', 'border-gold text-on-surface' => $status === $tab, 'border-transparent text-on-surface-variant hover:text-on-surface' => $status !== $tab])>
-                {{ $tab->label() }} <span class="text-xs opacity-70">{{ $counts[$tab->value] ?? 0 }}</span>
+                {{ $tab->label() }} <x-admin.tab-count :count="$counts[$tab->value] ?? 0" />
             </a>
         @endforeach
     </div>

@@ -16,7 +16,7 @@
         @foreach (LoyaltyCardRequestStatus::cases() as $tab)
             <a href="{{ route('loyalty-cards.requests.index', ['status' => $tab->value]) }}" role="tab" @if ($status === $tab) aria-selected="true" @endif
                @class(['inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-medium', 'bg-secondary-container text-on-secondary-container' => $status === $tab, 'border border-outline-variant hover:bg-surface-container' => $status !== $tab])>
-                {{ $tab->label() }} <span class="text-xs opacity-70">{{ $counts[$tab->value] ?? 0 }}</span>
+                {{ $tab->label() }} <x-admin.tab-count :count="$counts[$tab->value] ?? 0" />
             </a>
         @endforeach
     </div>
