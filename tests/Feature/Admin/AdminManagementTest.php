@@ -36,6 +36,49 @@ class AdminManagementTest extends TestCase
         $this->actingAs(User::factory()->superAdmin()->create());
     }
 
+    public function test_branch_photo_can_be_uploaded_replaced_and_removed_and_reaches_the_app(): void
+    {
+        Storage::fake('public');
+        $hours = array_fill(0, 7, ['is_open' => '1', 'opening_time' => '09:00', 'closing_time' => '18:00']);
+
+        $this->post('/branches', [
+            'name' => 'Carcar Branch', 'status' => 'active', 'hours' => $hours,
+            'image' => UploadedFile::fake()->image('front.jpg', 1200, 800),
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $branch = Branch::where('name', 'Carcar Branch')->firstOrFail();
+        $first = $branch->image;
+        $this->assertStringStartsWith('salon/branches/', $first);
+        Storage::disk('public')->assertExists($first);
+        $this->get('/branches')->assertOk()->assertSee(basename($first));
+        $this->get("/branches/{$branch->id}/edit")->assertOk()->assertSee('Branch photo')->assertSee('Remove photo');
+        $this->getJson("/api/v1/branches/{$branch->id}")->assertOk()
+            ->assertJsonPath('data.image_url', fn ($url) => is_string($url) && str_ends_with($url, basename($first)));
+
+        // Saving without a new file keeps the photo; a new file replaces it and deletes the old one.
+        $this->put("/branches/{$branch->id}", ['name' => 'Carcar Branch', 'status' => 'active', 'hours' => $hours])->assertSessionHasNoErrors();
+        $this->assertSame($first, $branch->fresh()->image);
+
+        $this->put("/branches/{$branch->id}", [
+            'name' => 'Carcar Branch', 'status' => 'active', 'hours' => $hours,
+            'image' => UploadedFile::fake()->image('new.png', 800, 600),
+        ])->assertSessionHasNoErrors();
+        $second = $branch->fresh()->image;
+        $this->assertNotSame($first, $second);
+        Storage::disk('public')->assertMissing($first);
+
+        $this->put("/branches/{$branch->id}", ['name' => 'Carcar Branch', 'status' => 'active', 'hours' => $hours, 'remove_image' => '1'])->assertSessionHasNoErrors();
+        $this->assertNull($branch->fresh()->image);
+        Storage::disk('public')->assertMissing($second);
+        $this->getJson("/api/v1/branches/{$branch->id}")->assertJsonPath('data.image_url', null);
+
+        // Not an image.
+        $this->put("/branches/{$branch->id}", [
+            'name' => 'Carcar Branch', 'status' => 'active', 'hours' => $hours,
+            'image' => UploadedFile::fake()->create('notes.pdf', 10, 'application/pdf'),
+        ])->assertSessionHasErrors('image');
+    }
+
     public function test_create_service_with_variants_branch_price_staff_and_image(): void
     {
         Storage::fake('public');

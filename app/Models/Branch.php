@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['name', 'slug', 'description', 'address', 'phone', 'email', 'latitude', 'longitude', 'opening_time', 'closing_time', 'status'])]
+#[Fillable(['name', 'slug', 'description', 'image', 'address', 'phone', 'email', 'latitude', 'longitude', 'opening_time', 'closing_time', 'status'])]
 class Branch extends Model
 {
     /** @use HasFactory<BranchFactory> */

@@ -34,7 +34,7 @@ class BranchController extends Controller
 
     public function store(BranchRequest $request): RedirectResponse
     {
-        $branch = $this->service->saveBranch(null, $request->validated(), $this->slug($request, null));
+        $branch = $this->service->saveBranch(null, $request->validated(), $this->slug($request, null), $request->file('image'));
 
         return redirect()->route('branches.edit', $branch)->with('success', 'Branch created. Assign staff and services to start taking bookings.');
     }
@@ -48,7 +48,7 @@ class BranchController extends Controller
 
     public function update(BranchRequest $request, Branch $branch): RedirectResponse
     {
-        $this->service->saveBranch($branch, $request->validated(), $this->slug($request, $branch));
+        $this->service->saveBranch($branch, $request->validated(), $this->slug($request, $branch), $request->file('image'));
 
         return redirect()->route('branches.edit', $branch)->with('success', 'Branch updated.');
     }

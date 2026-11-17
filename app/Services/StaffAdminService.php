@@ -91,9 +91,9 @@ class StaffAdminService
         });
     }
 
-    public function saveBranch(?Branch $branch, array $data, string $slug): Branch
+    public function saveBranch(?Branch $branch, array $data, string $slug, ?UploadedFile $image = null): Branch
     {
-        return DB::transaction(function () use ($branch, $data, $slug) {
+        return DB::transaction(function () use ($branch, $data, $slug, $image) {
             $branch ??= new Branch;
             $original = $branch->getAttributes();
             $firstOpen = collect($data['hours'])->first(fn ($h) => ! empty($h['is_open']));
@@ -110,7 +110,14 @@ class StaffAdminService
                 'opening_time' => $firstOpen['opening_time'] ?? null,
                 'closing_time' => $firstOpen['closing_time'] ?? null,
                 'status' => $data['status'],
-            ])->save();
+            ]);
+            if ($image) {
+                $branch->image = $this->uploads->storeImage($image, 'branches', $branch->image);
+            } elseif (! empty($data['remove_image'])) {
+                $this->uploads->delete($branch->image);
+                $branch->image = null;
+            }
+            $branch->save();
 
             foreach (range(0, 6) as $day) {
                 $row = $data['hours'][$day] ?? [];

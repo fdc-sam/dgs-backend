@@ -43,7 +43,7 @@ class BranchResource extends JsonResource
             'email' => $this->email,
             'latitude' => $this->latitude === null ? null : (float) $this->latitude,
             'longitude' => $this->longitude === null ? null : (float) $this->longitude,
-            'image_url' => null,
+            'image_url' => Fmt::url($this->image),
             'status' => $this->when($request->user()?->role?->canAccessAdmin() ?? false, fn () => $this->status->value),
             'is_open_now' => $today['is_open'] && $current >= $today['opening_time'] && $current < $today['closing_time'],
             'business_hours' => $week->values(),

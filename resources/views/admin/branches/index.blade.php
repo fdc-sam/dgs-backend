@@ -10,7 +10,14 @@
             @foreach ($branches as $branch)
                 <a href="{{ route('branches.edit', $branch) }}" class="group rounded-card border border-outline-variant/70 bg-white p-5 shadow-e1 transition hover:shadow-e2">
                     <div class="flex items-start justify-between gap-3">
-                        <div class="min-w-0">
+                        <div class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-surface-container">
+                            @if ($branch->image)
+                                <img src="{{ \App\Support\Fmt::url($branch->image) }}" alt="" class="h-full w-full object-cover" loading="lazy">
+                            @else
+                                <span class="material-symbols-outlined text-outline" aria-hidden="true">storefront</span>
+                            @endif
+                        </div>
+                        <div class="min-w-0 flex-1">
                             <p class="font-semibold group-hover:text-primary">{{ $branch->name }}</p>
                             <p class="mt-0.5 text-sm text-on-surface-variant">{{ $branch->address ?: 'No address yet' }}</p>
                         </div>

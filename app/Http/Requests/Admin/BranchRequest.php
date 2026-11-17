@@ -19,6 +19,8 @@ class BranchRequest extends AdminRequest
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'status' => ['required', Rule::enum(RecordStatus::class)],
+            'image' => $this->imageRules(),
+            'remove_image' => ['boolean'],
             'hours' => ['required', 'array', 'size:7'],
             'hours.*.is_open' => ['nullable', 'boolean'],
             'hours.*.opening_time' => ['nullable', 'required_if:hours.*.is_open,1', 'date_format:H:i'],

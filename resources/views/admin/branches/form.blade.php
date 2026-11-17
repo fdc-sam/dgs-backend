@@ -14,12 +14,13 @@
         @endif
     </x-admin.page-header>
 
-    <form method="POST" action="{{ $editing ? route('branches.update', $branch) : route('branches.store') }}">
+    <form method="POST" action="{{ $editing ? route('branches.update', $branch) : route('branches.store') }}" enctype="multipart/form-data">
         @csrf @if ($editing) @method('PUT') @endif
         {{-- Test accounts see the shared setup read-only. --}}
         <fieldset class="min-w-0" @cannot('change-setup') disabled @endcannot>
         <div class="grid gap-6 lg:grid-cols-3">
-            <x-admin.card title="Details" class="lg:col-span-2">
+            <div class="space-y-6 lg:col-span-2">
+            <x-admin.card title="Details">
                 <div class="grid gap-5 sm:grid-cols-2">
                     <x-admin.input name="name" label="Branch name" :value="$branch->name" required class="sm:col-span-2" />
                     <x-admin.input name="address" label="Address" :value="$branch->address" class="sm:col-span-2" />
@@ -32,6 +33,17 @@
                     <x-admin.select name="status" label="Status" :options="['active' => 'Active', 'inactive' => 'Inactive']" :value="$branch->status?->value ?? 'active'" required hint="Inactive branches accept no bookings." />
                 </div>
             </x-admin.card>
+
+            <x-admin.card title="Photo" subtitle="Shown on the branch card in the customer app. A wide (landscape) photo of the salon works best.">
+                <x-admin.image-field label="Branch photo" :current="\App\Support\Fmt::url($branch->image)" />
+                @if ($branch->image)
+                    <label class="mt-3 flex items-center gap-2 text-sm text-on-surface-variant">
+                        <input type="hidden" name="remove_image" value="0">
+                        <input type="checkbox" name="remove_image" value="1" class="h-5 w-5 accent-[var(--color-primary)]"> Remove photo (the app shows the DGS placeholder)
+                    </label>
+                @endif
+            </x-admin.card>
+            </div>
 
             <x-admin.card title="Business hours">
                 <div class="space-y-2">
