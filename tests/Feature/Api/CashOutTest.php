@@ -32,7 +32,7 @@ class CashOutTest extends TestCase
         $this->setUpSalon();
         Notification::fake();
         $this->admin = User::factory()->admin()->create();
-        $this->customer = $this->customer(['name' => 'Ana Reyes', 'phone' => '09170000001']);
+        $this->customer = $this->cardHolder(['name' => 'Ana Reyes', 'phone' => '09170000001']);
         $this->reward(300);
     }
 
@@ -49,6 +49,7 @@ class CashOutTest extends TestCase
             ->assertJsonPath('data.pending_cash_out', 0)
             ->assertJsonPath('data.has_pending', false)
             ->assertJsonPath('data.min_amount', 1)
+            ->assertJsonPath('data.loyalty_card_active', true)
             ->assertJsonPath('data.gcash_number', '09170000001')
             ->assertJsonPath('data.gcash_name', 'Ana Reyes')
             ->assertJsonCount(0, 'data.cash_outs');
@@ -63,7 +64,7 @@ class CashOutTest extends TestCase
         $this->cashOut(['gcash_number' => '12345'])->assertUnprocessable()->assertJsonValidationErrors('gcash_number');
         $this->cashOut(['gcash_name' => ''])->assertUnprocessable()->assertJsonValidationErrors('gcash_name');
 
-        Sanctum::actingAs($this->customer());
+        Sanctum::actingAs($this->cardHolder());
         $this->cashOut(['amount' => 1])->assertUnprocessable()->assertJsonPath('errors.amount.0', 'You have no earnings to cash out yet.');
         $this->assertSame(0, CashOutRequest::count());
     }
@@ -168,6 +169,41 @@ class CashOutTest extends TestCase
 
         $this->customer->setTestAccount(true);
         $this->assertTrue(CashOutRequest::withoutGlobalScopes()->sole()->is_test);
+    }
+
+    public function test_only_active_loyalty_card_holders_can_cash_out(): void
+    {
+        foreach ([
+            'no card' => ['loyalty_number' => null, 'loyalty_expires_at' => null],
+            'expired card' => ['loyalty_expires_at' => now()->subDay()->toDateString()],
+        ] as $case => $card) {
+            $this->customer->forceFill($card)->save();
+            Sanctum::actingAs($this->customer->fresh());
+
+            $this->getJson('/api/v1/earnings')->assertOk()
+                ->assertJsonPath('data.loyalty_card_active', false, $case)
+                ->assertJsonPath('data.available', 300);
+            $this->cashOut(['amount' => 100])->assertForbidden()
+                ->assertJsonPath('message', \App\Services\EarningsService::CARD_REQUIRED_MESSAGE);
+        }
+        $this->assertSame(0, CashOutRequest::count());
+
+        // Renewed: cashing out works again.
+        $this->customer->forceFill(['loyalty_number' => '0000501', 'loyalty_expires_at' => now()->addYear()->toDateString()])->save();
+        Sanctum::actingAs($this->customer->fresh());
+        $this->cashOut(['amount' => 100])->assertCreated();
+    }
+
+    /** A customer with an active loyalty card (only they can cash out). */
+    private function cardHolder(array $attributes = []): User
+    {
+        static $number = 500;
+
+        return $this->customer([
+            'loyalty_number' => sprintf('%07d', ++$number),
+            'loyalty_expires_at' => now()->addYear()->toDateString(),
+            ...$attributes,
+        ]);
     }
 
     private function reward(float $amount): void

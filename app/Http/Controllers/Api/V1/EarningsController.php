@@ -24,6 +24,8 @@ class EarningsController extends ApiController
         return $this->ok([
             ...$this->earnings->summary($user),
             'min_amount' => (float) EarningsService::MIN_AMOUNT,
+            // Only active loyalty card holders can cash out (the request is refused otherwise).
+            'loyalty_card_active' => $user->hasActiveLoyaltyCard(),
             // Suggested for the cash-out form; the customer can send it elsewhere.
             'gcash_number' => $user->phone,
             'gcash_name' => $user->name,

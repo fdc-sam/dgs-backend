@@ -25,6 +25,8 @@ class EarningsService
 {
     public const MIN_AMOUNT = 1;
 
+    public const CARD_REQUIRED_MESSAGE = 'Cash out is for loyalty card members. Get your loyalty card, or renew it if it has expired, to cash out your earnings.';
+
     public function __construct(
         private readonly NotificationService $notifications,
         private readonly AuditLogger $audit,
@@ -65,6 +67,10 @@ class EarningsService
     /** The customer asks for an amount of their balance to be sent to a GCash number. */
     public function request(User $customer, float $amount, string $gcashNumber, string $gcashName): CashOutRequest
     {
+        // Cashing out is a perk of an active loyalty card (an expired card must be renewed first).
+        if (! $customer->hasActiveLoyaltyCard()) {
+            throw ApiException::forbidden(self::CARD_REQUIRED_MESSAGE);
+        }
         $amount = round($amount, 2);
         $cashOut = DB::transaction(function () use ($customer, $amount, $gcashNumber, $gcashName) {
             // Two taps at once: the second one sees the first request.
