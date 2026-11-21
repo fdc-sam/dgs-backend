@@ -25,6 +25,7 @@ use App\Models\User;
 use App\Policies\ProfilePolicy;
 use App\Services\SettingsService;
 use App\Support\FavoriteLookup;
+use App\Support\AdminLoginIdentifier;
 use App\Support\LocalDatabase;
 use App\Support\TestMode;
 use Carbon\CarbonImmutable;
@@ -83,7 +84,7 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('api', fn (Request $request) => Limit::perMinute(120)->by($request->user()?->id ?: $request->ip()));
         RateLimiter::for('auth', fn (Request $request) => Limit::perMinute(10)->by($request->ip()));
         RateLimiter::for('bookings', fn (Request $request) => Limit::perMinute(10)->by($request->user()?->id ?: $request->ip()));
-        RateLimiter::for('admin-login', fn (Request $request) => Limit::perMinute(5)->by(strtolower((string) $request->input('email')).'|'.$request->ip()));
+        RateLimiter::for('admin-login', fn (Request $request) => Limit::perMinute(5)->by(AdminLoginIdentifier::resolve((string) $request->input('email')).'|'.$request->ip()));
 
         Gate::policy(User::class, ProfilePolicy::class);
         Gate::define('manage', fn (User $user) => $user->isManager() && $user->isActive());

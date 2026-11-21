@@ -12,7 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * Loyalty card through a friend, in the app: look up the friend behind a scanned QR, send the payment's reference number,
+ * Loyalty card through a friend, in the app: look up any active customer behind a scanned QR, send the payment's reference number,
  * follow the request; and, for the friend, what endorsing others has earned them.
  */
 class LoyaltyCardRequestController extends ApiController

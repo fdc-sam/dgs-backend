@@ -17,7 +17,7 @@ use Tests\Concerns\BuildsSalon;
 use Tests\TestCase;
 
 /**
- * Loyalty card through a friend: a customer scans the QR of a friend with an active card, pays the ₱200 card price to
+ * Loyalty card through a friend: a customer scans the QR of another customer, pays the ₱200 card price to
  * the salon by GCash or bank (reference number only); the admin approves, the digital card is linked and the friend's
  * ₱100 reward goes into their earnings. "Today" is 2026-10-01.
  */
@@ -78,7 +78,7 @@ class LoyaltyCardRequestTest extends TestCase
         $this->getJson('/api/v1/loyalty-card-requests/endorser?code='.$this->endorser->qr_code)->assertStatus(409);
     }
 
-    public function test_a_scanned_code_must_belong_to_another_customer_with_an_active_card(): void
+    public function test_a_scanned_code_must_belong_to_another_customer_but_the_endorser_needs_no_card(): void
     {
         $customer = $this->actingAsCustomer();
         $lookup = fn (string $code) => $this->getJson('/api/v1/loyalty-card-requests/endorser?code='.urlencode($code));
@@ -89,7 +89,9 @@ class LoyaltyCardRequestTest extends TestCase
             ->assertJsonPath('errors.code.0', "This is your own QR code. Scan the QR code of the friend who's endorsing you.");
 
         $noCard = $this->customer(['name' => 'Jun Cruz']);
-        $lookup($noCard->qr_code)->assertUnprocessable()->assertJsonPath('errors.code.0', 'Jun C. needs an active loyalty card to endorse you.');
+        $lookup($noCard->qr_code)->assertOk()
+            ->assertJsonPath('data.endorser.name', 'Jun C.')
+            ->assertJsonPath('data.endorser.code', $noCard->qr_code);
 
         // Scanned as the phone reads it: lower case, no dashes.
         $lookup(strtolower(str_replace('-', '', $this->endorser->qr_code)))->assertOk()

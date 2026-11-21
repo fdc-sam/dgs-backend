@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Support\AdminLoginIdentifier;
 use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,11 +21,11 @@ class AuthController extends Controller
     public function store(Request $request, AuditLogger $audit): RedirectResponse
     {
         $credentials = $request->validate([
-            'email' => ['required', 'email'],
+            'email' => ['required', 'string', 'max:190'],
             'password' => ['required', 'string'],
         ]);
 
-        if (! Auth::attempt([...$credentials, 'email' => strtolower($credentials['email'])], $request->boolean('remember'))) {
+        if (! Auth::attempt([...$credentials, 'email' => AdminLoginIdentifier::resolve($credentials['email'])], $request->boolean('remember'))) {
             throw ValidationException::withMessages(['email' => 'These credentials do not match our records.']);
         }
 

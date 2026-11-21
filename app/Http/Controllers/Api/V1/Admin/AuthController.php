@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Api\ApiController;
-use App\Http\Requests\Api\LoginRequest;
+use App\Http\Requests\Api\AdminLoginRequest;
 use App\Http\Resources\Admin\AdminUserResource;
 use App\Services\AuthService;
 use Illuminate\Http\JsonResponse;
@@ -14,7 +14,7 @@ class AuthController extends ApiController
 {
     public function __construct(private readonly AuthService $auth) {}
 
-    public function login(LoginRequest $request): JsonResponse
+    public function login(AdminLoginRequest $request): JsonResponse
     {
         $result = $this->auth->loginAdminApp($request->input('email'), $request->input('password'), $request->input('device_name'));
 

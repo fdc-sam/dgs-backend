@@ -7,6 +7,7 @@ use App\Enums\UserStatus;
 use App\Exceptions\ApiException;
 use App\Models\User;
 use App\Notifications\ResetPasswordCode;
+use App\Support\AdminLoginIdentifier;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\UploadedFile;
@@ -63,7 +64,7 @@ class AuthService
     /** Sign-in for the admin mobile app: admins, super admins and staff only. @return array{user: User, token: string} */
     public function loginAdminApp(string $email, string $password, ?string $deviceName): array
     {
-        $user = User::where('email', strtolower($email))->first();
+        $user = User::where('email', AdminLoginIdentifier::resolve($email))->first();
 
         if (! $user || ! Hash::check($password, $user->password)) {
             throw ValidationException::withMessages(['email' => 'These credentials do not match our records.']);

@@ -17,8 +17,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Loyalty card through a friend. A customer without a card scans the QR code of a friend who has an active card (the
- * endorser), pays the card price to the salon by GCash or bank transfer and types the reference number (no receipt
+ * Loyalty card through a friend. A customer without a card scans the QR code of any active DGS customer (the endorser),
+ * pays the card price to the salon by GCash or bank transfer and types the reference number (no receipt
  * screenshot is kept). The next free card number is set aside for the request; the admin checks the payment and
  * approves (the card is linked for a year, the endorser's reward is added to their earnings, see EarningsService) or
  * rejects it with a reason. The card is digital: it shows in the app as soon as it is linked.
@@ -134,9 +134,6 @@ class LoyaltyCardRequestService
         }
         if ($endorser->status !== UserStatus::Active) {
             throw $this->codeError('This customer account is not active.');
-        }
-        if (! $endorser->hasActiveLoyaltyCard()) {
-            throw $this->codeError(LoyaltyCardRequest::shortName($endorser->name).' needs an active loyalty card to endorse you.');
         }
 
         return $endorser;
@@ -275,7 +272,7 @@ class LoyaltyCardRequestService
         $pending = $items->where('status', LoyaltyCardRequestStatus::Pending);
 
         return [
-            'can_endorse' => $this->isEnabled() && $endorser->hasActiveLoyaltyCard(),
+            'can_endorse' => $this->isEnabled(),
             'endorser_cash' => $this->endorserReward(),
             'summary' => [
                 'earned' => round((float) $approved->sum('endorser_cash'), 2),
