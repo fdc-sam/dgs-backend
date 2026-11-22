@@ -318,6 +318,12 @@ class AppointmentService
                 throw ApiException::conflict("Cannot change a {$locked->status->label()} appointment to {$to->label()}.");
             }
 
+            if ($to === AppointmentStatus::Completed && ! $locked->items()->whereNotNull('service_id')->exists()) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'status' => 'Add at least one service before completing this appointment.',
+                ]);
+            }
+
             $old = ['status' => $locked->status->value];
             $locked->update([
                 ...array_filter([

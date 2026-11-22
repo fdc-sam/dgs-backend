@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\ReferralStatus;
 use App\Models\Referral;
+use Illuminate\Validation\ValidationException;
 
 /** Admin side of referrals: moving them along and setting the reward added to the referrer's earnings. The referrer is told at each step. */
 class ReferralService
@@ -29,6 +30,12 @@ class ReferralService
     /** The referral is done: the reward is added to the referrer's in-app earnings (they cash it out later, see EarningsService). */
     public function complete(Referral $referral, float $amount, ?string $note = null): Referral
     {
+        if (! $referral->items()->whereNotNull('service_id')->exists()) {
+            throw ValidationException::withMessages([
+                'services' => 'Add at least one service before completing this referral.',
+            ]);
+        }
+
         $old = ['status' => $referral->status->value];
         $referral->update([
             'status' => ReferralStatus::Completed,

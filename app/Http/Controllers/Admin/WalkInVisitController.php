@@ -290,6 +290,12 @@ class WalkInVisitController extends Controller
                 return false;
             }
 
+            if (! $visit->items()->whereNotNull('service_id')->exists()) {
+                throw ValidationException::withMessages([
+                    'services' => 'Add at least one service before completing this walk-in.',
+                ]);
+            }
+
             $visit->update(['status' => 'completed', 'completed_at' => now()]);
             $inventory->recordUsage($visit->items()->get());
 

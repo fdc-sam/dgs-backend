@@ -1,6 +1,7 @@
 @php
     $visit = $walkInVisit;
     $completed = $visit->status === 'completed';
+    $hasService = $visit->items->contains(fn ($item) => $item->service_id !== null);
     $assignedStylists = $visit->items->pluck('staff.user.name')->filter()->unique()->join(', ');
 @endphp
 <x-admin.layout :title="$visit->guest_name ?: 'Walk-in guest'">
@@ -83,10 +84,14 @@
             @unless ($completed)
                 @can('manage')
                 <x-admin.card title="Service progress" subtitle="Add any extra services or charges before completing this visit.">
-                    <form method="POST" action="{{ route('walk-ins.complete', $visit) }}" data-confirm="Complete this walk-in with all listed services and charges?">
-                        @csrf
-                        <x-admin.button type="submit" icon="task_alt" class="w-full">Mark services complete</x-admin.button>
-                    </form>
+                    @if ($hasService)
+                        <form method="POST" action="{{ route('walk-ins.complete', $visit) }}" data-confirm="Complete this walk-in with all listed services and charges?">
+                            @csrf
+                            <x-admin.button type="submit" icon="task_alt" class="w-full">Mark services complete</x-admin.button>
+                        </form>
+                    @else
+                        <p class="text-sm text-on-surface-variant">Add at least one service before completing this walk-in.</p>
+                    @endif
                 </x-admin.card>
                 @else
                     <x-admin.card title="Service progress">

@@ -104,7 +104,6 @@ Route::middleware(['auth', 'auth.session', 'admin'])->group(function () {
             ->middleware('live');
 
         Route::post('referrals/{referral}/status', [Admin\ReferralController::class, 'status'])->name('referrals.status');
-        Route::post('referrals/{referral}/items', [Admin\ReferralController::class, 'storeItem'])->name('referrals.items.store');
         Route::put('referrals/{referral}/items/{item}', [Admin\ReferralController::class, 'updateItem'])->name('referrals.items.update');
         Route::delete('referrals/{referral}/items/{item}', [Admin\ReferralController::class, 'destroyItem'])->name('referrals.items.destroy');
         Route::post('referrals/{referral}/complete', [Admin\ReferralController::class, 'complete'])->name('referrals.complete');
@@ -138,6 +137,7 @@ Route::middleware(['auth', 'auth.session', 'admin'])->group(function () {
         Route::post('walk-ins/{walkInVisit}/items', [Admin\WalkInVisitController::class, 'storeItem'])->name('walk-ins.items.store');
         Route::get('referrals', [Admin\ReferralController::class, 'index'])->name('referrals.index');
         Route::get('referrals/{referral}', [Admin\ReferralController::class, 'show'])->name('referrals.show');
+        Route::post('referrals/{referral}/items', [Admin\ReferralController::class, 'storeItem'])->name('referrals.items.store');
     });
 
     Route::middleware(['can:super-admin', 'live'])->group(function () {

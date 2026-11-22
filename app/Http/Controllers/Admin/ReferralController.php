@@ -66,7 +66,7 @@ class ReferralController extends Controller
 
     public function storeItem(Request $request, Referral $referral, AuditLogger $audit): RedirectResponse
     {
-        abort_unless($request->user()->isManager(), 403);
+        abort_unless($request->user()->isManager() || $request->user()->isCashier(), 403);
         $data = $request->validate([
             'item_type' => ['required', Rule::in(['service', 'custom'])],
             'service_id' => ['nullable', 'required_if:item_type,service', 'string', 'exists:services,id'],

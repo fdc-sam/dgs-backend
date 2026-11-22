@@ -133,10 +133,14 @@
                         @can('updateStatus', $a)
                             @foreach ($transitions as $to)
                                 @php [$label, $icon, $variant] = $actionMeta[$to->value]; @endphp
+                                @if ($to === AppointmentStatus::Completed && ! $a->items->contains(fn ($item) => $item->service_id !== null))
+                                    <p class="rounded-xl bg-warning/10 px-4 py-3 text-sm text-on-surface-variant">Add at least one service before completing this appointment.</p>
+                                @else
                                 <form method="POST" action="{{ route('appointments.status', $a) }}" @if ($to === AppointmentStatus::NoShow) data-confirm="Mark this appointment as a no-show?" @endif>
                                     @csrf <input type="hidden" name="status" value="{{ $to->value }}">
                                     <x-admin.button type="submit" :variant="$variant" :icon="$icon" class="w-full">{{ $label }}</x-admin.button>
                                 </form>
+                                @endif
                             @endforeach
                         @endcan
                         @can('reschedule', $a)
