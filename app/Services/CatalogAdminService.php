@@ -61,6 +61,7 @@ class CatalogAdminService
                 'loyalty_discount_type' => ($data['loyalty_discount_type'] ?? 'amount') === 'percent' ? 'percent' : 'amount',
                 'loyalty_price' => (float) ($data['loyalty_price'] ?? 0) > 0 ? $data['loyalty_price'] : null,
                 'return_price' => (float) ($data['return_price'] ?? 0) > 0 ? $data['return_price'] : null,
+                'referral_reward' => ($data['referral_reward'] ?? '') === '' ? null : $data['referral_reward'],
                 'first_visit_discount_enabled' => (bool) ($data['first_visit_discount_enabled'] ?? false),
                 'first_visit_discount_period' => $data['first_visit_discount_period'] ?? 0,
                 'first_visit_discount_unit' => $data['first_visit_discount_unit'] ?? 'days',

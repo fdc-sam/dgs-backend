@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\Api;
 
-use App\Enums\RecordStatus;
 use App\Enums\ReferralStatus;
 use Closure;
 use Illuminate\Validation\Rule;
@@ -33,8 +32,6 @@ class CreateReferralRequest extends ApiRequest
                     ->where('status', '!=', ReferralStatus::Declined->value)
                     ->where('is_test', (bool) $this->user()->is_test)),
             ],
-            'service_ids' => ['required', 'array', 'min:1', 'max:10'],
-            'service_ids.*' => ['string', 'distinct', Rule::exists('services', 'id')->whereNull('deleted_at')->where('status', RecordStatus::Active->value)],
             'notes' => ['nullable', 'string', 'max:500'],
         ];
     }
@@ -44,8 +41,6 @@ class CreateReferralRequest extends ApiRequest
         return [
             'phone.regex' => 'Enter a valid mobile number, e.g. 09171234567.',
             'phone.unique' => 'This number has already been referred.',
-            'service_ids.required' => 'Choose at least one service they are interested in.',
-            'service_ids.min' => 'Choose at least one service they are interested in.',
         ];
     }
 }

@@ -142,6 +142,10 @@
                     </div>
                 </x-admin.card>
 
+                <x-admin.card title="Referral reward" subtitle="What the referrer earns after this referred customer completes a service. The suggested reward can still be changed when completing the referral.">
+                    <x-admin.input name="referral_reward" type="number" step="0.01" min="0" max="999999" label="Reward per service" prefix="₱" :value="$service->referral_reward" placeholder="Use referral settings" hint="Leave blank to use the referral rewards in Settings. Enter 0 to give no reward for this service." />
+                </x-admin.card>
+
                 <x-admin.card title="Options / variants" subtitle="e.g. Short, Medium, Long hair — each with its own price and duration.">
                     <div x-data="{ rows: @js(array_values($variantRows)) }">
                         <template x-for="(row, i) in rows" :key="i">
@@ -243,7 +247,7 @@
                     <div class="space-y-4">
                         <x-admin.input name="deposit_amount" type="number" step="0.01" min="1" label="Downpayment amount" prefix="₱" :value="$service->deposit_amount"
                                        hint="Must be exactly the amount you set in the GCash QR." />
-                        <x-admin.image-field name="gcash_qr" label="GCash QR for this amount" :current="\App\Support\Fmt::url($service->gcash_qr)" />
+                        <x-admin.image-field name="gcash_qr" label="GCash QR for this amount" :current="\App\Support\Fmt::url($service->gcash_qr)" :previewable="true" />
                         <p class="text-xs text-on-surface-variant">In the GCash app, generate a QR to receive money with this exact amount, save it, and upload it here. It is stored without compression so it stays scannable.</p>
                         @if ($service->gcash_qr)
                             <x-admin.checkbox name="remove_gcash_qr" label="Remove the QR" hint="Customers will no longer pay a downpayment for this service." />

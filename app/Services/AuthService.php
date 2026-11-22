@@ -72,7 +72,7 @@ class AuthService
         if (! $user->isActive()) {
             throw ApiException::forbidden('Your account is '.$user->status->value.'. Please contact the owner.');
         }
-        if (! $user->role->canAccessAdmin()) {
+        if (! $user->role->canAccessAdmin() || $user->isCashier()) {
             throw ApiException::forbidden('This app is for DGS staff. Customers should use the DGS Salon app.');
         }
 

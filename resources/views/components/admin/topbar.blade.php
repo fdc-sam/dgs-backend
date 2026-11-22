@@ -38,11 +38,13 @@
                 </button>
             @endif
 
-            <a href="{{ route('notifications.index') }}" class="relative inline-flex h-11 w-11 items-center justify-center rounded-xl hover:bg-surface-container md:border md:border-outline-variant md:bg-white"
-               aria-label="Notifications{{ $unreadCount ? " ({$unreadCount} unread)" : '' }}">
-                <span class="material-symbols-outlined" style="font-variation-settings: 'wght' 300" aria-hidden="true">notifications</span>
-                <span data-live-badge="unread" @if ($unreadCount <= 0) hidden @endif class="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-danger ring-2 ring-white"></span>
-            </a>
+            @unless ($user->isCashier())
+                <a href="{{ route('notifications.index') }}" class="relative inline-flex h-11 w-11 items-center justify-center rounded-xl hover:bg-surface-container md:border md:border-outline-variant md:bg-white"
+                   aria-label="Notifications{{ $unreadCount ? " ({$unreadCount} unread)" : '' }}">
+                    <span class="material-symbols-outlined" style="font-variation-settings: 'wght' 300" aria-hidden="true">notifications</span>
+                    <span data-live-badge="unread" @if ($unreadCount <= 0) hidden @endif class="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-danger ring-2 ring-white"></span>
+                </a>
+            @endunless
 
             <div class="relative" x-data="{ open: false }" @keydown.escape.window="open = false">
                 <button type="button" class="flex h-11 w-11 items-center justify-center rounded-full ring-offset-2 hover:ring-2 hover:ring-outline-variant"

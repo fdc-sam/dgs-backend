@@ -121,7 +121,7 @@
             {{-- Loyalty card through a friend (App\Services\LoyaltyCardRequestService); requests are checked under Loyalty cards → Requests. --}}
             <div class="mt-6 border-t border-outline-variant/60 pt-5" x-data="{ on: @js((bool) old('loyalty_endorsement_enabled', $s['loyalty_endorsement_enabled'])) }">
                 <p class="label">Loyalty card through a friend</p>
-                <p class="mb-3 text-xs text-on-surface-variant">A customer scans the QR code of a friend who has an active card (Profile → My QR), pays the card price to the salon by GCash or bank transfer in the app and types the reference number. You check the payment under
+                <p class="mb-3 text-xs text-on-surface-variant">A customer scans the QR code of another DGS customer (Profile → My QR), pays the card price to the salon by GCash or bank transfer in the app and types the reference number. You check the payment under
                     <a href="{{ route('loyalty-cards.requests.index') }}" class="font-semibold underline">Loyalty cards → Requests</a>; once approved the digital card shows in the customer's app and the friend's reward is added to their earnings.</p>
                 <x-admin.checkbox name="loyalty_endorsement_enabled" label="Let customers get a card through a friend in the app" :checked="$s['loyalty_endorsement_enabled']" x-model="on" />
                 <div x-show="on" class="mt-3 grid gap-5 sm:grid-cols-2">
@@ -132,7 +132,9 @@
 
                     <p class="eyebrow -mb-2 border-t border-outline-variant/60 pt-4 sm:col-span-2">Pay by GCash</p>
                     <x-admin.image-field name="loyalty_endorsement_qr" label="GCash QR for the card (optional)" :current="$loyaltyEndorsementQrUrl" class="sm:col-span-2" />
-                    <p class="-mt-3 text-xs text-on-surface-variant sm:col-span-2">E.g. a fixed-amount GCash QR for the card price. Without one, the app shows the salon GCash QR and number from the GCash section above.</p>
+                    <x-admin.input name="loyalty_endorsement_gcash_account_name" label="GCash account name" :value="$s['loyalty_endorsement_gcash_account_name']" placeholder="e.g. DGS HAIR SALON" maxlength="120" />
+                    <x-admin.input name="loyalty_endorsement_gcash_number" label="GCash number" :value="$s['loyalty_endorsement_gcash_number']" placeholder="09XXXXXXXXX" inputmode="tel" />
+                    <p class="-mt-3 text-xs text-on-surface-variant sm:col-span-2">Enter the GCash name and number for card payments, or leave them blank to use the salon GCash details above. A card-specific QR can also be uploaded here.</p>
 
                     <p class="eyebrow -mb-2 border-t border-outline-variant/60 pt-4 sm:col-span-2">Pay by bank transfer</p>
                     <x-admin.image-field name="loyalty_endorsement_bank_qr" label="Bank QR code" :current="$loyaltyBankQrUrl" class="sm:col-span-2" />

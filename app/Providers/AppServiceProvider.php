@@ -88,6 +88,9 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::policy(User::class, ProfilePolicy::class);
         Gate::define('manage', fn (User $user) => $user->isManager() && $user->isActive());
+        Gate::define('cashier-area', fn (User $user) => $user->isActive() && ($user->isManager() || $user->isCashier()));
+        Gate::define('team-portal', fn (User $user) => $user->isActive() && ($user->isManager() || $user->isStaff()));
+        Gate::define('operations-portal', fn (User $user) => $user->isActive() && ($user->isManager() || $user->isStaff() || $user->isCashier()));
         Gate::define('super-admin', fn (User $user) => $user->isSuperAdmin() && $user->isActive());
         // Services, prices, staff, branches, stock, promotions, achievements and settings are shared by both sides:
         // test accounts may look at them but not change them.
@@ -105,10 +108,10 @@ class AppServiceProvider extends ServiceProvider
             // Products out of stock or at their low-stock alert (sidebar badge).
             $view->with('lowStockCount', once(fn () => auth()->user()?->isManager() ? Product::query()->needsRestock()->count() : 0));
             // GCash receipts waiting for a manager to check them (sidebar badge).
-            $view->with('paymentsToVerify', once(fn () => auth()->user()?->isManager()
+            $view->with('paymentsToVerify', once(fn () => (auth()->user()?->isManager() || auth()->user()?->isCashier())
                 ? Appointment::query()->where('payment_status', PaymentStatus::Submitted->value)->count() : 0));
             // Referrals nobody has acted on yet (sidebar badge).
-            $view->with('newReferrals', once(fn () => auth()->user()?->isManager()
+            $view->with('newReferrals', once(fn () => (auth()->user()?->isManager() || auth()->user()?->isCashier())
                 ? Referral::query()->where('status', ReferralStatus::Pending->value)->count() : 0));
             // Loyalty card requests (through a friend) with a GCash receipt to check (sidebar badge).
             $view->with('cardRequestsToVerify', once(fn () => auth()->user()?->isManager()

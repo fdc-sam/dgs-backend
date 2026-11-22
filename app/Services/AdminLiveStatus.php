@@ -25,11 +25,12 @@ class AdminLiveStatus
     public function snapshot(User $user): array
     {
         $manager = $user->isManager();
+        $cashier = $manager || $user->isCashier();
 
         return [
             'unread' => $user->unreadNotifications()->count(),
-            'new_referrals' => $manager ? Referral::query()->where('status', ReferralStatus::Pending->value)->count() : 0,
-            'payments_to_verify' => $manager ? Appointment::query()->where('payment_status', PaymentStatus::Submitted->value)->count() : 0,
+            'new_referrals' => $cashier ? Referral::query()->where('status', ReferralStatus::Pending->value)->count() : 0,
+            'payments_to_verify' => $cashier ? Appointment::query()->where('payment_status', PaymentStatus::Submitted->value)->count() : 0,
             'card_requests_to_verify' => $manager ? LoyaltyCardRequest::query()->pending()->count() : 0,
             'cash_outs_to_send' => $manager ? CashOutRequest::query()->pending()->count() : 0,
             'markers' => array_combine(self::WATCHABLE, array_map(fn ($list) => $this->marker($user, $list), self::WATCHABLE)),
@@ -41,7 +42,7 @@ class AdminLiveStatus
     {
         $query = match ($list) {
             'appointments' => $this->appointmentsFor($user),
-            'referrals' => $user->isManager() ? Referral::query() : null,
+            'referrals' => $user->isManager() || $user->isCashier() ? Referral::query() : null,
             'cash_outs' => $user->isManager() ? CashOutRequest::query() : null,
             default => null,
         };

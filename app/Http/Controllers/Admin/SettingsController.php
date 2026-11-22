@@ -33,8 +33,10 @@ class SettingsController extends Controller
     public function update(Request $request, SettingsService $settings, FileUploadService $uploads, AuditLogger $audit): RedirectResponse
     {
         // "+63 917 123 4567" → "09171234567"
-        $number = preg_replace('/[\s\-().]/', '', (string) $request->input('payment_gcash_number'));
-        $request->merge(['payment_gcash_number' => preg_match('/^\+?639\d{9}$/', $number) ? '0'.substr($number, -10) : ($number ?: null)]);
+        foreach (['payment_gcash_number', 'loyalty_endorsement_gcash_number'] as $key) {
+            $number = preg_replace('/[\s\-().]/', '', (string) $request->input($key));
+            $request->merge([$key => preg_match('/^\+?639\d{9}$/', $number) ? '0'.substr($number, -10) : ($number ?: null)]);
+        }
         // Reward rows the admin left blank are dropped; the marker tells "all rows removed" apart from a form without them.
         if ($request->boolean('referral_rewards_shown')) {
             $request->merge(['referral_rewards' => collect($request->input('referral_rewards', []))
@@ -82,6 +84,8 @@ class SettingsController extends Controller
             'loyalty_endorsement_card_price' => ['sometimes', 'required', 'integer', 'min:1', 'max:100000'],
             'loyalty_endorsement_endorser_cash' => ['sometimes', 'required', 'integer', 'min:0', 'max:100000'],
             'loyalty_endorsement_qr' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:'.config('salon.uploads.max_kilobytes')],
+            'loyalty_endorsement_gcash_account_name' => ['nullable', 'required_with:loyalty_endorsement_gcash_number', 'string', 'max:120'],
+            'loyalty_endorsement_gcash_number' => ['nullable', 'regex:/^09\d{9}$/'],
             'loyalty_endorsement_bank_qr' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:'.config('salon.uploads.max_kilobytes')],
             'loyalty_endorsement_bank_name' => ['nullable', 'string', 'max:80'],
             'loyalty_endorsement_bank_account_name' => ['nullable', 'string', 'max:120'],
@@ -92,6 +96,8 @@ class SettingsController extends Controller
             'reminder_offsets.regex' => 'Enter hours as numbers separated by commas, e.g. 24, 2.',
             'payment_gcash_number.regex' => 'Enter an 11-digit mobile number, e.g. 09171234567.',
             'payment_gcash_account_name.required_if_accepted' => 'Enter the GCash account name customers will see.',
+            'loyalty_endorsement_gcash_number.regex' => 'Enter an 11-digit GCash mobile number, e.g. 09171234567.',
+            'loyalty_endorsement_gcash_account_name.required_with' => 'Enter the GCash account name for this number.',
             'referral_rewards.*.service.required' => 'Enter the service this reward is for.',
             'referral_rewards.*.service.distinct' => 'This service already has a reward.',
             'referral_rewards.*.amount.required' => 'Enter the reward amount.',
@@ -123,7 +129,7 @@ class SettingsController extends Controller
         if ($request->hasFile('loyalty_endorsement_bank_qr')) {
             $data['loyalty_endorsement_bank_qr'] = $uploads->storeImage($request->file('loyalty_endorsement_bank_qr'), 'payments', $old['loyalty_endorsement_bank_qr'] ?: null, lossless: true);
         }
-        foreach (['loyalty_endorsement_bank_name', 'loyalty_endorsement_bank_account_name', 'loyalty_endorsement_bank_account_number'] as $key) {
+        foreach (['loyalty_endorsement_gcash_account_name', 'loyalty_endorsement_bank_name', 'loyalty_endorsement_bank_account_name', 'loyalty_endorsement_bank_account_number'] as $key) {
             if (array_key_exists($key, $data)) {
                 $data[$key] = trim((string) $data[$key]);
             }
@@ -161,7 +167,8 @@ class SettingsController extends Controller
             $hasCardQr = $hasQr || $request->hasFile('loyalty_endorsement_qr') || $settings->get('loyalty_endorsement_gcash_qr');
             $hasBank = $request->hasFile('loyalty_endorsement_bank_qr') || $settings->get('loyalty_endorsement_bank_qr')
                 || filled($data['loyalty_endorsement_bank_account_number'] ?? null);
-            if (! empty($data['loyalty_endorsement_enabled']) && ! $hasCardQr && empty($data['payment_gcash_number']) && ! $hasBank) {
+            $hasCardNumber = filled($data['loyalty_endorsement_gcash_number'] ?? null) || filled($data['payment_gcash_number'] ?? null);
+            if (! empty($data['loyalty_endorsement_enabled']) && ! $hasCardQr && ! $hasCardNumber && ! $hasBank) {
                 $v->errors()->add('loyalty_endorsement_qr', 'Upload a GCash or bank QR code (or enter a GCash or account number) so customers know where to pay for the card.');
             }
         });

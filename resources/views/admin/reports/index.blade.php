@@ -1,6 +1,6 @@
 @php
     $links = [
-        'sales' => ['Sales', 'payments', 'Gross and net revenue, discounts and product cost by day.'],
+        'sales' => ['Sales', 'payments', 'Gross revenue includes completed referral services; net deducts product costs and referral rewards.'],
         'appointments' => ['Appointments', 'event_note', 'Bookings by status, cancellation and no-show rates.'],
         'services' => ['Services', 'content_cut', 'Most booked and highest earning services.'],
         'staff' => ['Staff', 'badge', 'Appointments, service hours, revenue and ratings per staff member.'],
@@ -8,7 +8,7 @@
     ];
 @endphp
 <x-admin.layout title="Reports">
-    <x-admin.page-header title="Reports" subtitle="Gross revenue = completed appointments (after discounts) and completed walk-ins. Net revenue = gross minus product cost from Inventory." />
+    <x-admin.page-header title="Reports" subtitle="Gross revenue includes completed appointments, walk-ins, and referral services. Net revenue subtracts Inventory product cost and referral rewards. Referrals are included across all branches because they are not assigned to a location." />
     @include('admin.reports._range', ['action' => route('reports.index')])
 
     <div class="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">

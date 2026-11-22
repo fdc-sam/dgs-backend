@@ -6,15 +6,19 @@ use App\Enums\AppointmentStatus;
 use App\Enums\ReferralStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Referral;
+use App\Models\ReferralItem;
+use App\Models\Service;
 use App\Models\User;
 use App\Models\WalkInVisit;
 use App\Services\LoyaltyProgram;
 use App\Services\ReferralService;
+use App\Services\AuditLogger;
 use App\Support\Fmt;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 /** Customer referrals: check whether the referred person completed a service, then add the referrer's reward to their earnings. */
@@ -41,7 +45,143 @@ class ReferralController extends Controller
             'visits' => $this->visitsByPhone($referrals->pluck('phone')->unique()->values()->all()),
             // The Complete form starts with the reward set in Settings for the referral's services.
             'suggestions' => $referrals->getCollection()->mapWithKeys(fn ($r) => [$r->id => $loyalty->suggestedReward($r)]),
+            'services' => Service::query()->active()->orderBy('name')->get(['id', 'name']),
         ]);
+    }
+
+    public function show(Referral $referral, LoyaltyProgram $loyalty): View
+    {
+        $referral->load(['referrer', 'services.category', 'items.service', 'items.staff.user']);
+        $visit = $this->visitsByPhone([$referral->phone])[$referral->phone] ?? ['customer' => null, 'completed' => 0];
+
+        return view('admin.referrals.show', [
+            'referral' => $referral,
+            'visit' => $visit,
+            'suggestion' => $loyalty->suggestedReward($referral),
+            'services' => Service::query()->active()->orderBy('name')->get(['id', 'name']),
+            'staff' => \App\Models\StaffProfile::bookable()->with(['user', 'services'])->get()
+                ->sortBy(fn ($profile) => $profile->user?->name)->values(),
+        ]);
+    }
+
+    public function storeItem(Request $request, Referral $referral, AuditLogger $audit): RedirectResponse
+    {
+        abort_unless($request->user()->isManager(), 403);
+        $data = $request->validate([
+            'item_type' => ['required', Rule::in(['service', 'custom'])],
+            'service_id' => ['nullable', 'required_if:item_type,service', 'string', 'exists:services,id'],
+            'staff_profile_id' => ['nullable', 'string', 'exists:staff_profiles,id'],
+            'service_name' => ['nullable', 'required_if:item_type,custom', 'string', 'max:255'],
+            'unit_price' => ['nullable', 'required_if:item_type,custom', 'numeric', 'min:0.01', 'max:99999999.99'],
+            'quantity' => ['required', 'integer', 'min:1', 'max:1000'],
+        ]);
+
+        $service = null;
+        $stylist = null;
+        if ($data['item_type'] === 'service') {
+            $service = Service::query()->active()->find($data['service_id']);
+            if (! $service) {
+                return back()->withInput()->withErrors(['service_id' => 'Choose an active service.']);
+            }
+            if (! empty($data['staff_profile_id'])) {
+                $stylist = \App\Models\StaffProfile::bookable()->offersService($service->id)->find($data['staff_profile_id']);
+                if (! $stylist) {
+                    return back()->withInput()->withErrors(['staff_profile_id' => 'Choose a stylist who offers this service.']);
+                }
+            }
+            $name = $service->name;
+            $price = number_format((float) $service->regular_price, 2, '.', '');
+        } else {
+            $name = trim($data['service_name']);
+            $price = number_format((float) $data['unit_price'], 2, '.', '');
+        }
+
+        $item = DB::transaction(function () use ($referral, $service, $stylist, $name, $price, $data) {
+            $locked = Referral::query()->lockForUpdate()->findOrFail($referral->id);
+            $this->ensureReferralEditable($locked);
+            $item = $locked->items()->create([
+                'service_id' => $service?->id,
+                'staff_profile_id' => $stylist?->id,
+                'service_name' => $name,
+                'quantity' => (int) $data['quantity'],
+                'unit_price' => $price,
+                'subtotal' => number_format((float) $price * (int) $data['quantity'], 2, '.', ''),
+            ]);
+            $this->syncReferralServices($locked);
+
+            return $item;
+        });
+
+        $audit->log('referral.item.added', $referral, null, [
+            'item_id' => $item->id, 'service_id' => $item->service_id, 'service_name' => $item->service_name,
+            'quantity' => $item->quantity, 'unit_price' => $item->unit_price, 'subtotal' => $item->subtotal,
+        ]);
+
+        return back()->with('success', 'Service or charge added to the referral.');
+    }
+
+    public function updateItem(Request $request, Referral $referral, ReferralItem $item, AuditLogger $audit): RedirectResponse
+    {
+        abort_unless($request->user()->isManager(), 403);
+        $item = $referral->items()->whereKey($item->id)->firstOrFail();
+        $data = $request->validate([
+            'service_id' => ['required', 'string', 'exists:services,id'],
+            'staff_profile_id' => ['nullable', 'string', 'exists:staff_profiles,id'],
+        ]);
+        $service = Service::query()->active()->find($data['service_id']);
+        if (! $service) {
+            return back()->withInput()->withErrors(['service_id' => 'Choose an active service.']);
+        }
+        $stylist = null;
+        if (! empty($data['staff_profile_id'])) {
+            $stylist = \App\Models\StaffProfile::bookable()->offersService($service->id)->find($data['staff_profile_id']);
+            if (! $stylist) {
+                return back()->withInput()->withErrors(['staff_profile_id' => 'Choose a stylist who offers this service.']);
+            }
+        }
+        $this->ensureReferralEditable($referral);
+        $old = ['service_name' => $item->service_name, 'service_id' => $item->service_id, 'subtotal' => $item->subtotal];
+        $item->update([
+            'service_id' => $service->id,
+            'staff_profile_id' => $stylist?->id,
+            'service_name' => $service->name,
+            'unit_price' => $service->regular_price,
+            'subtotal' => number_format((float) $service->regular_price * $item->quantity, 2, '.', ''),
+        ]);
+        $this->syncReferralServices($referral);
+        $audit->log('referral.item.updated', $referral, $old, ['service_id' => $service->id, 'service_name' => $service->name, 'subtotal' => $item->subtotal]);
+
+        return back()->with('success', 'Referral service updated.');
+    }
+
+    public function destroyItem(Request $request, Referral $referral, ReferralItem $item, AuditLogger $audit): RedirectResponse
+    {
+        abort_unless($request->user()->isManager(), 403);
+        $item = $referral->items()->whereKey($item->id)->firstOrFail();
+        $this->ensureReferralEditable($referral);
+        $old = ['service_id' => $item->service_id, 'service_name' => $item->service_name, 'subtotal' => $item->subtotal];
+        DB::transaction(function () use ($referral, $item) {
+            $locked = Referral::query()->lockForUpdate()->findOrFail($referral->id);
+            $this->ensureReferralEditable($locked);
+            $item->delete();
+            $this->syncReferralServices($locked);
+        });
+        $audit->log('referral.item.removed', $referral, $old);
+
+        return back()->with('success', 'Service or charge removed from the referral.');
+    }
+
+    private function ensureReferralEditable(Referral $referral): void
+    {
+        if (in_array($referral->status, [ReferralStatus::Completed, ReferralStatus::Declined], true)) {
+            throw ValidationException::withMessages(['item_type' => 'Services and charges cannot be changed for a closed referral.']);
+        }
+    }
+
+    private function syncReferralServices(Referral $referral): void
+    {
+        $serviceIds = $referral->items()->whereNotNull('service_id')->pluck('service_id')->unique()->values()->all();
+        $referral->services()->sync($serviceIds);
     }
 
     public function status(Request $request, Referral $referral): RedirectResponse

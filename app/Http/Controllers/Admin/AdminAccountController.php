@@ -19,7 +19,7 @@ class AdminAccountController extends Controller
     public function index(): View
     {
         return view('admin.admin-accounts.index', [
-            'admins' => User::query()->whereIn('role', [UserRole::SuperAdmin->value, UserRole::Admin->value])
+            'admins' => User::query()->whereIn('role', [UserRole::SuperAdmin->value, UserRole::Admin->value, UserRole::Cashier->value])
                 ->orderByDesc('role')->orderBy('name')->paginate(self::PER_PAGE),
         ]);
     }
@@ -36,7 +36,7 @@ class AdminAccountController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email:rfc', 'max:190', Rule::unique('users', 'email')],
-            'role' => ['required', Rule::in([UserRole::Admin->value, UserRole::SuperAdmin->value])],
+            'role' => ['required', Rule::in([UserRole::Admin->value, UserRole::SuperAdmin->value, UserRole::Cashier->value])],
             'account_type' => ['required', Rule::in(['live', 'test'])],
             'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()],
         ]);
@@ -57,7 +57,7 @@ class AdminAccountController extends Controller
 
     public function updateAccountType(Request $request, User $user, AuditLogger $audit): RedirectResponse
     {
-        abort_unless($user->isManager(), 404);
+        abort_unless($user->isManager() || $user->isCashier(), 404);
         $data = $request->validate(['account_type' => ['required', Rule::in(['live', 'test'])]]);
         $test = $data['account_type'] === 'test';
         if ($user->is($request->user())) {

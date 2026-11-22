@@ -48,16 +48,16 @@
         </div>
     @elseif ($canReview && ($status->canRecordManually() || ($status->acceptsProof() && $a->status->isActive()) || ($status === PaymentStatus::Paid && in_array($a->status, [AppointmentStatus::Cancelled, AppointmentStatus::NoShow], true))))
         <div class="mt-5 flex flex-col gap-2 border-t border-outline-variant/60 pt-4">
-            @if ($status->canRecordManually())
+            @if ($status->canRecordManually() && auth()->user()->isManager())
                 <x-admin.button variant="tonal" icon="receipt_long" class="w-full" @click="$dispatch('open-modal', 'record-payment')">Record payment</x-admin.button>
             @endif
-            @if ($status->acceptsProof() && $a->status->isActive())
+            @if ($status->acceptsProof() && $a->status->isActive() && auth()->user()->isManager())
                 <form method="POST" action="{{ route('appointments.payment.waive', $a) }}" data-confirm="Hold this booking without a deposit? The customer will be told it's confirmed.">
                     @csrf
                     <x-admin.button type="submit" variant="outlined" icon="money_off" class="w-full">Waive deposit</x-admin.button>
                 </form>
             @endif
-            @if ($status === PaymentStatus::Paid && in_array($a->status, [AppointmentStatus::Cancelled, AppointmentStatus::NoShow], true))
+            @if ($status === PaymentStatus::Paid && in_array($a->status, [AppointmentStatus::Cancelled, AppointmentStatus::NoShow], true) && auth()->user()->isManager())
                 <x-admin.button variant="outlined" icon="undo" class="w-full" @click="$dispatch('open-modal', 'refund-payment')">Mark as refunded</x-admin.button>
             @endif
         </div>

@@ -54,13 +54,15 @@ return [
         // has an active card, pays card_price to the salon by GCash or bank in the app (reference number only) and the
         // admin approves; the friend then earns endorser_cash in their in-app earnings. card_price 0 = not saved yet:
         // the old split (gcash_amount + endorser_cash, when the friend got their share in cash) stays the price.
-        // The GCash QR is optional (e.g. a fixed-amount QR); without it the salon GCash QR / number is shown. Bank
-        // transfer is offered once a bank QR or account number is set.
+        // Endorsement GCash details can differ from regular payments; empty fields fall back to salon-wide GCash details.
+        // Bank transfer is offered once a bank QR or account number is set.
         'loyalty_endorsement_enabled' => ['value' => '1', 'type' => 'boolean'],
         'loyalty_endorsement_card_price' => ['value' => '0', 'type' => 'integer'],
         'loyalty_endorsement_gcash_amount' => ['value' => '100', 'type' => 'integer'],
         'loyalty_endorsement_endorser_cash' => ['value' => '100', 'type' => 'integer'],
         'loyalty_endorsement_gcash_qr' => ['value' => '', 'type' => 'string'],
+        'loyalty_endorsement_gcash_account_name' => ['value' => '', 'type' => 'string'],
+        'loyalty_endorsement_gcash_number' => ['value' => '', 'type' => 'string'],
         'loyalty_endorsement_bank_qr' => ['value' => '', 'type' => 'string'],
         'loyalty_endorsement_bank_name' => ['value' => '', 'type' => 'string'],
         'loyalty_endorsement_bank_account_name' => ['value' => '', 'type' => 'string'],

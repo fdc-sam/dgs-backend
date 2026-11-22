@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['category_id', 'name', 'slug', 'short_description', 'description', 'image', 'regular_price', 'deposit_amount', 'gcash_qr', 'loyalty_enabled', 'loyalty_pricing', 'loyalty_discount', 'loyalty_discount_type', 'loyalty_price', 'return_price', 'first_visit_discount_enabled', 'first_visit_discount_period', 'first_visit_discount_unit', 'duration_minutes', 'buffer_minutes', 'status', 'is_featured', 'sort_order'])]
+#[Fillable(['category_id', 'name', 'slug', 'short_description', 'description', 'image', 'regular_price', 'deposit_amount', 'gcash_qr', 'loyalty_enabled', 'loyalty_pricing', 'loyalty_discount', 'loyalty_discount_type', 'loyalty_price', 'return_price', 'referral_reward', 'first_visit_discount_enabled', 'first_visit_discount_period', 'first_visit_discount_unit', 'duration_minutes', 'buffer_minutes', 'status', 'is_featured', 'sort_order'])]
 class Service extends Model
 {
     /** @use HasFactory<ServiceFactory> */
@@ -31,6 +31,7 @@ class Service extends Model
         return [
             'status' => RecordStatus::class,
             'regular_price' => 'decimal:2',
+            'referral_reward' => 'decimal:2',
             'deposit_amount' => 'decimal:2',
             // Loyalty card pricing, used only while loyalty_enabled (the card's on/off switch) is on. loyalty_pricing "less" or "tiered": Less = loyalty_discount off, in pesos or percent
             // (loyalty_discount_type); Tiered = the maintenance price (loyalty_price) and the lapsed price (return_price).

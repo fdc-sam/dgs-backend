@@ -15,7 +15,7 @@ class AdminLoginIdentifier
             return $identifier;
         }
 
-        $matches = User::query()->whereIn('role', [UserRole::SuperAdmin->value, UserRole::Admin->value, UserRole::Staff->value])
+        $matches = User::query()->whereIn('role', [UserRole::SuperAdmin->value, UserRole::Admin->value, UserRole::Staff->value, UserRole::Cashier->value])
             ->get(['email'])
             ->filter(fn (User $user) => strtolower(strstr($user->email, '@', true) ?: '') === $identifier);
 

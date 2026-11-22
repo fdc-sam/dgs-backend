@@ -52,35 +52,44 @@
                 </dl>
             </x-admin.card>
 
-            <x-admin.card title="Services" :padding="false">
-                <x-admin.table :headers="['Service', 'Option', 'Stylist', 'Duration', '>Price']"
-                               :mobile-order="['Service' => 0, 'Price' => 1, 'Option' => 2, 'Stylist' => 3, 'Duration' => 4]"
-                               :mobile-summary="['Option', 'Stylist']"
-                               :mobile-labels="['Price' => 'Service price', 'Option' => 'Selected option']">
+            <x-admin.card title="Services and charges" :padding="false">
+                @if (! $a->status->isFinal())
+                    @can('cashier-area')
+                        <x-slot:actions>
+                            <x-admin.button type="button" variant="tonal" icon="add" @click="$dispatch('open-modal', 'appointment-add-service')">Add service or charge</x-admin.button>
+                        </x-slot:actions>
+                    @endcan
+                @endif
+                @if ($errors->any())
+                    <div class="mx-5 mt-4 rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{{ $errors->first() }}</div>
+                @endif
+                <x-admin.table :headers="['Service / charge', 'Stylist', 'Quantity', '>Price']"
+                               :mobile-order="['Service / charge' => 0, 'Price' => 1, 'Quantity' => 2, 'Stylist' => 3]"
+                               :mobile-summary="['Quantity', 'Stylist']"
+                               :mobile-labels="['Price' => 'Service price']">
                     @foreach ($a->items as $item)
                         <tr>
-                            <td class="font-medium">{{ $item->service_name }}
+                            <td class="font-medium">{{ $item->service_name }} @unless ($item->service_id)<span class="ml-1 text-xs font-normal text-on-surface-variant">Custom charge</span>@endunless
                                 @if ((float) $item->deposit_amount > 0)<p class="text-xs font-normal text-on-surface-variant">₱{{ number_format($item->deposit_amount, 2) }} GCash downpayment</p>@endif
                             </td>
-                            <td>{{ $item->variant_name ?? '—' }}</td>
                             <td>{{ $item->staff?->user?->name ?? 'Any qualified stylist' }}</td>
-                            <td>{{ $item->duration_minutes }} min</td>
+                            <td>{{ $item->quantity }}</td>
                             <td class="text-right">₱{{ number_format($item->subtotal, 2) }}</td>
                         </tr>
                     @endforeach
-                    <tr><td colspan="4" class="text-right text-on-surface-variant">Subtotal</td><td class="text-right">₱{{ number_format($a->subtotal, 2) }}</td></tr>
+                    <tr><td colspan="3" class="text-right text-on-surface-variant">Subtotal</td><td class="text-right">₱{{ number_format($a->subtotal, 2) }}</td></tr>
                     @if ((float) $a->discount_amount > 0)
-                        <tr><td colspan="4" class="text-right text-on-surface-variant">Discount</td><td class="text-right text-success">−₱{{ number_format($a->discount_amount, 2) }}</td></tr>
+                        <tr><td colspan="3" class="text-right text-on-surface-variant">Discount</td><td class="text-right text-success">−₱{{ number_format($a->discount_amount, 2) }}</td></tr>
                     @endif
                     @if ((float) $a->additional_charge > 0)
-                        <tr><td colspan="4" class="text-right text-on-surface-variant">Additional charge · {{ $a->additional_charge_reason }}</td><td class="text-right">+₱{{ number_format($a->additional_charge, 2) }}</td></tr>
+                        <tr><td colspan="3" class="text-right text-on-surface-variant">Additional charge · {{ $a->additional_charge_reason }}</td><td class="text-right">+₱{{ number_format($a->additional_charge, 2) }}</td></tr>
                     @endif
-                    <tr><td colspan="4" class="text-right font-semibold">Total</td><td class="text-right text-lg font-semibold">₱{{ number_format($a->total_amount, 2) }}</td></tr>
+                    <tr><td colspan="3" class="text-right font-semibold">Total</td><td class="text-right text-lg font-semibold">₱{{ number_format($a->total_amount, 2) }}</td></tr>
                     @if ((float) $a->amount_paid > 0)
-                        <tr><td colspan="4" class="text-right text-on-surface-variant">Downpayment received (GCash)</td><td class="text-right text-success">−₱{{ number_format($a->amount_paid, 2) }}</td></tr>
-                        <tr><td colspan="4" class="text-right font-semibold">Balance to pay at the salon</td><td class="text-right text-lg font-semibold">₱{{ number_format($a->balanceDue(), 2) }}</td></tr>
+                        <tr><td colspan="3" class="text-right text-on-surface-variant">Downpayment received (GCash)</td><td class="text-right text-success">−₱{{ number_format($a->amount_paid, 2) }}</td></tr>
+                        <tr><td colspan="3" class="text-right font-semibold">Balance to pay at the salon</td><td class="text-right text-lg font-semibold">₱{{ number_format($a->balanceDue(), 2) }}</td></tr>
                     @elseif ($a->payment_status->isHolding() || $a->payment_status === PaymentStatus::Submitted)
-                        <tr><td colspan="4" class="text-right text-on-surface-variant">Downpayment due (GCash)</td><td class="text-right">₱{{ number_format($a->deposit_amount, 2) }}</td></tr>
+                        <tr><td colspan="3" class="text-right text-on-surface-variant">Downpayment due (GCash)</td><td class="text-right">₱{{ number_format($a->deposit_amount, 2) }}</td></tr>
                     @endif
                 </x-admin.table>
             </x-admin.card>
@@ -175,6 +184,76 @@
             @endcan
         </div>
     </div>
+
+    @if (! $a->status->isFinal())
+        @can('cashier-area')
+            <x-admin.modal name="appointment-add-service" title="Add service or charge">
+                <form method="POST" action="{{ route('appointments.items.add', $a) }}" class="appointment-add-editor space-y-4">
+                    @csrf
+                    <div>
+                        <label for="appointment-item-type" class="label">What would you like to add?</label>
+                        <select id="appointment-item-type" name="item_type" class="field appointment-add-type" required>
+                            <option value="service" @selected(old('item_type', 'service') === 'service')>Catalog service</option>
+                            <option value="custom" @selected(old('item_type') === 'custom')>Custom service or charge</option>
+                        </select>
+                    </div>
+                    <div data-service-fields>
+                        <label for="appointment-add-service" class="label">Service</label>
+                        <select id="appointment-add-service" name="service_id" class="field appointment-add-service" required>
+                            <option value="">Choose a service</option>
+                            @foreach ($services as $service)
+                                <option value="{{ $service->id }}" @selected(old('service_id') === $service->id)>{{ $service->name }}</option>
+                            @endforeach
+                        </select>
+                        <p class="mt-1 text-xs text-on-surface-variant">Uses the current branch price and the customer’s loyalty price, if applicable.</p>
+                    </div>
+                    <div data-custom-fields class="space-y-4">
+                        <x-admin.input name="service_name" label="Service or charge name" placeholder="e.g. Long hair surcharge" maxlength="255" required />
+                        <x-admin.input name="unit_price" type="number" label="Price" prefix="₱" min="0.01" max="99999999.99" step="0.01" placeholder="0.00" required />
+                    </div>
+                    <div data-service-fields>
+                        <label for="appointment-add-stylist" class="label">Stylist</label>
+                        <select id="appointment-add-stylist" name="staff_profile_id" class="field appointment-add-staff">
+                            <option value="">Any qualified stylist</option>
+                        </select>
+                    </div>
+                    <x-admin.input name="quantity" type="number" label="Quantity" min="1" max="1000" :value="old('quantity', 1)" required />
+                    <div class="flex justify-end gap-2">
+                        <x-admin.button type="button" variant="text" @click="$dispatch('close-modal', 'appointment-add-service')">Cancel</x-admin.button>
+                        <x-admin.button type="submit">Add to appointment</x-admin.button>
+                    </div>
+                </form>
+            </x-admin.modal>
+            <script>
+                document.querySelectorAll('.appointment-add-editor').forEach((form) => {
+                    const type = form.querySelector('.appointment-add-type');
+                    const service = form.querySelector('.appointment-add-service');
+                    const stylist = form.querySelector('.appointment-add-staff');
+                    const serviceFields = form.querySelectorAll('[data-service-fields]');
+                    const customFields = form.querySelector('[data-custom-fields]');
+                    const staff = @js($staff->map(fn ($profile) => [
+                        'id' => $profile->id,
+                        'name' => $profile->user?->name.($profile->position ? ' · '.$profile->position : ''),
+                        'serviceIds' => $profile->services->pluck('id')->all(),
+                    ])->values());
+                    const renderStylists = () => {
+                        const eligible = staff.filter((person) => person.serviceIds.includes(service.value));
+                        stylist.replaceChildren(new Option('Any qualified stylist', ''));
+                        eligible.forEach((person) => stylist.add(new Option(person.name, person.id)));
+                    };
+                    const renderType = () => {
+                        const catalog = type.value === 'service';
+                        serviceFields.forEach((group) => group.querySelectorAll('select').forEach((input) => { input.disabled = !catalog; }));
+                        customFields.querySelectorAll('input').forEach((input) => { input.disabled = catalog; });
+                        renderStylists();
+                    };
+                    type.addEventListener('change', renderType);
+                    service.addEventListener('change', renderStylists);
+                    renderType();
+                });
+            </script>
+        @endcan
+    @endif
 
     @if ($a->payment_status !== PaymentStatus::NotRequired)
         @include('admin.appointments.partials.payment-modals')

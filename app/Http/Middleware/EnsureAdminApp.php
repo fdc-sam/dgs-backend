@@ -22,7 +22,7 @@ class EnsureAdminApp
             throw ApiException::forbidden('Your account is not active. Please contact the owner.');
         }
 
-        if (! $user->role->canAccessAdmin() || ! $user->tokenCan('admin-app')) {
+        if (! $user->role->canAccessAdmin() || $user->isCashier() || ! $user->tokenCan('admin-app')) {
             throw ApiException::forbidden('This app is for DGS staff. Customers should use the DGS Salon app.');
         }
 

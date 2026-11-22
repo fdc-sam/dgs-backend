@@ -12,6 +12,7 @@ use App\Models\Branch;
 use App\Models\Service;
 use App\Models\StaffProfile;
 use App\Services\AppointmentService;
+use App\Services\AuditLogger;
 use App\Services\AvailabilityService;
 use App\Support\Booking\ServiceSelection;
 use Carbon\CarbonImmutable;
@@ -19,6 +20,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class AppointmentController extends Controller
@@ -68,6 +70,12 @@ class AppointmentController extends Controller
             ->where('entity_type', 'appointment')->where('entity_id', $appointment->id)
             ->latest('created_at')->get();
 
+        $services = Service::query()->active()->availableAtBranch($appointment->branch_id)
+            ->with(['branches' => fn ($query) => $query->where('branches.id', $appointment->branch_id)])
+            ->orderBy('name')->get();
+        $staff = StaffProfile::bookable()->atBranch($appointment->branch_id)->with(['user', 'services'])->get()
+            ->sortBy(fn ($profile) => $profile->user?->name)->values();
+
         return view('admin.appointments.show', [
             'appointment' => $appointment,
             'history' => $history,
@@ -75,6 +83,8 @@ class AppointmentController extends Controller
                 ->mapWithKeys(fn ($s) => [$s->id => $s->user?->name]),
             'transitions' => collect($appointment->status->allowedTransitions())
                 ->reject(fn ($s) => in_array($s, [AppointmentStatus::Cancelled, AppointmentStatus::Rescheduled], true)),
+            'services' => $services,
+            'staff' => $staff,
         ]);
     }
 
@@ -144,6 +154,80 @@ class AppointmentController extends Controller
         }
 
         return back()->with('success', 'Additional charge and booking total updated.');
+    }
+
+    public function addItem(Request $request, Appointment $appointment, AuditLogger $audit): RedirectResponse
+    {
+        abort_unless($request->user()->isManager() || $request->user()->isCashier(), 403);
+        $data = $request->validate([
+            'item_type' => ['required', Rule::in(['service', 'custom'])],
+            'service_id' => ['nullable', 'required_if:item_type,service', 'string', 'exists:services,id'],
+            'staff_profile_id' => ['nullable', 'string', 'exists:staff_profiles,id'],
+            'service_name' => ['nullable', 'required_if:item_type,custom', 'string', 'max:255'],
+            'unit_price' => ['nullable', 'required_if:item_type,custom', 'numeric', 'min:0.01', 'max:99999999.99'],
+            'quantity' => ['required', 'integer', 'min:1', 'max:1000'],
+        ]);
+
+        $service = null;
+        $stylist = null;
+        if ($data['item_type'] === 'service') {
+            $service = Service::query()->active()->availableAtBranch($appointment->branch_id)
+                ->with(['branches' => fn ($query) => $query->where('branches.id', $appointment->branch_id)])
+                ->find($data['service_id']);
+            if (! $service) {
+                return back()->withInput()->withErrors(['service_id' => 'Choose a service available at this branch.']);
+            }
+            if (! empty($data['staff_profile_id'])) {
+                $stylist = StaffProfile::bookable()->atBranch($appointment->branch_id)
+                    ->offersService($service->id)->find($data['staff_profile_id']);
+                if (! $stylist) {
+                    return back()->withInput()->withErrors(['staff_profile_id' => 'Choose a stylist who offers this service at this branch.']);
+                }
+            }
+            $branchService = $service->branches->firstWhere('id', $appointment->branch_id);
+            $basePrice = (float) ($branchService?->pivot?->custom_price ?? $service->regular_price);
+            $price = number_format($service->loyaltyPriceFor($appointment->customer, $basePrice) ?? $basePrice, 2, '.', '');
+            $name = $service->name;
+        } else {
+            $price = number_format((float) $data['unit_price'], 2, '.', '');
+            $name = trim($data['service_name']);
+        }
+
+        $quantity = (int) $data['quantity'];
+        $item = DB::transaction(function () use ($appointment, $data, $service, $stylist, $price, $name, $quantity) {
+            $locked = Appointment::query()->lockForUpdate()->findOrFail($appointment->id);
+            abort_if($locked->status->isFinal(), 422, 'Services and charges cannot be added to a closed appointment.');
+
+            $item = $locked->items()->create([
+                'service_id' => $service?->id,
+                'staff_profile_id' => $stylist?->id,
+                'service_name' => $name,
+                'quantity' => $quantity,
+                'unit_price' => $price,
+                'duration_minutes' => $service?->duration_minutes ?? 0,
+                'subtotal' => number_format((float) $price * $quantity, 2, '.', ''),
+                'deposit_amount' => 0,
+                'product_cost' => 0,
+            ]);
+            $locked->subtotal = round((float) $locked->subtotal + (float) $item->subtotal, 2);
+            $locked->total_amount = max(0, round((float) $locked->subtotal - (float) $locked->discount_amount + (float) $locked->additional_charge, 2));
+            $locked->save();
+
+            return $item;
+        });
+
+        $audit->log('appointment.item.added', $appointment, null, [
+            'item_id' => $item->id,
+            'service_id' => $item->service_id,
+            'service_name' => $item->service_name,
+            'staff_profile_id' => $item->staff_profile_id,
+            'quantity' => $item->quantity,
+            'unit_price' => $item->unit_price,
+            'subtotal' => $item->subtotal,
+            'total_amount' => $appointment->fresh()->total_amount,
+        ]);
+
+        return back()->with('success', 'Service or charge added. The customer app will show the updated item and balance.');
     }
 
     /** Free start times for the reschedule dialog (excludes this appointment itself). */

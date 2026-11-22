@@ -31,8 +31,6 @@ class ReferralController extends ApiController
                 'phone' => $data['phone'],
                 'notes' => filled($data['notes'] ?? null) ? trim($data['notes']) : null,
             ]);
-            $referral->services()->attach($data['service_ids']);
-
             return $referral;
         });
         $audit->log('referral.created', $referral, null, ['name' => $referral->name, 'phone' => $referral->phone]);

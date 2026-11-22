@@ -6,6 +6,8 @@ use App\Enums\AppointmentStatus;
 use App\Enums\ReviewStatus;
 use App\Models\Appointment;
 use App\Models\Branch;
+use App\Enums\ReferralStatus;
+use App\Models\Referral;
 use App\Models\StaffProfile;
 use App\Models\User;
 use App\Models\WalkInVisit;
@@ -49,7 +51,13 @@ class ReportService
         $completed = $appointments()->where('status', self::COMPLETED)->count() + ($isStaff ? 0 : $walkInsInPeriod()->count());
         $revenue = (float) $appointments()->where('status', self::COMPLETED)->sum('total_amount')
             + ($isStaff ? 0 : (float) $walkInsInPeriod()->sum('total_amount'));
-        // Gross minus product cost = net revenue. Managers only: staff see just their own bookings' revenue.
+        $referralTotals = $isStaff ? ['sales' => collect(), 'rewards' => collect(), 'counts' => collect()] : $this->referralTotalsByDay($from, $to);
+        $referralSales = (float) $referralTotals['sales']->sum();
+        $referralRewards = (float) $referralTotals['rewards']->sum();
+        $completedReferrals = (int) $referralTotals['counts']->sum();
+        $completed += $completedReferrals;
+        $revenue += $referralSales;
+        // Net revenue deducts product usage and accrued referral rewards from completed-service gross.
         $productCost = $isStaff ? 0.0 : (float) $this->productCostByDay($from, $to, $branchId)->sum();
 
         return [
@@ -70,8 +78,12 @@ class ReportService
             'appointments_count' => $appointments()->whereNotIn('status', ['cancelled'])->count(),
             'pending_count' => Appointment::query()->tap($scope)->where('status', 'pending')->where('starts_at', '>=', now()->startOfDay())->count(),
             'completed_count' => $completed,
+            'completed_referrals_count' => $completedReferrals,
+            'referral_sales' => $referralSales,
             'revenue' => $revenue,
             'product_cost' => $productCost,
+            'referral_rewards' => $referralRewards,
+            'net_revenue' => round($revenue - $productCost - $referralRewards, 2),
             'average_ticket' => $completed ? round($revenue / $completed, 2) : 0.0,
             'customers' => User::customers()->count(),
             'new_customers' => User::customers()->whereBetween('created_at', [$from, $to])->count(),
@@ -80,6 +92,9 @@ class ReportService
             'recent' => Appointment::query()->tap($scope)->with(['customer', 'items', 'branch'])->latest()->limit(8)->get(),
             'completed_walk_ins_today' => $isStaff ? collect() : $completedWalkIns()->whereDate('completed_at', $today)
                 ->with(['branch', 'staff.user', 'items.staff.user'])->latest('completed_at')->limit(8)->get(),
+            'completed_referrals_today' => $isStaff ? collect() : Referral::query()
+                ->where('status', ReferralStatus::Completed->value)->whereDate('rewarded_at', $today)
+                ->with('referrer')->latest('rewarded_at')->limit(8)->get(),
             'popular' => $this->popularServices(now()->subDays(30)->startOfDay(), now(), 5, $branchId),
             'revenue_chart' => $this->revenueSeries(now()->subDays(13)->startOfDay(), now()->startOfDay(), $viewer, $branchId),
         ];
@@ -96,8 +111,8 @@ class ReportService
     }
 
     /**
-     * Daily sales, with the same terms as the dashboard: gross revenue = what completed appointments (after
-     * discounts) and completed walk-ins were charged; net revenue = gross minus the product cost recorded on them.
+     * Daily sales: gross revenue includes completed appointments (after discounts), walk-ins and completed-referral
+     * service items; net revenue subtracts inventory product cost and referral rewards accrued on that day.
      */
     public function sales(DateRange $range, ?string $branchId = null): ReportTable
     {
@@ -122,51 +137,62 @@ class ReportService
             ->keyBy(fn ($r) => (string) $r->day);
 
         $costs = $this->productCostByDay($range->from, $range->to, $branchId);
+        $referralTotals = $this->referralTotalsByDay($range->from, $range->to);
 
-        $table = collect($range->days())->map(function (string $day) use ($rows, $walkInRows, $costs) {
+        $table = collect($range->days())->map(function (string $day) use ($rows, $walkInRows, $costs, $referralTotals) {
             $appointments = $rows[$day] ?? null;
             $walkIns = $walkInRows[$day] ?? null;
             $walkInRevenue = (float) ($walkIns->revenue ?? 0); // walk-ins have no discounts
             $gross = (float) ($appointments->gross ?? 0) + $walkInRevenue;
             $productCost = (float) ($costs[$day] ?? 0);
+            $referralSales = (float) ($referralTotals['sales'][$day] ?? 0);
+            $referralRewardCost = (float) ($referralTotals['rewards'][$day] ?? 0);
+            $completedReferrals = (int) ($referralTotals['counts'][$day] ?? 0);
 
             return [
                 'date' => CarbonImmutable::parse($day)->format('D, M j, Y'),
                 'appointments' => (int) ($appointments->appointments ?? 0),
                 'walk_ins' => (int) ($walkIns->walk_ins ?? 0),
-                'before_discounts' => (float) ($appointments->before_discounts ?? 0) + $walkInRevenue,
+                'referrals' => $completedReferrals,
+                'before_discounts' => (float) ($appointments->before_discounts ?? 0) + $walkInRevenue + $referralSales,
                 'discounts' => (float) ($appointments->discounts ?? 0),
-                'gross' => $gross,
+                'referral_sales' => $referralSales,
+                'gross' => $gross + $referralSales,
                 'product_cost' => $productCost,
-                'net' => round($gross - $productCost, 2),
+                'referral_rewards' => $referralRewardCost,
+                'net' => round($gross + $referralSales - $productCost - $referralRewardCost, 2),
             ];
         });
 
         $appointmentCount = $table->sum('appointments');
         $walkInCount = $table->sum('walk_ins');
-        $count = $appointmentCount + $walkInCount;
+        $referralCount = $table->sum('referrals');
+        $count = $appointmentCount + $walkInCount + $referralCount;
         $gross = $table->sum('gross');
         $net = $table->sum('net');
 
         return new ReportTable(
             'Sales',
             [
-                'date' => 'Date', 'appointments' => 'Completed appointments', 'walk_ins' => 'Completed walk-ins',
-                'before_discounts' => '₱ Before discounts', 'discounts' => '₱ Discounts', 'gross' => '₱ Gross revenue',
-                'product_cost' => '₱ Product cost', 'net' => '₱ Net revenue',
+                'date' => 'Date', 'appointments' => 'Completed appointments', 'walk_ins' => 'Completed walk-ins', 'referrals' => 'Completed referrals',
+                'before_discounts' => '₱ Before discounts', 'discounts' => '₱ Discounts', 'referral_sales' => '₱ Referral service sales', 'gross' => '₱ Gross revenue',
+                'product_cost' => '₱ Product cost', 'referral_rewards' => '₱ Referral rewards', 'net' => '₱ Net revenue',
             ],
             $table->all(),
             [
-                'date' => 'Total', 'appointments' => $appointmentCount, 'walk_ins' => $walkInCount,
+                'date' => 'Total', 'appointments' => $appointmentCount, 'walk_ins' => $walkInCount, 'referrals' => $referralCount,
                 'before_discounts' => $table->sum('before_discounts'), 'discounts' => $table->sum('discounts'), 'gross' => $gross,
-                'product_cost' => $table->sum('product_cost'), 'net' => $net,
+                'product_cost' => $table->sum('product_cost'), 'referral_rewards' => $table->sum('referral_rewards'), 'net' => $net,
             ],
             ['type' => 'line', 'money' => true, 'labels' => array_map(fn ($d) => CarbonImmutable::parse($d)->format('M j'), $range->days()), 'series' => [
                 ['label' => 'Gross revenue', 'data' => $table->pluck('gross')->all()],
-                ['label' => 'Net revenue', 'data' => $table->pluck('net')->all()],
+                ['label' => 'Net after costs', 'data' => $table->pluck('net')->all()],
             ]],
             [
                 'Gross revenue' => '₱'.number_format($gross, 2),
+                'Referral service sales' => '₱'.number_format($table->sum('referral_sales'), 2),
+                'Product cost' => '₱'.number_format($table->sum('product_cost'), 2),
+                'Referral rewards' => '₱'.number_format($table->sum('referral_rewards'), 2),
                 'Net revenue' => '₱'.number_format($net, 2),
                 'Completed visits' => number_format($count),
                 'Average per visit' => '₱'.number_format($count ? $gross / $count : 0, 2),
@@ -458,6 +484,34 @@ class ReportService
         ]);
     }
 
+    /**
+     * Completed referral service sales, reward costs and visit counts by completion date.
+     * Referrals currently have no branch assignment.
+     *
+     * @return array{sales: Collection<string, float>, rewards: Collection<string, float>, counts: Collection<string, int>}
+     */
+    private function referralTotalsByDay(CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        $referrals = Referral::query()
+            ->where('status', ReferralStatus::Completed->value)
+            ->whereBetween('rewarded_at', [$from->startOfDay(), $to->endOfDay()])
+            ->selectRaw('DATE(rewarded_at) as day, SUM(reward_amount) as rewards, COUNT(*) as count')
+            ->groupBy('day')->toBase()->get()->keyBy(fn ($row) => (string) $row->day);
+        $sales = DB::table('referral_items')
+            ->join('referrals', 'referrals.id', '=', 'referral_items.referral_id')
+            ->tap(fn ($query) => TestMode::constrain($query, 'referrals.is_test'))
+            ->where('referrals.status', ReferralStatus::Completed->value)
+            ->whereBetween('referrals.rewarded_at', [$from->startOfDay(), $to->endOfDay()])
+            ->selectRaw('DATE(referrals.rewarded_at) as day, SUM(referral_items.subtotal) as sales')
+            ->groupBy('day')->pluck('sales', 'day')->map(fn ($amount) => (float) $amount);
+
+        return [
+            'sales' => $sales,
+            'rewards' => $referrals->map(fn ($row) => (float) $row->rewards),
+            'counts' => $referrals->map(fn ($row) => (int) $row->count),
+        ];
+    }
+
     private function revenueSeries(CarbonImmutable $from, CarbonImmutable $to, User $viewer, ?string $branchId = null): array
     {
         $range = new DateRange($from, $to, 'custom');
@@ -483,8 +537,15 @@ class ReportService
         $gross = array_map(fn ($d) => (float) ($sums[$d] ?? 0), $range->days());
         $series = [['label' => $viewer->isStaff() ? 'Revenue' : 'Gross revenue', 'data' => $gross]];
         if (! $viewer->isStaff()) {
+            $referralTotals = $this->referralTotalsByDay($from, $to);
+            $gross = array_map(fn ($d, $g) => $g + (float) ($referralTotals['sales'][$d] ?? 0), $range->days(), $gross);
+            $series[0]['data'] = $gross;
             $costs = $this->productCostByDay($from, $to, $branchId);
-            $series[] = ['label' => 'Net revenue', 'data' => array_map(fn ($d, $g) => round($g - ($costs[$d] ?? 0), 2), $range->days(), $gross)];
+            $referralRewards = $referralTotals['rewards'];
+            $series[] = ['label' => 'Net after costs', 'data' => array_map(
+                fn ($d, $g) => round($g - ($costs[$d] ?? 0) - ($referralRewards[$d] ?? 0), 2),
+                $range->days(), $gross,
+            )];
         }
 
         return [

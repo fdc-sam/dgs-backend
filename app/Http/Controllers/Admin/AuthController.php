@@ -38,7 +38,9 @@ class AuthController extends Controller
         $request->session()->regenerate();
         $audit->log('admin.login', $user);
 
-        return redirect()->intended(route('dashboard'));
+        return $user->isCashier()
+            ? redirect()->route('payments.index')
+            : redirect()->intended(route('dashboard'));
     }
 
     public function destroy(Request $request): RedirectResponse

@@ -225,6 +225,11 @@ class User extends Authenticatable
         return $this->role === UserRole::Staff;
     }
 
+    public function isCashier(): bool
+    {
+        return $this->role->isCashier();
+    }
+
     public function isCustomer(): bool
     {
         return $this->role === UserRole::Customer;

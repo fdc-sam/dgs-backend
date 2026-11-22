@@ -11,7 +11,7 @@
     @include('admin.reports._range', ['action' => route('reports.show', $report)])
 
     @if ($table->summary)
-        <div class="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+        <div @class(['mb-6 grid grid-cols-2 gap-3 sm:gap-4', 'xl:grid-cols-4 2xl:grid-cols-7' => $report === 'sales', 'xl:grid-cols-4' => $report !== 'sales'])>
             @foreach ($table->summary as $label => $value)<x-admin.stat :label="$label" :value="$value" icon="insights" tone="gold" />@endforeach
         </div>
     @endif

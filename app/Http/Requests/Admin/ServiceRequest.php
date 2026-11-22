@@ -23,6 +23,7 @@ class ServiceRequest extends AdminRequest
             'loyalty_discount' => ['nullable', 'numeric', 'min:0', $this->input('loyalty_discount_type') === 'percent' ? 'max:100' : 'max:999999'],
             'loyalty_price' => ['nullable', 'numeric', 'min:0', 'max:999999'],
             'return_price' => ['nullable', 'numeric', 'min:0', 'max:999999'],
+            'referral_reward' => ['nullable', 'numeric', 'min:0', 'max:999999'],
             'first_visit_discount_enabled' => ['boolean'],
             'first_visit_discount_period' => ['nullable', 'integer', 'min:1', 'max:1200', 'required_if:first_visit_discount_enabled,1'],
             'first_visit_discount_unit' => ['required_if:first_visit_discount_enabled,1', Rule::in(['days', 'months'])],

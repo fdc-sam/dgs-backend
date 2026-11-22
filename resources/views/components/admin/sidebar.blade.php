@@ -1,14 +1,17 @@
 @php
     $user = auth()->user();
     $manager = $user->isManager();
+    $cashier = $user->isCashier();
+    $teamPortal = $manager || $user->isStaff();
+    $operationsPortal = $teamPortal || $cashier;
     $sections = [
         'Overview' => [
-            ['dashboard', 'Dashboard', 'space_dashboard', true],
-            ['calendar', 'Calendar', 'calendar_month', true],
-            ['appointments.index', 'Appointments', 'event_available', true, 'appointments.*'],
-            ['walk-ins.index', 'Walk-in Customers', 'how_to_reg', $manager, 'walk-ins.*'],
-            ['payments.index', 'Payments', 'payments', $manager, 'payments.*'],
-            ['referrals.index', 'Referrals', 'group_add', $manager, 'referrals.*'],
+            ['dashboard', 'Dashboard', 'space_dashboard', $teamPortal],
+            ['calendar', 'Calendar', 'calendar_month', $operationsPortal],
+            ['appointments.index', 'Appointments', 'event_available', $operationsPortal, 'appointments.*'],
+            ['walk-ins.index', 'Walk-in Customers', 'how_to_reg', $manager || $cashier, 'walk-ins.*'],
+            ['payments.index', 'Payments', 'payments', $manager || $cashier, 'payments.*'],
+            ['referrals.index', 'Referrals', 'group_add', $manager || $cashier, 'referrals.*'],
             ['cash-outs.index', 'Cash-outs', 'account_balance_wallet', $manager, 'cash-outs.*'],
         ],
         'Catalog' => [
@@ -28,7 +31,7 @@
         ],
         'Business' => [
             ['reports.index', 'Reports', 'monitoring', $manager, 'reports.*'],
-            ['notifications.index', 'Notifications', 'notifications', true, 'notifications.*'],
+            ['notifications.index', 'Notifications', 'notifications', ! $cashier, 'notifications.*'],
             ['settings.edit', 'Settings', 'settings', $user->isSuperAdmin(), 'settings.*'],
             ['admin-accounts.index', 'Admin accounts', 'admin_panel_settings', $user->isSuperAdmin(), 'admin-accounts.*'],
         ],
@@ -49,7 +52,7 @@
             <img src="{{ \App\Support\Fmt::versionedAsset('images/dgs-logo-256.png') }}" alt="{{ $salonName }} logo" class="h-11 w-11 rounded-xl bg-white object-contain p-0.5 ring-1 ring-outline-variant">
             <span class="min-w-0">
                 <span class="block truncate text-lg font-bold leading-tight tracking-tight">{{ $salonName }}</span>
-                <span class="block text-xs text-outline">Admin portal</span>
+                <span class="block text-xs text-outline">{{ $cashier ? 'Cashier portal' : 'Admin portal' }}</span>
             </span>
         </a>
         <button type="button" class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container lg:hidden"

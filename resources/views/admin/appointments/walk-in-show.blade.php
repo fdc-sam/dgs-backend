@@ -26,29 +26,40 @@
                 </dl>
             </x-admin.card>
 
-            <x-admin.card title="Services provided" :padding="false">
+            <x-admin.card title="Services and charges" :padding="false">
+                @unless ($completed)
+                    @can('cashier-area')
+                        <x-slot:actions>
+                            <x-admin.button type="button" variant="tonal" icon="add" @click="$dispatch('open-modal', 'walk-in-add-service')">Add service or charge</x-admin.button>
+                        </x-slot:actions>
+                    @endcan
+                @endunless
                 @if ($errors->any())
                     <div class="mx-5 mt-4 rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{{ $errors->first() }}</div>
                 @endif
-                <x-admin.table :headers="['Service', 'Stylist', 'Quantity', '>Price', 'Actions']"
-                               :mobile-order="['Service' => 0, 'Price' => 1, 'Quantity' => 2, 'Stylist' => 3, 'Actions' => 4]"
+                <x-admin.table :headers="['Service / charge', 'Stylist', 'Quantity', '>Price', 'Actions']"
+                               :mobile-order="['Service / charge' => 0, 'Price' => 1, 'Quantity' => 2, 'Stylist' => 3, 'Actions' => 4]"
                                :mobile-summary="['Quantity', 'Stylist']"
                                :mobile-labels="['Price' => 'Service price']">
                     @foreach ($visit->items as $item)
                         <tr>
-                            <td class="font-medium">{{ $item->service_name }}</td>
+                            <td class="font-medium">{{ $item->service_name }} @unless ($item->service_id)<span class="ml-1 text-xs font-normal text-on-surface-variant">Custom charge</span>@endunless</td>
                             <td>{{ $item->staff?->user?->name ?? 'Any qualified stylist' }}</td>
                             <td>{{ $item->quantity }}</td>
                             <td class="text-right">₱{{ number_format((float) $item->subtotal, 2) }}</td>
                             <td class="text-right">
-                                <button type="button" class="font-medium text-primary" @click="$dispatch('open-modal', 'walk-in-service-{{ $item->id }}')">Edit</button>
-                                @if ($visit->items->count() > 1)
-                                    <form method="POST" action="{{ route('walk-ins.items.destroy', [$visit, $item]) }}" class="ml-3 inline" data-confirm="Remove {{ $item->service_name }} from this walk-in? The visit total will be recalculated.">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="font-medium text-danger">Remove</button>
-                                    </form>
-                                @endif
+                                @can('manage')
+                                    @if ($item->service_id)
+                                        <button type="button" class="font-medium text-primary" @click="$dispatch('open-modal', 'walk-in-service-{{ $item->id }}')">Edit</button>
+                                    @endif
+                                    @if ($visit->items->count() > 1)
+                                        <form method="POST" action="{{ route('walk-ins.items.destroy', [$visit, $item]) }}" class="ml-3 inline" data-confirm="Remove {{ $item->service_name }} from this walk-in? The visit total will be recalculated.">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="font-medium text-danger">Remove</button>
+                                        </form>
+                                    @endif
+                                @endcan
                             </td>
                         </tr>
                     @endforeach
@@ -70,12 +81,18 @@
 
         <div class="space-y-6">
             @unless ($completed)
-                <x-admin.card title="Service progress" subtitle="Mark this visit complete after all selected services have been provided.">
-                    <form method="POST" action="{{ route('walk-ins.complete', $visit) }}" data-confirm="Mark all services for this walk-in as complete?">
+                @can('manage')
+                <x-admin.card title="Service progress" subtitle="Add any extra services or charges before completing this visit.">
+                    <form method="POST" action="{{ route('walk-ins.complete', $visit) }}" data-confirm="Complete this walk-in with all listed services and charges?">
                         @csrf
                         <x-admin.button type="submit" icon="task_alt" class="w-full">Mark services complete</x-admin.button>
                     </form>
                 </x-admin.card>
+                @else
+                    <x-admin.card title="Service progress">
+                        <p class="text-sm text-on-surface-variant">This visit is in progress.</p>
+                    </x-admin.card>
+                @endcan
             @else
                 <x-admin.card title="Service progress">
                     <p class="flex items-center gap-2 text-sm font-medium text-success"><span class="material-symbols-outlined" aria-hidden="true">check_circle</span>All services completed</p>
@@ -85,13 +102,15 @@
 
             <x-admin.card title="Visit summary">
                 <dl class="space-y-3 text-sm">
-                    <div class="flex justify-between gap-3"><dt class="text-on-surface-variant">Services</dt><dd class="font-medium">{{ $visit->items->count() }}</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-on-surface-variant">Services and charges</dt><dd class="font-medium">{{ $visit->items->count() }}</dd></div>
                     <div class="flex justify-between gap-3"><dt class="text-on-surface-variant">Branch</dt><dd class="text-right font-medium">{{ $visit->branch?->name ?? '—' }}</dd></div>
                     <div class="flex justify-between gap-3 border-t border-outline-variant pt-3"><dt class="font-semibold">Total</dt><dd class="font-semibold">₱{{ number_format($visit->total_amount, 2) }}</dd></div>
                 </dl>
             </x-admin.card>
         </div>
     </div>
+    @can('cashier-area')
+    @can('manage')
     @foreach ($visit->items as $item)
         <x-admin.modal :name="'walk-in-service-'.$item->id" title="Edit service">
             <form method="POST" action="{{ route('walk-ins.items.update', [$visit, $item]) }}" class="walkin-item-editor space-y-4"
@@ -120,6 +139,47 @@
             </form>
         </x-admin.modal>
     @endforeach
+    @endcan
+    @unless ($completed)
+        <x-admin.modal name="walk-in-add-service" title="Add service or charge">
+            <form method="POST" action="{{ route('walk-ins.items.store', $visit) }}" class="walkin-add-editor space-y-4">
+                @csrf
+                <div>
+                    <label for="walk-in-item-type" class="label">What would you like to add?</label>
+                    <select id="walk-in-item-type" name="item_type" class="field walkin-add-type" required>
+                        <option value="service" @selected(old('item_type', 'service') === 'service')>Catalog service</option>
+                        <option value="custom" @selected(old('item_type') === 'custom')>Custom service or charge</option>
+                    </select>
+                </div>
+                <div data-service-fields>
+                    <label for="walk-in-add-service" class="label">Service</label>
+                    <select id="walk-in-add-service" name="service_id" class="field walkin-add-service" required>
+                        <option value="">Choose a service</option>
+                        @foreach ($services as $service)
+                            <option value="{{ $service->id }}" @selected(old('service_id') === $service->id)>{{ $service->name }}</option>
+                        @endforeach
+                    </select>
+                    <p class="mt-1 text-xs text-on-surface-variant">Uses the current branch price and the customer’s loyalty price, if applicable.</p>
+                </div>
+                <div data-custom-fields class="space-y-4">
+                    <x-admin.input name="service_name" label="Service or charge name" placeholder="e.g. Long hair surcharge" maxlength="255" required />
+                    <x-admin.input name="unit_price" type="number" label="Price" prefix="₱" min="0.01" max="99999999.99" step="0.01" placeholder="0.00" required />
+                </div>
+                <div data-service-fields>
+                    <label for="walk-in-add-stylist" class="label">Stylist</label>
+                    <select id="walk-in-add-stylist" name="staff_profile_id" class="field walkin-add-staff">
+                        <option value="">Any qualified stylist</option>
+                    </select>
+                </div>
+                <x-admin.input name="quantity" type="number" label="Quantity" min="1" max="1000" value="1" required />
+                <div class="flex justify-end gap-2">
+                    <x-admin.button type="button" variant="text" @click="$dispatch('close-modal', 'walk-in-add-service')">Cancel</x-admin.button>
+                    <x-admin.button type="submit">Add to visit</x-admin.button>
+                </div>
+            </form>
+        </x-admin.modal>
+    @endunless
+    @can('manage')
     <script>
         document.querySelectorAll('.walkin-item-editor').forEach((form) => {
             const service = form.querySelector('.walkin-item-service');
@@ -140,4 +200,37 @@
             renderStylists();
         });
     </script>
+    @endcan
+
+    @unless ($completed)
+    <script>
+        document.querySelectorAll('.walkin-add-editor').forEach((form) => {
+            const type = form.querySelector('.walkin-add-type');
+            const service = form.querySelector('.walkin-add-service');
+            const stylist = form.querySelector('.walkin-add-staff');
+            const serviceFields = form.querySelectorAll('[data-service-fields]');
+            const customFields = form.querySelector('[data-custom-fields]');
+            const staff = @js($staff->map(fn ($profile) => [
+                'id' => $profile->id,
+                'name' => $profile->user?->name.($profile->position ? ' · '.$profile->position : ''),
+                'serviceIds' => $profile->services->pluck('id')->all(),
+            ])->values());
+            const renderStylists = () => {
+                const eligible = staff.filter((person) => person.serviceIds.includes(service.value));
+                stylist.replaceChildren(new Option('Any qualified stylist', ''));
+                eligible.forEach((person) => stylist.add(new Option(person.name, person.id)));
+            };
+            const renderType = () => {
+                const catalog = type.value === 'service';
+                serviceFields.forEach((group) => group.querySelectorAll('select').forEach((input) => { input.disabled = !catalog; }));
+                customFields.querySelectorAll('input').forEach((input) => { input.disabled = catalog; });
+                renderStylists();
+            };
+            type.addEventListener('change', renderType);
+            service.addEventListener('change', renderStylists);
+            renderType();
+        });
+    </script>
+    @endunless
+    @endcan
 </x-admin.layout>

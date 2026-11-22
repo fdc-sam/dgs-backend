@@ -56,15 +56,17 @@
 
     {{-- Snapshot --}}
     <x-admin.section-label title="Business snapshot" :hint="$label.' at a glance · '.($isStaff ? 'your appointments' : ($branchName ?? 'all branches'))" />
-    <div class="grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
+    <div class="grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-5">
         <x-admin.stat :label="'Appointments · '.$label" :value="$stats['appointments_count']" icon="today" :hint="$hint" :href="route('appointments.index', $range)" />
         <x-admin.stat label="Pending confirmation" :value="$stats['pending_count']" icon="pending_actions" :tone="$stats['pending_count'] ? 'warning' : 'primary'" hint="Upcoming"
                       :href="route('appointments.index', array_filter(['status' => 'pending', 'branch_id' => $stats['branch_id']]))" />
-        <x-admin.stat :label="'Completed · '.$label" :value="$stats['completed_count']" icon="task_alt" :hint="$isStaff ? $hint : 'Appointments and walk-ins'" />
+        <x-admin.stat :label="'Completed · '.$label" :value="$stats['completed_count']" icon="task_alt" :hint="$isStaff ? $hint : 'Appointments, walk-ins, and referrals'" />
         @if ($isStaff)
             <x-admin.stat :label="'Revenue · '.$label" :value="$peso($stats['revenue'])" icon="payments" :hint="$hint" />
         @else
             <x-admin.stat label="Customers" :value="number_format($stats['customers'])" icon="groups" :hint="'+'.$stats['new_customers'].' new · '.strtolower($label)" :href="route('customers.index')" />
+            <x-admin.stat :label="'Completed referrals · '.$label" :value="$stats['completed_referrals_count']" icon="group_add"
+                          :hint="strtolower($label).' · all branches'" :href="route('referrals.index', ['status' => 'completed'])" />
         @endif
     </div>
 
@@ -75,12 +77,13 @@
             @php
                 $tiles = [
                     ['Gross revenue · '.$label, $peso($stats['revenue']), $hint, null],
-                    ['Net revenue · '.$label, $peso($stats['revenue'] - $stats['product_cost']), 'After '.$peso($stats['product_cost']).' in products', 'text-success'],
+                    ['Net revenue · '.$label, $peso($stats['net_revenue']), 'After products and referral rewards', 'text-success'],
                     ['Product cost · '.$label, $peso($stats['product_cost']), 'Inventory used', null],
+                    ['Referral rewards · '.$label, $peso($stats['referral_rewards']), 'Rewards accrued · all branches', null],
                     ['Average per visit', $peso($stats['average_ticket']), $label.' · gross', null],
                 ];
             @endphp
-            <div class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+            <div class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-5">
                 @foreach ($tiles as [$tileLabel, $tileValue, $tileHint, $tileTone])
                     <div class="rounded-2xl border border-outline-variant bg-surface/60 p-3.5 sm:p-5">
                         <p class="line-clamp-2 min-h-10 text-[0.8125rem] leading-5 text-on-surface-variant sm:min-h-0 sm:text-sm">{{ $tileLabel }}</p>
@@ -91,12 +94,12 @@
             </div>
             <p class="mt-4 flex items-start gap-2 text-[0.8125rem] text-outline sm:mt-5 sm:text-sm">
                 <span class="material-symbols-outlined shrink-0 text-base" aria-hidden="true">info</span>
-                Net revenue is what completed services were charged minus the products they used (Inventory) — not accounting profit. Full breakdowns are in Reports.
+                Gross revenue includes completed appointments, walk-ins, and completed-referral services. Net revenue subtracts Inventory product cost and referral rewards; it is not accounting profit. Referral sales and rewards are shown across all branches because referrals are not assigned to a location. Full breakdowns are in Reports.
             </p>
         </div>
     @endunless
 
-    <x-admin.card title="Revenue trend · 14 days" :subtitle="$isStaff ? 'Completed services' : 'Completed services · net is after product cost'" class="mt-6">
+    <x-admin.card title="Revenue trend · 14 days" :subtitle="$isStaff ? 'Completed services' : 'Completed services · net is after product cost and referral rewards'" class="mt-6">
         <x-slot:actions><span class="text-sm font-semibold">{{ $peso($stats['revenue']) }} <span class="font-normal text-on-surface-variant">{{ strtolower($label) }}</span></span></x-slot:actions>
         <div class="h-56 sm:h-72"><canvas data-chart='@json($stats['revenue_chart'])' aria-label="Revenue chart for the last 14 days" role="img"></canvas></div>
     </x-admin.card>
@@ -178,9 +181,26 @@
                     <x-admin.empty-state icon="content_cut" title="No completed walk-ins today" message="Walk-in visits appear here after their services are marked complete." class="py-6" />
                 @endforelse
             </x-admin.card>
+
+            <x-admin.card title="Completed referrals today" subtitle="Rewards given today" :padding="false">
+                @forelse ($stats['completed_referrals_today'] as $referral)
+                    <a href="{{ route('referrals.show', $referral) }}" class="block border-b border-outline-variant px-5 py-3.5 last:border-0 hover:bg-surface-container/70 sm:px-6">
+                        <div class="flex items-center justify-between gap-3">
+                            <p class="truncate font-medium">{{ $referral->name }}</p>
+                            <span class="shrink-0 text-sm font-semibold">₱{{ number_format((float) $referral->reward_amount, 2) }}</span>
+                        </div>
+                        <p class="mt-0.5 truncate text-xs text-on-surface-variant">
+                            Referred by {{ $referral->referrer?->name ?? 'Deleted customer' }}
+                            @if ($referral->rewarded_at) · {{ $referral->rewarded_at->format('g:i A') }} @endif
+                        </p>
+                    </a>
+                @empty
+                    <x-admin.empty-state icon="group_add" title="No completed referrals today" message="Completed referrals and their rewards will appear here." class="py-6" />
+                @endforelse
+            </x-admin.card>
         @endunless
 
-        <x-admin.card title="Recent bookings" :padding="false" :class="$isStaff ? 'xl:col-span-3' : ''">
+        <x-admin.card title="Recent bookings" :padding="false" class="xl:col-span-3">
             @forelse ($stats['recent'] as $a)
                 <a href="{{ route('appointments.show', $a) }}" class="block border-b border-outline-variant px-5 py-3.5 last:border-0 hover:bg-surface-container/70 sm:px-6">
                     <div class="flex items-center justify-between gap-2">

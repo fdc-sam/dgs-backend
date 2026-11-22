@@ -59,7 +59,7 @@ class LoyaltyCardRequestService
 
     public function gcashEnabled(): bool
     {
-        return $this->qrPath() !== null || filled($this->settings->get('payment_gcash_number'));
+        return $this->qrPath() !== null || filled($this->gcashNumber());
     }
 
     public function bankEnabled(): bool
@@ -91,8 +91,8 @@ class LoyaltyCardRequestService
             'endorser_cash' => 0,
             'endorser_reward' => $this->endorserReward(),
             'gcash_enabled' => $gcash,
-            'gcash_account_name' => $gcash ? ($this->settings->get('payment_gcash_account_name') ?: null) : null,
-            'gcash_number' => $gcash ? ($this->settings->get('payment_gcash_number') ?: null) : null,
+            'gcash_account_name' => $gcash ? ($this->settings->get('loyalty_endorsement_gcash_account_name') ?: $this->settings->get('payment_gcash_account_name') ?: null) : null,
+            'gcash_number' => $gcash ? ($this->gcashNumber() ?: null) : null,
             'gcash_qr_url' => $gcash ? Fmt::url($this->qrPath()) : null,
             'bank_enabled' => $bank,
             'bank_name' => $bank ? ($this->settings->get('loyalty_endorsement_bank_name') ?: null) : null,
@@ -106,6 +106,11 @@ class LoyaltyCardRequestService
     public function qrPath(): ?string
     {
         return ($this->settings->get('loyalty_endorsement_gcash_qr') ?: null) ?? ($this->settings->get('payment_gcash_qr') ?: null);
+    }
+
+    private function gcashNumber(): ?string
+    {
+        return $this->settings->get('loyalty_endorsement_gcash_number') ?: $this->settings->get('payment_gcash_number');
     }
 
     public function bankQrPath(): ?string

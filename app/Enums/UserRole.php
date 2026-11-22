@@ -7,6 +7,7 @@ enum UserRole: string
     case SuperAdmin = 'super_admin';
     case Admin = 'admin';
     case Staff = 'staff';
+    case Cashier = 'cashier';
     case Customer = 'customer';
 
     public function label(): string
@@ -15,6 +16,7 @@ enum UserRole: string
             self::SuperAdmin => 'Super Admin',
             self::Admin => 'Admin',
             self::Staff => 'Staff',
+            self::Cashier => 'Cashier',
             self::Customer => 'Customer',
         };
     }
@@ -28,11 +30,16 @@ enum UserRole: string
     /** Roles allowed to sign in to the admin web application. */
     public function canAccessAdmin(): bool
     {
-        return in_array($this, [self::SuperAdmin, self::Admin, self::Staff], true);
+        return in_array($this, [self::SuperAdmin, self::Admin, self::Staff, self::Cashier], true);
     }
 
     public function isManager(): bool
     {
         return in_array($this, [self::SuperAdmin, self::Admin], true);
+    }
+
+    public function isCashier(): bool
+    {
+        return $this === self::Cashier;
     }
 }

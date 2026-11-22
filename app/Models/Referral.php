@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Someone a customer referred to the salon; the referrer earns a reward, added to their in-app earnings, once that
@@ -46,5 +47,10 @@ class Referral extends Model
     public function services(): BelongsToMany
     {
         return $this->belongsToMany(Service::class)->withTrashed()->orderBy('name');
+    }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(ReferralItem::class)->orderBy('created_at')->orderBy('id');
     }
 }

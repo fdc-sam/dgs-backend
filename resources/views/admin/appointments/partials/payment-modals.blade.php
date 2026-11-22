@@ -19,7 +19,7 @@
         </form>
     </x-admin.modal>
 
-    @if ($a->payment_status->canRecordManually())
+    @if ($a->payment_status->canRecordManually() && auth()->user()->isManager())
         <x-admin.modal name="record-payment" title="Record a GCash payment">
             <form method="POST" action="{{ route('appointments.payment.approve', $a) }}" class="space-y-4">
                 @csrf
@@ -36,7 +36,7 @@
         </x-admin.modal>
     @endif
 
-    @if ($a->payment_status === PaymentStatus::Paid)
+    @if ($a->payment_status === PaymentStatus::Paid && auth()->user()->isManager())
         <x-admin.modal name="refund-payment" title="Mark deposit as refunded">
             <form method="POST" action="{{ route('appointments.payment.refund', $a) }}" class="space-y-4">
                 @csrf

@@ -104,6 +104,77 @@ class WalkInVisitController extends Controller
         return view('admin.appointments.walk-in-show', compact('walkInVisit', 'history', 'services', 'staff'));
     }
 
+    /** Add another catalog service or a one-off priced service/charge while this visit is still in progress. */
+    public function storeItem(Request $request, WalkInVisit $walkInVisit, AuditLogger $audit): RedirectResponse
+    {
+        $data = $request->validate([
+            'item_type' => ['required', Rule::in(['service', 'custom'])],
+            'service_id' => ['nullable', 'required_if:item_type,service', 'string', 'exists:services,id'],
+            'staff_profile_id' => ['nullable', 'string', 'exists:staff_profiles,id'],
+            'service_name' => ['nullable', 'required_if:item_type,custom', 'string', 'max:255'],
+            'unit_price' => ['nullable', 'required_if:item_type,custom', 'numeric', 'min:0.01', 'max:99999999.99'],
+            'quantity' => ['required', 'integer', 'min:1', 'max:1000'],
+        ]);
+
+        $service = null;
+        $staff = null;
+        if ($data['item_type'] === 'service') {
+            $service = Service::query()->active()->availableAtBranch($walkInVisit->branch_id)
+                ->with(['branches' => fn ($query) => $query->where('branches.id', $walkInVisit->branch_id)])
+                ->find($data['service_id']);
+            if (! $service) {
+                return back()->withInput()->withErrors(['service_id' => 'Choose a service available at this branch.']);
+            }
+            if (! empty($data['staff_profile_id'])) {
+                $staff = StaffProfile::bookable()->atBranch($walkInVisit->branch_id)
+                    ->offersService($service->id)->find($data['staff_profile_id']);
+                if (! $staff) {
+                    return back()->withInput()->withErrors(['staff_profile_id' => 'Choose a stylist who offers this service at this branch.']);
+                }
+            }
+            $branchService = $service->branches->firstWhere('id', $walkInVisit->branch_id);
+            $basePrice = (float) ($branchService?->pivot?->custom_price ?? $service->regular_price);
+            $price = number_format($service->loyaltyPriceFor($walkInVisit->customer, $basePrice) ?? $basePrice, 2, '.', '');
+            $serviceName = $service->name;
+        } else {
+            $price = number_format((float) $data['unit_price'], 2, '.', '');
+            $serviceName = trim($data['service_name']);
+        }
+
+        $quantity = (int) $data['quantity'];
+        $item = DB::transaction(function () use ($walkInVisit, $service, $staff, $data, $price, $serviceName, $quantity) {
+            $visit = WalkInVisit::query()->whereKey($walkInVisit->id)->lockForUpdate()->firstOrFail();
+            if ($visit->status === 'completed') {
+                throw ValidationException::withMessages(['item_type' => 'You can only add a service or charge before the visit is complete.']);
+            }
+
+            $item = $visit->items()->create([
+                'service_id' => $service?->id,
+                'staff_profile_id' => $staff?->id,
+                'service_name' => $serviceName,
+                'quantity' => $quantity,
+                'unit_price' => $price,
+                'subtotal' => number_format((float) $price * $quantity, 2, '.', ''),
+            ]);
+            $this->refreshVisitTotals($visit);
+
+            return $item;
+        });
+
+        $audit->log('walk_in_visit_item.added', $walkInVisit, null, [
+            'item_id' => $item->id,
+            'service_id' => $item->service_id,
+            'service_name' => $item->service_name,
+            'staff_profile_id' => $item->staff_profile_id,
+            'quantity' => $item->quantity,
+            'unit_price' => $item->unit_price,
+            'subtotal' => $item->subtotal,
+            'total_amount' => $walkInVisit->fresh()->total_amount,
+        ]);
+
+        return redirect()->route('walk-ins.show', $walkInVisit)->with('success', 'Service or charge added to the walk-in.');
+    }
+
     public function updateItem(Request $request, WalkInVisit $walkInVisit, WalkInVisitItem $item, AuditLogger $audit, InventoryService $inventory): RedirectResponse
     {
         $item = $walkInVisit->items()->whereKey($item->id)->firstOrFail();
@@ -212,15 +283,23 @@ class WalkInVisitController extends Controller
 
     public function complete(WalkInVisit $walkInVisit, AuditLogger $audit, InventoryService $inventory): RedirectResponse
     {
-        if ($walkInVisit->status === 'completed') {
+        $old = ['status' => $walkInVisit->status, 'completed_at' => $walkInVisit->completed_at?->toIso8601String()];
+        $completed = DB::transaction(function () use ($walkInVisit, $inventory) {
+            $visit = WalkInVisit::query()->whereKey($walkInVisit->id)->lockForUpdate()->firstOrFail();
+            if ($visit->status === 'completed') {
+                return false;
+            }
+
+            $visit->update(['status' => 'completed', 'completed_at' => now()]);
+            $inventory->recordUsage($visit->items()->get());
+
+            return true;
+        });
+        if (! $completed) {
             return back()->with('success', 'This walk-in service is already complete.');
         }
 
-        $old = ['status' => $walkInVisit->status, 'completed_at' => $walkInVisit->completed_at?->toIso8601String()];
-        DB::transaction(function () use ($walkInVisit, $inventory) {
-            $walkInVisit->update(['status' => 'completed', 'completed_at' => now()]);
-            $inventory->recordUsage($walkInVisit->items);
-        });
+        $walkInVisit->refresh();
         $audit->log('walk_in_visit.completed', $walkInVisit, $old, [
             'status' => $walkInVisit->status,
             'completed_at' => $walkInVisit->completed_at?->toIso8601String(),

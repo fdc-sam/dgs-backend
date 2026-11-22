@@ -19,6 +19,7 @@ class AppointmentPolicy
     public function view(User $user, Appointment $appointment): bool
     {
         return $user->isManager()
+            || $user->isCashier()
             || $appointment->isOwnedBy($user)
             || $this->isAssignedStaff($user, $appointment);
     }
@@ -47,7 +48,7 @@ class AppointmentPolicy
     /** Approve/reject receipts, waive or refund deposits, view receipt images. */
     public function reviewPayment(User $user, Appointment $appointment): bool
     {
-        return $user->isManager() && $user->isActive();
+        return ($user->isManager() || $user->isCashier()) && $user->isActive();
     }
 
     /** Confirm / start / complete / no-show. */

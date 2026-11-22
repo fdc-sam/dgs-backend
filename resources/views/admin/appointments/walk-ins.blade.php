@@ -1,7 +1,9 @@
 <x-admin.layout title="Walk-in Customers">
     <x-admin.page-header title="Walk-in Customers" subtitle="Service visits recorded at the salon, for guests and existing customers.">
         <x-slot:actions>
-            <x-admin.button :href="route('walk-ins.create')" icon="add">Record walk-in</x-admin.button>
+            @can('manage')
+                <x-admin.button :href="route('walk-ins.create')" icon="add">Record walk-in</x-admin.button>
+            @endcan
         </x-slot:actions>
     </x-admin.page-header>
 

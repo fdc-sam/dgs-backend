@@ -73,15 +73,32 @@ class LoyaltyProgram
      */
     public function suggestedReward(Referral $referral): ?array
     {
-        $services = $referral->services->map(fn ($s) => self::key($s->name.' '.$s->category?->name))->all();
-        $matched = collect($this->referralRewards())
-            ->filter(fn ($reward) => self::key($reward['service']) !== ''
-                && collect($services)->contains(fn ($name) => str_contains($name, self::key($reward['service']))))
-            ->values();
+        $referral->loadMissing(['services.category', 'items']);
+        $legacyRewards = collect($this->referralRewards());
+        $quantities = $referral->items->whereNotNull('service_id')->groupBy('service_id')
+            ->map(fn ($items) => max(1, (int) $items->sum('quantity')));
+        $suggestions = $referral->services->unique('id')->flatMap(function (Service $service) use ($legacyRewards, $quantities) {
+            $quantity = $quantities->get($service->id, 1);
+            if ($service->referral_reward !== null) {
+                $amount = (float) $service->referral_reward;
 
-        return $matched->isEmpty() ? null : [
-            'amount' => $matched->sum('amount'),
-            'summary' => $matched->map(fn ($r) => $r['service'].' '.Fmt::peso($r['amount']))->join(' + '),
+                return $amount > 0 ? [[
+                    'service' => $service->name,
+                    'amount' => round($amount * $quantity, 2),
+                ]] : [];
+            }
+
+            $serviceName = self::key($service->name.' '.$service->category?->name);
+
+            return $legacyRewards
+                ->filter(fn ($reward) => self::key($reward['service']) !== '' && str_contains($serviceName, self::key($reward['service'])))
+                ->map(fn ($reward) => ['service' => $reward['service'], 'amount' => round($reward['amount'] * $quantity, 2)])
+                ->all();
+        })->values();
+
+        return $suggestions->isEmpty() ? null : [
+            'amount' => $suggestions->sum('amount'),
+            'summary' => $suggestions->map(fn ($row) => $row['service'].' '.Fmt::peso($row['amount']))->join(' + '),
         ];
     }
 

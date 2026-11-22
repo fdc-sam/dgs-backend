@@ -80,6 +80,7 @@ class PaymentController extends Controller
     public function approve(Request $request, Appointment $appointment): RedirectResponse
     {
         $this->authorize('reviewPayment', $appointment);
+        abort_unless($request->user()->isManager() || $appointment->payment_status === PaymentStatus::Submitted, 403);
         if (is_string($request->input('reference_number'))) {
             $request->merge(['reference_number' => PaymentService::normalizeReference($request->input('reference_number')) ?: null]);
         }
