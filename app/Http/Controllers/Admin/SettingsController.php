@@ -169,7 +169,7 @@ class SettingsController extends Controller
                 || filled($data['loyalty_endorsement_bank_account_number'] ?? null);
             $hasCardNumber = filled($data['loyalty_endorsement_gcash_number'] ?? null) || filled($data['payment_gcash_number'] ?? null);
             if (! empty($data['loyalty_endorsement_enabled']) && ! $hasCardQr && ! $hasCardNumber && ! $hasBank) {
-                $v->errors()->add('loyalty_endorsement_qr', 'Upload a GCash or bank QR code (or enter a GCash or account number) so customers know where to pay for the card.');
+                $v->errors()->add('loyalty_endorsement_qr', 'Upload a GCash or bank QR code (or enter a GCash or account number) so customers know where to pay for membership.');
             }
         });
         $validator->validate();

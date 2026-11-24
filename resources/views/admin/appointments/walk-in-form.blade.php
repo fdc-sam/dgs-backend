@@ -68,7 +68,7 @@
                         <div class="mt-5 rounded-xl border border-outline-variant p-4">
                             <label for="memberSearch" class="label">Find existing customer (optional)</label>
                             <div class="flex gap-2">
-                                <input id="memberSearch" class="field" type="search" autocomplete="off" placeholder="Name, phone, email, or loyalty card number" x-model="customerQuery" @input.debounce.300ms="searchCustomers()" @keydown.escape="customerResults = []">
+                                <input id="memberSearch" class="field" type="search" autocomplete="off" placeholder="Name, phone, email, or Member ID" x-model="customerQuery" @input.debounce.300ms="searchCustomers()" @keydown.escape="customerResults = []">
                                 <button type="button" class="rounded-lg border border-outline-variant px-3 text-sm" x-show="customer" @click="clearCustomer()">Clear</button>
                             </div>
                             <input type="hidden" name="customer_id" :value="customer?.id || ''">
@@ -83,8 +83,8 @@
                             <p x-show="customerMessage" x-text="customerMessage" class="mt-2 text-sm text-on-surface-variant" role="status"></p>
                             <div x-show="customer" x-cloak class="mt-3 rounded-lg bg-surface-container p-3 text-sm">
                                 <p class="font-medium" x-text="customer?.name"></p>
-                                <p x-show="customer?.card_active" class="mt-1 text-success">Active loyalty card · eligible service prices are applied below</p>
-                                <p x-show="customer && !customer.card_active" class="mt-1 text-on-surface-variant">No active loyalty card · regular prices apply</p>
+                                <p x-show="customer?.card_active" class="mt-1 text-success">Active member · eligible service prices are applied below</p>
+                                <p x-show="customer && !customer.card_active" class="mt-1 text-on-surface-variant">Not an active member · regular prices apply</p>
                             </div>
                             <p x-show="customerError" x-text="customerError" class="mt-2 text-sm text-danger" role="alert"></p>
                         </div>
@@ -107,7 +107,7 @@
                         <h2 class="text-lg font-semibold">Review walk-in</h2>
                         <p class="mt-1 text-sm text-on-surface-variant">Confirm the services and record the visit. No appointment date or time is needed.</p>
                         <dl class="mt-5 space-y-3 rounded-xl bg-surface-container p-4 text-sm">
-                            <div class="flex justify-between gap-4"><dt class="text-on-surface-variant">Customer</dt><dd class="font-medium" x-text="customer ? `${customer.name}${customer.card_active ? ' · loyalty card' : ''}` : (guestName || 'Walk-in guest')"></dd></div>
+                            <div class="flex justify-between gap-4"><dt class="text-on-surface-variant">Customer</dt><dd class="font-medium" x-text="customer ? `${customer.name}${customer.card_active ? ' · member' : ''}` : (guestName || 'Walk-in guest')"></dd></div>
                             <div class="flex justify-between gap-4"><dt class="text-on-surface-variant">Branch</dt><dd class="font-medium" x-text="branchName"></dd></div>
                             <div class="border-t border-outline-variant pt-3">
                                 <dt class="mb-2 text-on-surface-variant">Services and stylists</dt>

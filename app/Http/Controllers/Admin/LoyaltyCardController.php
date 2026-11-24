@@ -59,7 +59,7 @@ class LoyaltyCardController extends Controller
         );
         $first = $maxExisting + 1;
         if ($first + $data['quantity'] - 1 > (10 ** min($digits, 15)) - 1) {
-            throw ValidationException::withMessages(['quantity' => 'There are not enough unused card numbers left at the configured number length.']);
+            throw ValidationException::withMessages(['quantity' => 'There are not enough unused Member IDs left at the configured number length.']);
         }
 
         DB::transaction(function () use ($data, $first, $digits, $request) {
@@ -79,7 +79,7 @@ class LoyaltyCardController extends Controller
             'last_number' => LoyaltyNumber::format($last),
         ], 'batch');
 
-        return back()->with('success', $data['quantity'].' loyalty cards generated: '.LoyaltyNumber::format($start).'–'.LoyaltyNumber::format($last).'.');
+        return back()->with('success', $data['quantity'].' Member IDs generated: '.LoyaltyNumber::format($start).'–'.LoyaltyNumber::format($last).'.');
     }
 
     public function disconnect(LoyaltyCard $loyaltyCard, AuditLogger $audit): RedirectResponse
@@ -101,7 +101,7 @@ class LoyaltyCardController extends Controller
         });
 
         if ($result === null) {
-            return back()->with('error', 'This loyalty card is already available.');
+            return back()->with('error', 'This Member ID is already available.');
         }
 
         $audit->log('customer.loyalty_number', $result['customer'], $result['old'], [
@@ -110,6 +110,6 @@ class LoyaltyCardController extends Controller
         ]);
         $audit->log('loyalty_card.disconnected', $result['card'], ['customer_id' => $result['customer']->id], ['customer_id' => null]);
 
-        return back()->with('success', LoyaltyNumber::format($result['card']->number).' disconnected from '.$result['customer']->name.' and returned to available cards.');
+        return back()->with('success', LoyaltyNumber::format($result['card']->number).' removed from '.$result['customer']->name.' and returned to available Member IDs.');
     }
 }

@@ -96,10 +96,11 @@
                 $cardDaysLeft = $customer->loyaltyCardDaysLeft();
                 $validity = \App\Support\LoyaltyNumber::validity();
             @endphp
-            <x-admin.card title="Loyalty card" subtitle="Assign an available card from Loyalty Cards. The card is good for {{ $validity }} and shows in the customer's app.">
+            @php $inviter = $customer->invitedBy; @endphp
+            <x-admin.card title="Membership" subtitle="DGS Membership is digital: activate it here when the customer pays at the salon. It is good for {{ $validity }} and shows in the customer's app.">
                 <x-admin.loyalty-card :number="$customer->loyalty_number" :name="$customer->name" :expired="$cardExpired" :class="$customer->loyalty_number ? 'mb-4' : 'mb-3 opacity-60'" />
                 @unless ($customer->loyalty_number)
-                    <p class="mb-4 text-sm text-on-surface-variant">No loyalty card linked yet.</p>
+                    <p class="mb-4 text-sm text-on-surface-variant">Not a member yet.</p>
                 @endunless
                 @if ($customer->hasLoyaltyCard() && $customer->loyalty_expires_at)
                     <div class="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
@@ -115,12 +116,18 @@
                         @endif
                     </div>
                 @endif
+                @if ($inviter)
+                    <p class="mb-4 text-sm text-on-surface-variant">
+                        Invited by <a href="{{ route('customers.show', $inviter) }}" class="font-medium text-on-surface underline">{{ $inviter->name }}</a>
+                        @if ($customer->invited_at) on {{ $customer->invited_at->format('M j, Y') }}@endif
+                    </p>
+                @endif
                 @can('update', $customer)
                     @if ($customer->loyaltyCardRenewable())
                         <form method="POST" action="{{ route('customers.loyalty-card.renew', $customer) }}" class="mb-4"
-                              data-confirm="Renew loyalty card {{ \App\Support\LoyaltyNumber::format($customer->loyalty_number) }} for {{ $validity }}?">
+                              data-confirm="Renew membership {{ \App\Support\LoyaltyNumber::format($customer->loyalty_number) }} for {{ $validity }}?">
                             @csrf
-                            <x-admin.button type="submit" icon="autorenew" class="w-full">Renew card</x-admin.button>
+                            <x-admin.button type="submit" icon="autorenew" class="w-full">Renew membership</x-admin.button>
                             <p class="mt-1.5 text-xs text-on-surface-variant">
                                 {{ $cardExpired ? "Good for {$validity} from today." : "Adds {$validity} to the current expiry date, so no days are lost." }}
                             </p>
@@ -128,22 +135,26 @@
                     @endif
                     <form method="POST" action="{{ route('customers.loyalty-card', $customer) }}" class="space-y-3">
                         @csrf
-                        <label for="loyaltyCardSelect" class="label">Select card</label>
+                        <label for="loyaltyCardSelect" class="label">Member ID</label>
                         <select id="loyaltyCardSelect" name="loyalty_card_id" class="field">
-                            <option value="">No loyalty card</option>
+                            <option value="">Not a member</option>
                             @foreach ($loyaltyCards as $card)
-                                <option value="{{ $card->id }}" @selected(old('loyalty_card_id', $customer->loyalty_number ? $loyaltyCards->firstWhere('number', $customer->loyalty_number)?->id : '') === $card->id)>
-                                    {{ \App\Support\LoyaltyNumber::format($card->number) }}{{ $card->customer_id === $customer->id ? ' · Current card' : ' · Available' }}
+                                <option value="{{ $card->id }}" @selected(old('loyalty_card_id', $customer->loyalty_number ? $loyaltyCards->firstWhere('number', $customer->loyalty_number)?->id : ($loyaltyCards->whereNull('customer_id')->first()?->id ?? '')) === $card->id)>
+                                    {{ \App\Support\LoyaltyNumber::format($card->number) }}{{ $card->customer_id === $customer->id ? ' · Current' : ' · Available' }}
                                 </option>
                             @endforeach
                         </select>
                         @error('loyalty_card_id')<p class="text-xs font-medium text-danger">{{ $message }}</p>@enderror
                         @if ($loyaltyCards->whereNull('customer_id')->isEmpty())
-                            <p class="text-xs text-on-surface-variant">No available cards. Generate cards on the Loyalty Cards page first.</p>
+                            <p class="text-xs text-on-surface-variant">No free Member IDs. Generate more on the Membership page first.</p>
                         @endif
-                        <p class="text-xs text-on-surface-variant">{{ $customer->loyalty_number ? 'Assigning a different card starts a fresh '.$validity.' term.' : 'The card is good for '.$validity.' from today.' }}</p>
+                        @if (! $customer->loyalty_number && ! $inviter)
+                            <x-admin.input name="invited_by" label="Invited by (optional)" :value="old('invited_by')" placeholder="Friend's invite code or mobile number" />
+                            <p class="-mt-1 text-xs text-on-surface-variant">The friend who invited them earns their reward in the app.</p>
+                        @endif
+                        <p class="text-xs text-on-surface-variant">{{ $customer->loyalty_number ? 'Choosing a different Member ID starts a fresh '.$validity.' term.' : 'The membership is good for '.$validity.' from today.' }}</p>
                         <div class="flex flex-wrap gap-2">
-                            <x-admin.button type="submit" variant="tonal" size="sm" icon="credit_card">{{ $customer->loyalty_number ? 'Save card assignment' : 'Link card' }}</x-admin.button>
+                            <x-admin.button type="submit" variant="tonal" size="sm" icon="card_membership">{{ $customer->loyalty_number ? 'Save' : 'Activate' }}</x-admin.button>
                         </div>
                     </form>
                 @endcan

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\LoyaltyCardRequest;
 use App\Models\User;
 use App\Support\Fmt;
 use Illuminate\Http\Request;
@@ -27,6 +28,12 @@ class UserResource extends JsonResource
             // The day the card stops working (YYYY-MM-DD; it is good up to the day before), and whether that has come.
             'loyalty_expires_at' => $this->loyalty_expires_at?->toDateString(),
             'loyalty_expired' => $this->resource->loyaltyCardExpired(),
+            // Invite a friend to DGS Membership: this customer's code (their link is on GET /invites), and the friend
+            // they signed up with, whose invite their membership payment goes through without typing a code.
+            'invite_code' => $this->invite_code,
+            'invited_by' => $this->invited_by_id && ($inviter = $this->invitedBy) && ! $inviter->trashed()
+                ? ['name' => LoyaltyCardRequest::shortName($inviter->name), 'code' => $inviter->invite_code]
+                : null,
             'email_verified_at' => Fmt::iso($this->email_verified_at),
             'profile' => $profile ? [
                 'date_of_birth' => $profile->date_of_birth?->toDateString(),

@@ -2,7 +2,7 @@
     <x-admin.page-header title="Customers" subtitle="Everyone who has registered in the app." />
 
     <x-admin.filter-bar :action="route('customers.index')">
-        <x-admin.input name="search" label="Search" :value="request('search')" placeholder="Name, email, phone, QR code or loyalty card" class="w-72" />
+        <x-admin.input name="search" label="Search" :value="request('search')" placeholder="Name, email, phone, QR code or Member ID" class="w-72" />
         <x-admin.select name="status" label="Status" :options="['active' => 'Active', 'inactive' => 'Inactive', 'suspended' => 'Suspended']" :value="request('status')" placeholder="Any" class="w-40" />
     </x-admin.filter-bar>
 
@@ -26,18 +26,18 @@
                                 @if ($c->loyaltyCardExpired())
                                     {{-- Expired card: the chip turns red until the salon renews it on the customer's page. --}}
                                     <span class="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-danger-container py-0.5 pr-2.5 pl-1.5 text-xs font-semibold text-danger ring-1 ring-danger/30"
-                                          title="Loyalty card expired on {{ $c->loyalty_expires_at->format('M j, Y') }}">
+                                          title="Membership expired on {{ $c->loyalty_expires_at->format('M j, Y') }}">
                                         <span class="material-symbols-outlined text-sm" aria-hidden="true">credit_card_off</span>
-                                        <span class="sr-only">Loyalty card</span>
+                                        <span class="sr-only">Membership</span>
                                         <span class="font-mono tracking-wide">{{ \App\Support\LoyaltyNumber::format($c->loyalty_number) }}</span>
                                         <span>· Expired</span>
                                     </span>
                                 @elseif ($c->loyalty_number)
-                                    {{-- Loyalty card holder: a little black-and-gold chip, like the card itself. --}}
+                                    {{-- Member: a little black-and-gold chip. --}}
                                     <span class="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-card-black py-0.5 pr-2.5 pl-1.5 text-xs font-semibold text-card-gold ring-1 ring-card-gold/40"
-                                          title="Loyalty card holder{{ $c->loyalty_expires_at ? ' · expires '.$c->loyalty_expires_at->format('M j, Y') : '' }}">
+                                          title="Member{{ $c->loyalty_expires_at ? ' · expires '.$c->loyalty_expires_at->format('M j, Y') : '' }}">
                                         <span class="material-symbols-outlined text-sm" aria-hidden="true">credit_card</span>
-                                        <span class="sr-only">Loyalty card</span>
+                                        <span class="sr-only">Membership</span>
                                         <span class="font-mono tracking-wide">{{ \App\Support\LoyaltyNumber::format($c->loyalty_number) }}</span>
                                     </span>
                                 @endif

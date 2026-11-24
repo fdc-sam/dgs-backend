@@ -67,32 +67,32 @@ class LoyaltyCardTest extends TestCase
         $this->actingAs(User::factory()->admin()->create(), 'web');
         $link = fn (string $number) => $this->post("/customers/{$customer->id}/loyalty-card", ['loyalty_number' => $number]);
 
-        $this->get("/customers/{$customer->id}")->assertOk()->assertSee('No loyalty card linked yet.')->assertSee('Link card')
-            ->assertSee('The card is good for 1 year from today.');
+        $this->get("/customers/{$customer->id}")->assertOk()->assertSee('Not a member yet.')->assertSee('Activate')
+            ->assertSee('The membership is good for 1 year from today.');
         $link('LC-0000353')->assertSessionHasErrors('loyalty_number');
-        $link('0000354')->assertRedirect()->assertSessionHas('success', 'Loyalty card LC-0000354 linked to Ana Reyes. It expires on Oct 1, 2027.');
+        $link('0000354')->assertRedirect()->assertSessionHas('success', 'Ana Reyes is now a member (Member ID LC-0000354) until Oct 1, 2027.');
         $customer->refresh();
         $this->assertSame('0000354', $customer->loyalty_number);
         $this->assertSame('2027-10-01', $customer->loyalty_expires_at->toDateString());
         $this->assertTrue(AuditLog::where('action', 'customer.loyalty_number')->where('entity_id', $customer->id)
             ->get()->contains(fn ($log) => $log->new_values === ['loyalty_number' => '0000354', 'loyalty_expires_at' => '2027-10-01']));
         $this->get("/customers/{$customer->id}")->assertSee('LC-0000354')->assertSee('Expires on Oct 1, 2027')
-            ->assertDontSee('Renew card')->assertSee('A new number counts as a new card and starts a fresh 1 year.');
+            ->assertDontSee('Renew membership')->assertSee('Choosing a different Member ID starts a fresh 1 year term.');
 
         // Saving the same number later keeps its year; a different number is a new card with a year of its own.
         $this->travel(2)->months();
         $link('LC-0000354')->assertSessionHasNoErrors();
         $this->assertSame('2027-10-01', $customer->fresh()->loyalty_expires_at->toDateString());
-        $link('0000355')->assertSessionHas('success', 'Loyalty card LC-0000355 linked to Ana Reyes. It expires on Dec 1, 2027.');
+        $link('0000355')->assertSessionHas('success', 'Ana Reyes is now a member (Member ID LC-0000355) until Dec 1, 2027.');
 
         $this->get('/customers?search=LC-0000355')->assertOk()
             ->assertViewHas('customers', fn ($page) => $page->total() === 1 && $page->first()->is($customer));
         // The list marks card holders with their card number; customers without a card get no chip.
-        $this->get('/customers')->assertOk()->assertSee('title="Loyalty card holder · expires Dec 1, 2027"', false)
+        $this->get('/customers')->assertOk()->assertSee('title="Member · expires Dec 1, 2027"', false)
             ->assertSee('data-href="'.route('customers.show', $customer).'"', false) // the whole row opens the customer
             ->assertSeeInOrder(['Ana Reyes', 'LC-0000355'])->assertSee('LC-0000353')->assertDontSee('· Expired');
 
-        $this->post("/customers/{$customer->id}/loyalty-card", ['loyalty_number' => ''])->assertSessionHas('success', 'Loyalty card removed from Ana Reyes.');
+        $this->post("/customers/{$customer->id}/loyalty-card", ['loyalty_number' => ''])->assertSessionHas('success', 'Membership removed from Ana Reyes.');
         $customer->refresh();
         $this->assertNull($customer->loyalty_number);
         $this->assertNull($customer->loyalty_expires_at);
@@ -107,26 +107,26 @@ class LoyaltyCardTest extends TestCase
         $renew = fn () => $this->post("/customers/{$customer->id}/loyalty-card/renew");
 
         // Too early: the card still has most of its year.
-        $renew()->assertSessionHas('error', 'Loyalty card LC-0000353 does not expire until Oct 1, 2027. It can be renewed in its last 30 days or once it has expired.');
+        $renew()->assertSessionHas('error', 'Membership LC-0000353 does not expire until Oct 1, 2027. It can be renewed in its last 30 days or once it has expired.');
 
         // In its last 30 days the admin sees it is ending and can renew early: the new year is added on to the old one.
         $this->travelTo(CarbonImmutable::parse('2027-09-21 10:00'));
         $this->assertTrue($customer->fresh()->hasActiveLoyaltyCard());
-        $this->get("/customers/{$customer->id}")->assertSee('Expires in 10 days')->assertSee('Renew card')
+        $this->get("/customers/{$customer->id}")->assertSee('Expires in 10 days')->assertSee('Renew membership')
             ->assertSee('Adds 1 year to the current expiry date, so no days are lost.');
-        $renew()->assertSessionHas('success', 'Loyalty card LC-0000353 renewed. It now expires on Oct 1, 2028.');
+        $renew()->assertSessionHas('success', 'Membership LC-0000353 renewed. It now expires on Oct 1, 2028.');
 
         // From the day it expires: a red "Expired" on the list, the customer's page and in the app.
         $this->travelTo(CarbonImmutable::parse('2028-10-01 09:00'));
         $this->assertTrue($customer->fresh()->loyaltyCardExpired());
-        $this->get('/customers')->assertOk()->assertSee('title="Loyalty card expired on Oct 1, 2028"', false)
+        $this->get('/customers')->assertOk()->assertSee('title="Membership expired on Oct 1, 2028"', false)
             ->assertSeeInOrder(['Ana Reyes', 'LC-0000353', '· Expired']);
-        $this->get("/customers/{$customer->id}")->assertSee('aria-label="Loyalty card LC-0000353, Ana Reyes, expired"', false)
-            ->assertSee('regular prices until it is renewed')->assertSee('Renew card')->assertSee('Good for 1 year from today.');
+        $this->get("/customers/{$customer->id}")->assertSee('aria-label="DGS Membership, Member ID LC-0000353, Ana Reyes, expired"', false)
+            ->assertSee('regular prices until it is renewed')->assertSee('Renew membership')->assertSee('Good for 1 year from today.');
 
         // Renewing an expired card starts its new year on the day it is renewed.
         $this->travelTo(CarbonImmutable::parse('2028-11-15 09:00'));
-        $renew()->assertSessionHas('success', 'Loyalty card LC-0000353 renewed. It now expires on Nov 15, 2029.');
+        $renew()->assertSessionHas('success', 'Membership LC-0000353 renewed. It now expires on Nov 15, 2029.');
         $this->assertTrue($customer->fresh()->hasActiveLoyaltyCard());
         $this->assertSame(2, AuditLog::where('action', 'customer.loyalty_renewed')->where('entity_id', $customer->id)->count());
 

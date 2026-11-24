@@ -23,6 +23,8 @@ class RegisterRequest extends ApiRequest
             'phone' => ['required', 'string', 'regex:'.self::PHONE_REGEX, Rule::unique('users', 'phone')],
             'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()],
             'device_name' => ['nullable', 'string', 'max:120'],
+            // From a friend's invite link (or the Play Store install referrer). A wrong one is ignored, never an error.
+            'invite_code' => ['nullable', 'string', 'max:64'],
         ];
     }
 

@@ -15,7 +15,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
-/** Loyalty cards → Requests: cards asked for through a friend, waiting for the GCash receipt to be checked. */
+/** Membership → Requests: memberships asked for through a friend's invite, waiting for the GCash receipt to be checked. */
 class LoyaltyCardRequestController extends Controller
 {
     public function __construct(private readonly LoyaltyCardRequestService $requests) {}
@@ -71,7 +71,7 @@ class LoyaltyCardRequestController extends Controller
         $approved = $this->requests->approve($cardRequest, $request->user());
 
         return redirect()->route('loyalty-cards.requests.show', $approved)->with('success',
-            'Approved. Loyalty card '.LoyaltyNumber::format($approved->loyaltyCard?->number).' is now active in '.$approved->customer?->name."'s app. It expires on "
+            'Approved. Member ID '.LoyaltyNumber::format($approved->loyaltyCard?->number).' is now active in '.$approved->customer?->name."'s app. It expires on "
             .$approved->customer?->loyalty_expires_at?->format('M j, Y').'.');
     }
 

@@ -1,5 +1,5 @@
-<x-admin.layout title="Loyalty Cards">
-    <x-admin.page-header title="Loyalty Cards" subtitle="Generate numbered cards, see which are available, and find each card holder.">
+<x-admin.layout title="Membership">
+    <x-admin.page-header title="Membership" subtitle="Generate Member IDs, see which are available, and find each member.">
         <x-slot:actions>
             <span class="rounded-full bg-surface-container px-3 py-1.5 text-sm">{{ number_format($availableCount) }} available</span>
             @if ($reservedCount > 0)<span class="rounded-full bg-surface-container px-3 py-1.5 text-sm">{{ number_format($reservedCount) }} reserved</span>@endif
@@ -9,28 +9,28 @@
 
     @include('admin.loyalty-cards.partials.tabs')
 
-    <x-admin.card title="Generate loyalty cards" subtitle="Creates the next unused card numbers with the configured prefix and number length." class="mb-6">
+    <x-admin.card title="Generate Member IDs" subtitle="Creates the next unused Member IDs with the configured prefix and number length." class="mb-6">
         <form method="POST" action="{{ route('loyalty-cards.generate') }}" class="flex flex-wrap items-end gap-3">
             @csrf
             <x-admin.input name="quantity" type="number" min="1" max="1000" label="Number of cards" value="{{ old('quantity', 25) }}" required class="w-full sm:w-52" />
             <x-admin.button type="submit" icon="add_card">Generate cards</x-admin.button>
         </form>
         @error('quantity')<p class="mt-2 text-sm text-danger">{{ $message }}</p>@enderror
-        <p class="mt-3 text-xs text-on-surface-variant">New numbers start after the highest existing loyalty card number.</p>
+        <p class="mt-3 text-xs text-on-surface-variant">New numbers start after the highest existing Member ID.</p>
     </x-admin.card>
 
     <x-admin.filter-bar :action="route('loyalty-cards.index')" :collapse="false">
-        <x-admin.input name="search" label="Search cards or holders" :value="request('search')" placeholder="Card number, name, email or phone" class="w-full sm:w-80" />
+        <x-admin.input name="search" label="Search Member IDs or members" :value="request('search')" placeholder="Member ID, name, email or phone" class="w-full sm:w-80" />
         <x-admin.select name="status" label="Assignment" :options="['all' => 'All cards', 'available' => 'Available', 'assigned' => 'Assigned']" :value="request('status', 'all')" class="w-full sm:w-48" />
     </x-admin.filter-bar>
 
     <x-admin.card :padding="false">
         @if ($cards->isEmpty())
-            <x-admin.empty-state icon="credit_card" title="No loyalty cards found" message="Generate a batch of cards to start building your inventory." />
+            <x-admin.empty-state icon="credit_card" title="No Member IDs found" message="Generate a batch of Member IDs to start building your inventory." />
         @else
-            <x-admin.table :headers="['Card number', 'Status', 'Customer holder', 'Phone', 'Expires', 'Actions']"
-                           :mobile-order="['Card number' => 0, 'Status' => 1, 'Customer holder' => 2, 'Phone' => 3, 'Expires' => 4, 'Actions' => 5]"
-                           :mobile-summary="['Status', 'Customer holder']">
+            <x-admin.table :headers="['Member ID', 'Status', 'Member', 'Phone', 'Expires', 'Actions']"
+                           :mobile-order="['Member ID' => 0, 'Status' => 1, 'Member' => 2, 'Phone' => 3, 'Expires' => 4, 'Actions' => 5]"
+                           :mobile-summary="['Status', 'Member']">
                 @foreach ($cards as $card)
                     @php $holder = $card->customer; $reservation = $holder ? null : ($reservations[$card->id] ?? null); @endphp
                     <tr>
@@ -56,9 +56,9 @@
                         <td>
                             @if ($holder)
                                 <form method="POST" action="{{ route('loyalty-cards.disconnect', $card) }}"
-                                      data-confirm="Disconnect {{ \App\Support\LoyaltyNumber::format($card->number) }} from {{ $holder->name }}? The card will become available and the customer will lose loyalty card pricing.">
+                                      data-confirm="Remove {{ \App\Support\LoyaltyNumber::format($card->number) }} from {{ $holder->name }}? The Member ID will become available and the customer will lose member prices.">
                                     @csrf
-                                    <x-admin.button type="submit" variant="danger-text" size="sm">Disconnect</x-admin.button>
+                                    <x-admin.button type="submit" variant="danger-text" size="sm">Remove</x-admin.button>
                                 </form>
                             @else
                                 <span class="text-on-surface-variant">—</span>

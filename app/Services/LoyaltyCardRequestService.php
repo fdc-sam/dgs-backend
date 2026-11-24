@@ -10,6 +10,7 @@ use App\Models\LoyaltyCardRequest;
 use App\Models\Payment;
 use App\Models\User;
 use App\Support\CustomerCode;
+use App\Support\InviteCode;
 use App\Support\Fmt;
 use App\Support\LoyaltyNumber;
 use Illuminate\Database\QueryException;
@@ -119,7 +120,7 @@ class LoyaltyCardRequestService
     }
 
     /**
-     * The friend behind a scanned or typed code, once everything that would stop the request has been checked.
+     * The friend behind a typed invite code or a scanned QR code, once everything that would stop the request has been checked.
      *
      * @throws ApiException
      */
@@ -127,15 +128,18 @@ class LoyaltyCardRequestService
     {
         $this->assertCanRequest($customer);
 
-        $normalized = CustomerCode::normalize($code);
-        $endorser = $normalized ? User::customers()->where('qr_code', $normalized)->first() : null;
+        $qr = CustomerCode::normalize($code);
+        $invite = $qr ? null : InviteCode::normalize($code);
+        $endorser = match (true) {
+            $qr !== null => User::customers()->where('qr_code', $qr)->first(),
+            $invite !== null => User::customers()->where('invite_code', $invite)->first(),
+            default => null,
+        };
         if (! $endorser) {
-            throw $this->codeError($normalized
-                ? "We couldn't find a DGS customer with this QR code. Ask your friend to open Profile → My QR in the app."
-                : "That isn't a DGS customer QR code. Ask your friend to open Profile → My QR in the app.");
+            throw $this->codeError("We couldn't find that invite code. Ask your friend to open Invites in the app and check it.");
         }
         if ($endorser->is($customer)) {
-            throw $this->codeError("This is your own QR code. Scan the QR code of the friend who's endorsing you.");
+            throw $this->codeError('This is your own invite code. Enter the code of the friend who invited you.');
         }
         if ($endorser->status !== UserStatus::Active) {
             throw $this->codeError('This customer account is not active.');
@@ -144,11 +148,31 @@ class LoyaltyCardRequestService
         return $endorser;
     }
 
+    /**
+     * Who a new membership goes through: the friend the customer signed up with (their invite link), else the code
+     * they typed or scanned, which is then remembered as their inviter.
+     *
+     * @throws ApiException
+     */
+    public function endorserForRequest(User $customer, ?string $code): User
+    {
+        $this->assertCanRequest($customer);
+        $inviter = $customer->invited_by_id ? $customer->invitedBy : null;
+        if ($inviter && ! $inviter->trashed() && $inviter->isCustomer() && $inviter->status === UserStatus::Active) {
+            return $inviter;
+        }
+        if (blank($code)) {
+            throw $this->codeError('Enter the invite code of the friend who invited you.');
+        }
+
+        return $this->endorserFor($customer, (string) $code);
+    }
+
     /** The payment's reference number and the friend's code: a new request waiting for the admin, with a card number set aside. */
-    public function submit(User $customer, string $code, string $method, string $reference): LoyaltyCardRequest
+    public function submit(User $customer, ?string $code, string $method, string $reference): LoyaltyCardRequest
     {
         $reference = PaymentService::normalizeReference($reference);
-        $endorser = $this->endorserFor($customer, $code);
+        $endorser = $this->endorserForRequest($customer, $code);
         if (! $this->methodEnabled($method)) {
             throw ValidationException::withMessages(['payment_method' => $method === LoyaltyCardRequest::METHOD_BANK
                 ? 'Paying by bank is not available right now. Please pay by GCash.'
@@ -158,8 +182,13 @@ class LoyaltyCardRequestService
 
         $request = DB::transaction(function () use ($customer, $endorser, $method, $reference) {
             // Two taps at once: the second one finds the first request.
-            User::query()->whereKey($customer->id)->lockForUpdate()->first();
+            $locked = User::query()->whereKey($customer->id)->lockForUpdate()->first();
             $this->assertCanRequest($customer->fresh());
+            // A code typed without the link: that friend is now who invited them.
+            if ($locked && $locked->invited_by_id === null) {
+                $locked->forceFill(['invited_by_id' => $endorser->id, 'invited_at' => now()])->save();
+                $customer->forceFill(['invited_by_id' => $endorser->id, 'invited_at' => $locked->invited_at]);
+            }
 
             return LoyaltyCardRequest::create([
                 'customer_id' => $customer->id,
@@ -198,8 +227,8 @@ class LoyaltyCardRequestService
                 throw ValidationException::withMessages(['request' => 'This customer account was deleted. Reject the request instead.']);
             }
             if ($customer->hasLoyaltyCard()) {
-                throw ValidationException::withMessages(['request' => "{$customer->name} already has loyalty card ".LoyaltyNumber::format($customer->loyalty_number)
-                    .'. Reject this request, or disconnect that card first.']);
+                throw ValidationException::withMessages(['request' => "{$customer->name} is already a member (Member ID ".LoyaltyNumber::format($customer->loyalty_number)
+                    .'). Reject this request, or remove that membership first.']);
             }
 
             $card = $locked->loyalty_card_id ? LoyaltyCard::query()->whereKey($locked->loyalty_card_id)->lockForUpdate()->first() : null;
@@ -234,6 +263,47 @@ class LoyaltyCardRequestService
         $this->notifications->loyaltyCardRequestApproved($approved->load(['customer', 'endorser', 'loyaltyCard']));
 
         return $approved;
+    }
+
+    /**
+     * Staff activated a first membership at the counter for a customer a friend invited: that friend earns their reward,
+     * the same as when the membership is paid in the app. Recorded as an approved request paid at the salon. Nothing
+     * happens without an inviter, when the customer was a member before, or while an app payment of theirs still waits
+     * (approving that one credits the friend).
+     */
+    public function creditCounterMembership(User $customer, LoyaltyCard $card, User $actor): ?LoyaltyCardRequest
+    {
+        $endorser = $customer->invited_by_id ? $customer->invitedBy : null;
+        if (! $endorser || $endorser->trashed() || $endorser->is($customer)) {
+            return null;
+        }
+        $earlier = LoyaltyCardRequest::withoutGlobalScopes()->where('customer_id', $customer->id)
+            ->whereIn('status', [LoyaltyCardRequestStatus::Approved->value, LoyaltyCardRequestStatus::Pending->value])->exists();
+        if ($earlier) {
+            return null;
+        }
+
+        $request = LoyaltyCardRequest::create([
+            'customer_id' => $customer->id,
+            'endorser_id' => $endorser->id,
+            'loyalty_card_id' => $card->id,
+            'gcash_amount' => $this->cardPrice(),
+            'endorser_cash' => $this->endorserReward(),
+            'payment_method' => LoyaltyCardRequest::METHOD_COUNTER,
+            'reference_number' => 'COUNTER',
+            'status' => LoyaltyCardRequestStatus::Approved,
+            'reviewed_by' => $actor->id,
+            'reviewed_at' => now(),
+            'is_test' => (bool) $customer->is_test,
+        ]);
+        $this->audit->log('loyalty_card_request.counter', $request, null, [
+            'endorser_id' => $endorser->id,
+            'card_number' => LoyaltyNumber::format($card->number),
+            'endorser_cash' => (float) $request->endorser_cash,
+        ]);
+        $this->notifications->loyaltyCardRequestApproved($request->load(['customer', 'endorser', 'loyaltyCard']));
+
+        return $request;
     }
 
     /** The payment could not be verified: the customer sees the reason and can send a new reference number; the card number is freed. */
@@ -299,16 +369,16 @@ class LoyaltyCardRequestService
     private function assertCanRequest(User $customer): void
     {
         if (! $this->isEnabled()) {
-            throw ApiException::conflict('Getting a loyalty card through a friend is not available right now. Please ask at the salon.');
+            throw ApiException::conflict('Becoming a member in the app is not available right now. Please ask at the salon.');
         }
         if ($customer->hasActiveLoyaltyCard()) {
-            throw ApiException::conflict('You already have a loyalty card.');
+            throw ApiException::conflict('You are already a DGS member.');
         }
         if ($customer->hasLoyaltyCard()) {
-            throw ApiException::conflict('Your loyalty card has expired. Please renew it at the salon.');
+            throw ApiException::conflict('Your membership has expired. Please renew it at the salon.');
         }
         if (LoyaltyCardRequest::query()->where('customer_id', $customer->id)->pending()->exists()) {
-            throw ApiException::conflict("Your loyalty card request is already with the salon. We'll let you know once it's approved.");
+            throw ApiException::conflict("Your membership payment is already with the salon. We'll let you know once it's approved.");
         }
     }
 
@@ -322,6 +392,7 @@ class LoyaltyCardRequestService
     {
         $taken = Payment::query()->where('reference_number', $reference)->where('status', '!=', Payment::REJECTED)->exists()
             || LoyaltyCardRequest::withoutGlobalScopes()->where('reference_number', $reference)
+                ->where('payment_method', '!=', LoyaltyCardRequest::METHOD_COUNTER)
                 ->where('status', '!=', LoyaltyCardRequestStatus::Rejected->value)->exists();
 
         if ($taken) {
@@ -360,6 +431,6 @@ class LoyaltyCardRequestService
             }
         }
 
-        throw ApiException::conflict('No loyalty card number is free right now. Please try again.');
+        throw ApiException::conflict('No Member ID is free right now. Please try again.');
     }
 }

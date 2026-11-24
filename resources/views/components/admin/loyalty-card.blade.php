@@ -1,5 +1,5 @@
 {{--
-    The customer's loyalty card drawn like the printed one (and the app's): black with a gold wave, the DGS badge,
+    The customer's DGS Membership drawn as a card (as in the app; there is no printed card): black with a gold wave, the DGS badge,
     CARD NO. and CUSTOMER NAME. Sizes are in container units, so it keeps its proportions at any width.
     An expired card is greyed out under a red EXPIRED stamp until the salon renews it.
 --}}
@@ -9,7 +9,7 @@
     $gradient = 'loyalty-gold-'.\Illuminate\Support\Str::random(6);
 @endphp
 <div {{ $attributes->class(['@container relative aspect-[1.586] w-full max-w-sm overflow-hidden rounded-2xl bg-linear-135 from-card-black-light to-card-black to-65% text-card-text shadow-e2 ring-1 ring-card-gold/40']) }}
-     role="img" aria-label="{{ $formatted ? 'Loyalty card '.$formatted.', '.$name.($expired ? ', expired' : '') : 'No loyalty card linked' }}">
+     role="img" aria-label="{{ $formatted ? 'DGS Membership, Member ID '.$formatted.', '.$name.($expired ? ', expired' : '') : 'Not a member yet' }}">
     <svg class="absolute inset-0 size-full" viewBox="0 0 320 202" preserveAspectRatio="none" aria-hidden="true">
         <defs>
             <linearGradient id="{{ $gradient }}" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="320" y2="74">
@@ -27,14 +27,14 @@
         <p class="truncate text-[length:2.7cqw] tracking-[0.18em] uppercase opacity-70">Style. Beauty. Confidence.</p>
     </div>
     <div class="absolute inset-x-[5.5%] bottom-[7%]">
-        <p class="text-[length:2.8cqw] tracking-[0.12em] uppercase opacity-70">Card no.</p>
+        <p class="text-[length:2.8cqw] tracking-[0.12em] uppercase opacity-70">Member ID</p>
         <p @class(['font-mono text-[length:7.5cqw] leading-tight font-bold tracking-wider text-card-gold-light', 'opacity-50' => ! $formatted])>{{ $formatted ?? 'LC-•••••••' }}</p>
         <div class="mt-[2.5cqw] flex items-end justify-between gap-3">
             <div class="min-w-0">
-                <p class="text-[length:2.8cqw] tracking-[0.12em] uppercase opacity-70">Customer name</p>
+                <p class="text-[length:2.8cqw] tracking-[0.12em] uppercase opacity-70">Member name</p>
                 <p class="truncate text-[length:4.4cqw] leading-snug font-semibold">{{ $name }}</p>
             </div>
-            <p class="shrink-0 text-[length:3.6cqw] leading-snug font-medium tracking-[0.16em] text-card-gold uppercase">Loyalty card</p>
+            <p class="shrink-0 text-[length:3.6cqw] leading-snug font-medium tracking-[0.16em] text-card-gold uppercase">Membership</p>
         </div>
     </div>
     @if ($formatted && $expired)

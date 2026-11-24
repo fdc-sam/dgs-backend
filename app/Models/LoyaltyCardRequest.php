@@ -28,6 +28,9 @@ class LoyaltyCardRequest extends Model
 
     public const METHOD_BANK = 'bank';
 
+    /** Paid at the salon and activated by staff (Customers → Membership, with "Invited by"): no reference number to check. */
+    public const METHOD_COUNTER = 'counter';
+
     protected $attributes = ['status' => 'pending', 'payment_method' => self::METHOD_GCASH, 'endorser_paid_directly' => false];
 
     protected function casts(): array
@@ -71,7 +74,11 @@ class LoyaltyCardRequest extends Model
     /** "GCash" or "bank transfer", as the admin and the notifications say it. */
     public function paymentMethodLabel(): string
     {
-        return $this->payment_method === self::METHOD_BANK ? 'bank transfer' : 'GCash';
+        return match ($this->payment_method) {
+            self::METHOD_BANK => 'bank transfer',
+            self::METHOD_COUNTER => 'cash at the salon',
+            default => 'GCash',
+        };
     }
 
     public function isPending(): bool

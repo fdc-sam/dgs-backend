@@ -7,11 +7,14 @@ use App\Enums\UserStatus;
 use App\Http\Controllers\Controller;
 use App\Models\AppointmentItem;
 use App\Models\LoyaltyCard;
+use App\Models\LoyaltyCardRequest;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\CustomerQrService;
+use App\Services\InviteService;
 use App\Services\LoyaltyCardRequestService;
 use App\Support\CustomerCode;
+use App\Support\Fmt;
 use App\Support\LoyaltyNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -85,7 +88,7 @@ class CustomerController extends Controller
     }
 
     /** Assign an available inventory card, accept an existing printed number, or clear the customer's card. */
-    public function updateLoyaltyCard(Request $request, User $customer, AuditLogger $audit): RedirectResponse
+    public function updateLoyaltyCard(Request $request, User $customer, AuditLogger $audit, InviteService $invites, LoyaltyCardRequestService $requests): RedirectResponse
     {
         abort_unless($customer->isCustomer(), 404);
         $this->authorize('update', $customer);
@@ -93,8 +96,21 @@ class CustomerController extends Controller
         $data = $request->validate([
             'loyalty_card_id' => ['nullable', 'string', 'exists:loyalty_cards,id'],
             'loyalty_number' => $request->filled('loyalty_number') ? LoyaltyNumber::rules($customer) : ['nullable'],
+            'invited_by' => ['nullable', 'string', 'max:64'],
         ], LoyaltyNumber::messages());
 
+        // Who invited them, typed at the counter (invite code or mobile number): that friend earns the reward below.
+        $inviter = null;
+        if (filled($data['invited_by'] ?? null) && $customer->invited_by_id === null) {
+            $inviter = $invites->inviterForStaff($data['invited_by']);
+            if (! $inviter) {
+                throw ValidationException::withMessages(['invited_by' => 'No customer found with that invite code or mobile number.']);
+            }
+            if ($inviter->is($customer)) {
+                throw ValidationException::withMessages(['invited_by' => 'A customer can\'t invite themselves.']);
+            }
+        }
+        $wasMember = $customer->hasLoyaltyCard();
         $old = $this->cardValues($customer);
         $number = DB::transaction(function () use ($customer, $data) {
             $number = $data['loyalty_number'] ?: null;
@@ -102,13 +118,13 @@ class CustomerController extends Controller
             if (! empty($data['loyalty_card_id'])) {
                 $card = LoyaltyCard::query()->whereKey($data['loyalty_card_id'])->lockForUpdate()->firstOrFail();
                 if ($card->customer_id && $card->customer_id !== $customer->id) {
-                    throw ValidationException::withMessages(['loyalty_card_id' => 'That card is already assigned to another customer.']);
+                    throw ValidationException::withMessages(['loyalty_card_id' => 'That Member ID is already used by another customer.']);
                 }
                 $number = $card->number;
             } elseif ($number) {
                 $card = LoyaltyCard::withoutGlobalScopes()->where('number', $number)->lockForUpdate()->first();
                 if ($card && $card->customer_id && $card->customer_id !== $customer->id) {
-                    throw ValidationException::withMessages(['loyalty_number' => 'That card is already assigned to another customer.']);
+                    throw ValidationException::withMessages(['loyalty_number' => 'That Member ID is already used by another customer.']);
                 }
                 $card ??= LoyaltyCard::create(['number' => $number, 'created_by' => auth()->id(), 'is_test' => $customer->is_test]);
             }
@@ -126,10 +142,21 @@ class CustomerController extends Controller
             return $number;
         });
         $audit->log('customer.loyalty_number', $customer, $old, $this->cardValues($customer));
+        if ($inviter) {
+            $invites->attachByStaff($customer, $inviter);
+        }
+
+        // A first membership for someone a friend invited: the friend earns their reward, as with an app payment.
+        $credited = null;
+        if (! $wasMember && $customer->loyalty_number) {
+            $card = LoyaltyCard::withoutGlobalScopes()->where('customer_id', $customer->id)->first();
+            $credited = $card ? $requests->creditCounterMembership($customer->fresh(), $card, $request->user()) : null;
+        }
 
         return back()->with('success', $customer->loyalty_number
-            ? "Loyalty card {$this->cardNumber($customer)} linked to {$customer->name}. It expires on {$this->expiresOn($customer)}."
-            : "Loyalty card removed from {$customer->name}.");
+            ? "{$customer->name} is now a member (Member ID {$this->cardNumber($customer)}) until {$this->expiresOn($customer)}."
+                .($credited ? ' '.LoyaltyCardRequest::shortName($credited->endorser?->name)." earned ".Fmt::peso($credited->endorser_cash)." for inviting them." : '')
+            : "Membership removed from {$customer->name}.");
     }
 
     /** Another year on the customer's card, once it has expired (or in its last weeks; config salon.loyalty). */
@@ -138,10 +165,10 @@ class CustomerController extends Controller
         abort_unless($customer->isCustomer(), 404);
         $this->authorize('update', $customer);
         if (! $customer->hasLoyaltyCard()) {
-            return back()->with('error', "{$customer->name} has no loyalty card to renew.");
+            return back()->with('error', "{$customer->name} has no membership to renew.");
         }
         if (! $customer->loyaltyCardRenewable()) {
-            return back()->with('error', "Loyalty card {$this->cardNumber($customer)} does not expire until {$this->expiresOn($customer)}. "
+            return back()->with('error', "Membership {$this->cardNumber($customer)} does not expire until {$this->expiresOn($customer)}. "
                 .'It can be renewed in its last '.config('salon.loyalty.renewal_window_days').' days or once it has expired.');
         }
 
@@ -149,7 +176,7 @@ class CustomerController extends Controller
         $customer->renewLoyaltyCard();
         $audit->log('customer.loyalty_renewed', $customer, $old, $this->cardValues($customer));
 
-        return back()->with('success', "Loyalty card {$this->cardNumber($customer)} renewed. It now expires on {$this->expiresOn($customer)}.");
+        return back()->with('success', "Membership {$this->cardNumber($customer)} renewed. It now expires on {$this->expiresOn($customer)}.");
     }
 
     private function cardNumber(User $customer): string

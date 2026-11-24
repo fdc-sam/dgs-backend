@@ -59,8 +59,8 @@
             </div>
         </x-admin.card>
 
-        <x-admin.card title="Loyalty card & referrals" id="loyalty"
-                      subtitle="Shown in the app under the customer's loyalty card. The referral rewards also fill in the amount when you complete a referral.">
+        <x-admin.card title="Membership & referrals" id="loyalty"
+                      subtitle="Shown in the app under the customer's membership. The referral rewards also fill in the amount when you complete a referral.">
             @php
                 $rewardRows = collect(old('referral_rewards', $s['referral_rewards'] ?? []))
                     ->map(fn ($row) => ['service' => $row['service'] ?? '', 'amount' => isset($row['amount']) ? (string) (float) $row['amount'] : ''])->values()->all();
@@ -69,10 +69,10 @@
                 <div>
                     {{-- The card's perks in the app, built from each service's loyalty prices; changed on the service itself. --}}
                     <p class="label">Card perks &amp; discounts</p>
-                    <p class="mb-3 text-xs text-on-surface-variant">Listed in the app from each service's loyalty card prices. To change one, open the service (Services → edit → Loyalty card prices).</p>
+                    <p class="mb-3 text-xs text-on-surface-variant">Listed in the app from each service's member prices. To change one, open the service (Services → edit → Member prices).</p>
                     <div class="rounded-xl bg-surface-container px-4 py-3 text-sm">
                         @if (empty($loyaltyServicePrices))
-                            <p class="text-on-surface-variant">None yet. On a service, turn the Loyalty card prices switch on and set a Less discount or tiered prices; it then shows here and in the app.</p>
+                            <p class="text-on-surface-variant">None yet. On a service, turn the Member prices switch on and set a Less discount or tiered prices; it then shows here and in the app.</p>
                         @else
                             {{-- Grouped like the service form's tabs, the same way the app lists them. --}}
                             @foreach (['less' => 'Less (discount)', 'tiered' => 'Tiered member pricing'] as $mode => $modeLabel)
@@ -118,20 +118,20 @@
                 </div>
             </div>
 
-            {{-- Loyalty card through a friend (App\Services\LoyaltyCardRequestService); requests are checked under Loyalty cards → Requests. --}}
+            {{-- Membership through a friend's invite (App\Services\LoyaltyCardRequestService); requests are checked under Membership → Requests. --}}
             <div class="mt-6 border-t border-outline-variant/60 pt-5" x-data="{ on: @js((bool) old('loyalty_endorsement_enabled', $s['loyalty_endorsement_enabled'])) }">
-                <p class="label">Loyalty card through a friend</p>
-                <p class="mb-3 text-xs text-on-surface-variant">A customer scans the QR code of another DGS customer (Profile → My QR), pays the card price to the salon by GCash or bank transfer in the app and types the reference number. You check the payment under
-                    <a href="{{ route('loyalty-cards.requests.index') }}" class="font-semibold underline">Loyalty cards → Requests</a>; once approved the digital card shows in the customer's app and the friend's reward is added to their earnings.</p>
-                <x-admin.checkbox name="loyalty_endorsement_enabled" label="Let customers get a card through a friend in the app" :checked="$s['loyalty_endorsement_enabled']" x-model="on" />
+                <p class="label">Membership in the app (through a friend's invite)</p>
+                <p class="mb-3 text-xs text-on-surface-variant">A customer scans the QR code of another DGS customer (Profile → My QR), pays the membership price to the salon by GCash or bank transfer in the app and types the reference number. You check the payment under
+                    <a href="{{ route('loyalty-cards.requests.index') }}" class="font-semibold underline">Membership → Requests</a>; once approved the membership shows in the customer's app and the friend's reward is added to their Wallet.</p>
+                <x-admin.checkbox name="loyalty_endorsement_enabled" label="Let invited customers pay for membership in the app" :checked="$s['loyalty_endorsement_enabled']" x-model="on" />
                 <div x-show="on" class="mt-3 grid gap-5 sm:grid-cols-2">
                     <x-admin.input name="loyalty_endorsement_card_price" type="number" min="1" max="100000" label="Paid to the salon" prefix="₱" :value="(int) $loyaltyCardPrice" required
-                                   hint="The card price the customer pays by GCash or bank in the app." />
+                                   hint="The membership price the customer pays by GCash or bank in the app." />
                     <x-admin.input name="loyalty_endorsement_endorser_cash" type="number" min="0" max="100000" label="Friend's reward" prefix="₱" :value="$s['loyalty_endorsement_endorser_cash']" required
-                                   hint="Added to the endorsing friend's earnings for each approved card. 0 = no reward." />
+                                   hint="Added to the Wallet of the friend who invited them, for each approved membership. 0 = no reward." />
 
                     <p class="eyebrow -mb-2 border-t border-outline-variant/60 pt-4 sm:col-span-2">Pay by GCash</p>
-                    <x-admin.image-field name="loyalty_endorsement_qr" label="GCash QR for the card (optional)" :current="$loyaltyEndorsementQrUrl" class="sm:col-span-2" />
+                    <x-admin.image-field name="loyalty_endorsement_qr" label="GCash QR for membership (optional)" :current="$loyaltyEndorsementQrUrl" class="sm:col-span-2" />
                     <x-admin.input name="loyalty_endorsement_gcash_account_name" label="GCash account name" :value="$s['loyalty_endorsement_gcash_account_name']" placeholder="e.g. DGS HAIR SALON" maxlength="120" />
                     <x-admin.input name="loyalty_endorsement_gcash_number" label="GCash number" :value="$s['loyalty_endorsement_gcash_number']" placeholder="09XXXXXXXXX" inputmode="tel" />
                     <p class="-mt-3 text-xs text-on-surface-variant sm:col-span-2">Enter the GCash name and number for card payments, or leave them blank to use the salon GCash details above. A card-specific QR can also be uploaded here.</p>

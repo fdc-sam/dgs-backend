@@ -23,7 +23,7 @@
         ],
         'People' => [
             ['customers.index', 'Customers', 'groups', $manager, 'customers.*'],
-            ['loyalty-cards.index', 'Loyalty cards', 'credit_card', $manager, 'loyalty-cards.*'],
+            ['loyalty-cards.index', 'Membership', 'credit_card', $manager, 'loyalty-cards.*'],
             ['staff.index', 'Staff', 'badge', $manager, 'staff.*'],
             ['my-schedule', 'My Schedule', 'schedule', $user->isStaff()],
             ['branches.index', 'Branches', 'storefront', $manager, 'branches.*'],
@@ -87,7 +87,7 @@
                                         <span data-live-badge="cash_outs_to_send" data-live-count @if ($cashOutsToSend <= 0) hidden @endif class="rounded-full bg-gold px-2 py-0.5 text-xs font-semibold text-on-surface" title="Cash-outs to send">{{ $cashOutsToSend > 99 ? '99+' : $cashOutsToSend }}</span>
                                     @endif
                                     @if ($link[0] === 'loyalty-cards.index')
-                                        <span data-live-badge="card_requests_to_verify" data-live-count @if ($cardRequestsToVerify <= 0) hidden @endif class="rounded-full bg-gold px-2 py-0.5 text-xs font-semibold text-on-surface" title="Loyalty card requests to verify">{{ $cardRequestsToVerify > 99 ? '99+' : $cardRequestsToVerify }}</span>
+                                        <span data-live-badge="card_requests_to_verify" data-live-count @if ($cardRequestsToVerify <= 0) hidden @endif class="rounded-full bg-gold px-2 py-0.5 text-xs font-semibold text-on-surface" title="Membership requests to verify">{{ $cardRequestsToVerify > 99 ? '99+' : $cardRequestsToVerify }}</span>
                                     @endif
                                     @if ($link[0] === 'payments.index')
                                         <span data-live-badge="payments_to_verify" data-live-count @if ($paymentsToVerify <= 0) hidden @endif class="rounded-full bg-gold px-2 py-0.5 text-xs font-semibold text-on-surface" title="Payments to verify">{{ $paymentsToVerify > 99 ? '99+' : $paymentsToVerify }}</span>

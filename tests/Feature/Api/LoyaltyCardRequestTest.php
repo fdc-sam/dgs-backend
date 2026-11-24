@@ -86,7 +86,7 @@ class LoyaltyCardRequestTest extends TestCase
         $lookup('hello')->assertUnprocessable()->assertJsonValidationErrors('code');
         $lookup('DGS-AAAA-BBBB-CCCC-DDDD-EEEE')->assertUnprocessable()->assertJsonValidationErrors('code');
         $lookup($customer->qr_code)->assertUnprocessable()
-            ->assertJsonPath('errors.code.0', "This is your own QR code. Scan the QR code of the friend who's endorsing you.");
+            ->assertJsonPath('errors.code.0', "This is your own invite code. Enter the code of the friend who invited you.");
 
         $noCard = $this->customer(['name' => 'Jun Cruz']);
         $lookup($noCard->qr_code)->assertOk()
@@ -110,7 +110,7 @@ class LoyaltyCardRequestTest extends TestCase
 
         // Sent as JSON with no screenshot; an older app's screenshot and "cash given" are ignored.
         $this->submit(['proof' => UploadedFile::fake()->image('receipt.png', 400, 800), 'cash_given' => '1'], asJson: false)->assertCreated()
-            ->assertJsonPath('message', "Request sent! We'll activate your card once we've checked your payment.")
+            ->assertJsonPath('message', "Payment sent! We'll activate your membership once we've checked it.")
             ->assertJsonPath('data.status', 'pending')
             ->assertJsonPath('data.status_label', 'Waiting for approval')
             ->assertJsonPath('data.endorser_name', 'Maria S.')
@@ -125,14 +125,14 @@ class LoyaltyCardRequestTest extends TestCase
         $this->assertNull($request->proof_path);
         $this->assertSame([], Storage::disk('local')->allFiles());
         $this->assertFalse($request->endorser_paid_directly);
-        Notification::assertSentTo($this->admin, BroadcastNotification::class, fn ($n) => $n->title === 'Loyalty card request to verify'
+        Notification::assertSentTo($this->admin, BroadcastNotification::class, fn ($n) => $n->title === 'Membership payment to verify'
             && $n->data['loyalty_card_request_id'] === $request->id);
-        Notification::assertSentTo($this->endorser, BroadcastNotification::class, fn ($n) => $n->title === 'A friend is getting a loyalty card'
+        Notification::assertSentTo($this->endorser, BroadcastNotification::class, fn ($n) => $n->title === 'Your friend is becoming a member'
             && $n->data['screen'] === 'endorsements');
 
         // One at a time, and the card waits for the salon.
         $this->submit(['reference_number' => '9999999999999'])->assertStatus(409)
-            ->assertJsonPath('message', "Your loyalty card request is already with the salon. We'll let you know once it's approved.");
+            ->assertJsonPath('message', "Your membership payment is already with the salon. We'll let you know once it's approved.");
         $this->getJson('/api/v1/loyalty-card-requests')->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.status', 'pending');
         $this->assertNull($customer->fresh()->loyalty_number);
 
@@ -157,12 +157,12 @@ class LoyaltyCardRequestTest extends TestCase
         $active = $this->customer();
         $active->forceFill(['loyalty_number' => '0000200'])->save();
         $this->actingAsCustomer($active);
-        $this->submit()->assertStatus(409)->assertJsonPath('message', 'You already have a loyalty card.');
+        $this->submit()->assertStatus(409)->assertJsonPath('message', 'You are already a DGS member.');
 
         $expired = $this->customer();
         $expired->forceFill(['loyalty_number' => '0000201', 'loyalty_expires_at' => '2026-09-01'])->save();
         $this->actingAsCustomer($expired);
-        $this->submit()->assertStatus(409)->assertJsonPath('message', 'Your loyalty card has expired. Please renew it at the salon.');
+        $this->submit()->assertStatus(409)->assertJsonPath('message', 'Your membership has expired. Please renew it at the salon.');
     }
 
     public function test_approving_links_the_digital_card_for_a_year_and_adds_the_friends_reward_to_their_earnings(): void
@@ -174,12 +174,12 @@ class LoyaltyCardRequestTest extends TestCase
         $this->actingAs($this->admin, 'web');
         $this->get('/loyalty-cards/requests')->assertOk()->assertSee('Ana Reyes')->assertSee('Maria Santos')->assertSee('LC-0000101')->assertSee('1234567890123');
         $this->get("/loyalty-cards/requests/{$request->id}")->assertOk()->assertSee('Approve and activate')->assertSee('LC-0000101')
-            ->assertSee('GCash payment')->assertSee('added to their earnings when you approve');
+            ->assertSee('GCash payment')->assertSee('added to their Wallet when you approve');
         $this->get("/loyalty-cards/requests/{$request->id}/proof")->assertNotFound();
         $this->get('/loyalty-cards')->assertOk()->assertSee('Reserved · request')->assertSee('For Ana Reyes');
 
         $this->post("/loyalty-cards/requests/{$request->id}/approve")->assertRedirect("/loyalty-cards/requests/{$request->id}")
-            ->assertSessionHas('success', "Approved. Loyalty card LC-0000101 is now active in Ana Reyes's app. It expires on Oct 1, 2027.");
+            ->assertSessionHas('success', "Approved. Member ID LC-0000101 is now active in Ana Reyes's app. It expires on Oct 1, 2027.");
 
         $customer->refresh();
         $this->assertSame('0000101', $customer->loyalty_number);
@@ -187,10 +187,10 @@ class LoyaltyCardRequestTest extends TestCase
         $this->assertTrue($customer->hasActiveLoyaltyCard());
         $this->assertSame($customer->id, LoyaltyCard::where('number', '0000101')->value('customer_id'));
         $this->assertSame(LoyaltyCardRequestStatus::Approved, $request->fresh()->status);
-        Notification::assertSentTo($customer, BroadcastNotification::class, fn ($n) => $n->title === 'Your loyalty card is active'
+        Notification::assertSentTo($customer, BroadcastNotification::class, fn ($n) => $n->title === 'Welcome to DGS Membership'
             && str_contains($n->body, 'LC-0000101') && $n->data['screen'] === 'loyalty_card');
         Notification::assertSentTo($this->endorser, BroadcastNotification::class, fn ($n) => $n->title === "You've earned ₱100.00"
-            && str_contains($n->body, 'We added ₱100.00 to your earnings'));
+            && str_contains($n->body, 'We added ₱100.00 to your Wallet'));
 
         // Twice does nothing.
         $this->post("/loyalty-cards/requests/{$request->id}/approve")->assertSessionHasErrors('request');
@@ -222,7 +222,7 @@ class LoyaltyCardRequestTest extends TestCase
         $request->update(['endorser_paid_directly' => true]); // as the migration marks the old ones
 
         $this->actingAs($this->admin, 'web');
-        $this->get("/loyalty-cards/requests/{$request->id}")->assertOk()->assertSee('cash to the endorser');
+        $this->get("/loyalty-cards/requests/{$request->id}")->assertOk()->assertSee('cash to the friend who invited them');
         $this->post("/loyalty-cards/requests/{$request->id}/approve")->assertSessionHasNoErrors();
         Notification::assertSentTo($this->endorser, BroadcastNotification::class, fn ($n) => str_contains($n->body, 'cash from'));
 
@@ -306,7 +306,7 @@ class LoyaltyCardRequestTest extends TestCase
             'cancellation_hours' => 24, 'payment_gcash_number' => '', 'payment_gcash_enabled' => '0',
             'loyalty_endorsement_enabled' => '1', 'loyalty_endorsement_card_price' => 250, 'loyalty_endorsement_endorser_cash' => 50,
         ];
-        $this->get('/settings')->assertOk()->assertSee('Loyalty card through a friend')->assertSee('Paid to the salon')
+        $this->get('/settings')->assertOk()->assertSee('Membership in the app (through a friend\'s invite)', false)->assertSee('Paid to the salon')
             ->assertSee('Bank QR code')->assertDontSee('Paid to the friend in cash');
 
         $this->put('/settings', $base)->assertSessionHasErrors('loyalty_endorsement_qr');

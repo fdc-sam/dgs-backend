@@ -86,4 +86,20 @@ return [
         'validity_months' => (int) env('LOYALTY_VALIDITY_MONTHS', 12),
         'renewal_window_days' => (int) env('LOYALTY_RENEWAL_WINDOW_DAYS', 30),
     ],
+
+    // Invite a friend to DGS Membership (App\Services\InviteService). A customer who signed up without the link can
+    // still type their friend's invite code for claim_days after signing up, before they become a member.
+    'invites' => [
+        'claim_days' => (int) env('INVITE_CLAIM_DAYS', 7),
+    ],
+
+    // The Android app the invite links open (/i/{code}). Its Play Store page gets the invite code as the install
+    // referrer, so a friend who installs the app first still signs up with it. ANDROID_CERT_SHA256 lists the SHA-256
+    // fingerprints of the app's signing certificates (Play Console → App integrity → App signing; add the upload key and
+    // debug key for test builds), comma-separated; they go into /.well-known/assetlinks.json so the links open the app
+    // directly. Without them the link page still opens the app with a tap.
+    'android' => [
+        'package' => env('ANDROID_PACKAGE', 'com.dgs.salon'),
+        'cert_sha256' => array_values(array_filter(array_map('trim', explode(',', (string) env('ANDROID_CERT_SHA256', ''))))),
+    ],
 ];

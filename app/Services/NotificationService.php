@@ -162,13 +162,13 @@ class NotificationService
         $endorser = $request->endorser?->name;
         $method = $request->payment_method === LoyaltyCardRequest::METHOD_BANK ? 'bank' : 'GCash';
         $recipients = User::managers()->where('is_test', $request->is_test)->get();
-        Notification::send($recipients, new BroadcastNotification(NotificationType::LoyaltyCard, 'Loyalty card request to verify',
-            "{$customer} paid {$this->peso($request->gcash_amount)} by {$request->paymentMethodLabel()} (ref {$request->reference_number}) for a loyalty card, endorsed by {$endorser}. Find it in the salon's {$method} history, then approve or reject.",
+        Notification::send($recipients, new BroadcastNotification(NotificationType::LoyaltyCard, 'Membership payment to verify',
+            "{$customer} paid {$this->peso($request->gcash_amount)} by {$request->paymentMethodLabel()} (ref {$request->reference_number}) for DGS Membership, invited by {$endorser}. Find it in the salon's {$method} history, then approve or reject.",
             ['loyalty_card_request_id' => $request->id]));
 
         if ((float) $request->endorser_cash > 0) {
-            $request->endorser?->notify(new BroadcastNotification(NotificationType::LoyaltyCard, 'A friend is getting a loyalty card',
-                "{$customer} asked for a loyalty card through you. Once the salon approves it, {$this->peso($request->endorser_cash)} is added to your earnings.",
+            $request->endorser?->notify(new BroadcastNotification(NotificationType::LoyaltyCard, 'Your friend is becoming a member',
+                "{$customer} paid for DGS Membership through your invite. Once the salon approves it, {$this->peso($request->endorser_cash)} is added to your Wallet.",
                 ['loyalty_card_request_id' => $request->id, 'screen' => 'endorsements']));
         }
     }
@@ -177,15 +177,18 @@ class NotificationService
     {
         $number = LoyaltyNumber::format($request->loyaltyCard?->number);
         $expires = $request->customer?->loyalty_expires_at?->format('M j, Y');
-        $request->customer?->notify(new BroadcastNotification(NotificationType::LoyaltyCard, 'Your loyalty card is active',
-            "Loyalty card {$number} is now in your app (Profile → Loyalty card). It expires on {$expires}. Enjoy your card holder prices!",
-            ['loyalty_card_request_id' => $request->id, 'screen' => 'loyalty_card']));
+        // Activated at the counter: the customer is standing there, so only their friend hears about it.
+        if ($request->payment_method !== LoyaltyCardRequest::METHOD_COUNTER) {
+            $request->customer?->notify(new BroadcastNotification(NotificationType::LoyaltyCard, 'Welcome to DGS Membership',
+                "Your membership is active (Member ID {$number}) until {$expires}. Enjoy member prices on your bookings!",
+                ['loyalty_card_request_id' => $request->id, 'screen' => 'loyalty_card']));
+        }
 
         if ((float) $request->endorser_cash > 0) {
             $customer = $request->customer?->name;
             $body = $request->endorser_paid_directly
-                ? "{$customer}'s loyalty card was approved. Thank you for endorsing DGS! The {$this->peso($request->endorser_cash)} cash from {$customer} is yours."
-                : "{$customer}'s loyalty card was approved. Thank you for endorsing DGS! We added {$this->peso($request->endorser_cash)} to your earnings. You can cash it out to GCash in Profile → Earnings & cash out.";
+                ? "{$customer} is now a DGS member. Thank you for inviting them! The {$this->peso($request->endorser_cash)} cash from {$customer} is yours."
+                : "{$customer} is now a DGS member. Thank you for inviting them! We added {$this->peso($request->endorser_cash)} to your Wallet.";
             $request->endorser?->notify(new BroadcastNotification(NotificationType::LoyaltyCard, "You've earned {$this->peso($request->endorser_cash)}", $body,
                 ['loyalty_card_request_id' => $request->id, 'screen' => 'endorsements']));
         }
@@ -194,8 +197,16 @@ class NotificationService
     public function loyaltyCardRequestRejected(LoyaltyCardRequest $request): void
     {
         $request->customer?->notify(new BroadcastNotification(NotificationType::LoyaltyCard, 'We could not verify your payment',
-            "Your loyalty card request was not approved: {$this->sentence($request->rejection_reason)} You can send a new reference number from Profile → Loyalty card.",
+            "Your membership payment was not approved: {$this->sentence($request->rejection_reason)} You can send a new reference number from Profile → Membership.",
             ['loyalty_card_request_id' => $request->id, 'screen' => 'loyalty_card']));
+    }
+
+    /** Someone signed up with this customer's invite link (or typed their code): they can follow it on the Invites page. */
+    public function friendJoined(User $inviter, User $friend): void
+    {
+        $inviter->notify(new BroadcastNotification(NotificationType::LoyaltyCard, "{$this->firstName($friend->name)} joined DGS",
+            "{$friend->name} signed up with your invite. When they become a member, you earn your reward in your Wallet.",
+            ['screen' => 'endorsements']));
     }
 
     /** A customer asked for their earnings: the admins send it to their GCash. */
@@ -278,6 +289,11 @@ class NotificationService
         $text = trim((string) $text);
 
         return $text === '' || preg_match('/[.!?]$/', $text) ? $text : $text.'.';
+    }
+
+    private function firstName(?string $name): string
+    {
+        return strtok(trim((string) $name), ' ') ?: 'A friend';
     }
 
     private function peso(mixed $amount): string

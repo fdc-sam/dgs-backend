@@ -39,6 +39,7 @@ class AuthService
         });
 
         event(new Registered($user));
+        app(InviteService::class)->attachOnSignup($user, $data['invite_code'] ?? null);
 
         return ['user' => $user->load('customerProfile'), 'token' => $this->issueToken($user, $data['device_name'] ?? null)];
     }

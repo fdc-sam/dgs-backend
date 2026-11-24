@@ -1,6 +1,6 @@
 @php use App\Enums\CashOutStatus; use App\Support\Fmt; @endphp
 <x-admin.layout title="Cash-outs" live="cash_outs">
-    <x-admin.page-header title="Cash-outs" subtitle="Customers asking for their earnings from referrals and card endorsements. Send the amount to the GCash number shown, then enter the GCash reference number. The customer is notified and the amount leaves their balance." />
+    <x-admin.page-header title="Cash-outs" subtitle="Customers asking for their earnings from referrals and invites. Send the amount to the GCash number shown, then enter the GCash reference number. The customer is notified and the amount leaves their balance." />
 
     {{-- The send / reject forms live in dialogs that are closed again after a redirect: show their errors here. --}}
     @foreach (['request', 'reference', 'reason'] as $field)

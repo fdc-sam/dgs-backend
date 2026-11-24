@@ -30,9 +30,10 @@ class ReferralService
     /** The referral is done: the reward is added to the referrer's in-app earnings (they cash it out later, see EarningsService). */
     public function complete(Referral $referral, float $amount, ?string $note = null): Referral
     {
-        if (! $referral->items()->whereNotNull('service_id')->exists()) {
+        // A catalog service or a custom charge: either shows the referred person was served.
+        if (! $referral->items()->exists()) {
             throw ValidationException::withMessages([
-                'services' => 'Add at least one service before completing this referral.',
+                'services' => 'Add at least one service or charge before completing this referral.',
             ]);
         }
 

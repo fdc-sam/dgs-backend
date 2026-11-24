@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\BranchController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\FavoriteController;
 use App\Http\Controllers\Api\V1\EarningsController;
+use App\Http\Controllers\Api\V1\InviteController;
 use App\Http\Controllers\Api\V1\LoyaltyCardRequestController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PromotionController;
@@ -64,6 +65,9 @@ Route::prefix('v1')->name('api.v1.')->middleware('throttle:api')->group(function
     Route::get('reviews', [ReviewController::class, 'index'])->name('reviews.index');
     Route::get('reviews/{review}', [ReviewController::class, 'show'])->name('reviews.show');
 
+    // Whose invite a link carried, for the sign-up screen (no account yet).
+    Route::get('invites/{code}', [InviteController::class, 'lookup'])->middleware('throttle:30,1')->where('code', '[A-Za-z0-9-]{4,64}')->name('invites.lookup');
+
     // DGS Admin mobile app (admins, super admins and staff). Separate from the customer endpoints below.
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('auth/login', [AdminApi\AuthController::class, 'login'])->middleware('throttle:auth')->name('auth.login');
@@ -118,7 +122,11 @@ Route::prefix('v1')->name('api.v1.')->middleware('throttle:api')->group(function
         Route::post('referrals', [ReferralController::class, 'store'])->middleware('throttle:bookings')->name('referrals.store');
         Route::delete('referrals/{referral}', [ReferralController::class, 'destroy'])->name('referrals.destroy');
 
-        // Loyalty card through a friend: scan their QR, pay the salon by GCash or bank; the friend's rewards.
+        // Invite a friend to DGS Membership: the customer's link, friends who joined, a code typed after signing up.
+        Route::get('invites', [InviteController::class, 'show'])->name('invites.show');
+        Route::post('invites/claim', [InviteController::class, 'claim'])->middleware('throttle:30,1')->name('invites.claim');
+
+        // DGS Membership through the friend who invited them (or a typed code / scanned QR): pay the salon by GCash or bank.
         Route::get('loyalty-card-requests', [LoyaltyCardRequestController::class, 'index'])->name('loyalty-card-requests.index');
         Route::get('loyalty-card-requests/endorser', [LoyaltyCardRequestController::class, 'endorser'])->middleware('throttle:30,1')->name('loyalty-card-requests.endorser');
         Route::post('loyalty-card-requests', [LoyaltyCardRequestController::class, 'store'])->middleware('throttle:bookings')->name('loyalty-card-requests.store');

@@ -1,7 +1,7 @@
 @php use App\Enums\LoyaltyCardRequestStatus; use App\Support\Fmt; use App\Support\LoyaltyNumber; @endphp
-<x-admin.layout :title="'Card request · '.$r->customer?->name">
+<x-admin.layout :title="'Membership request · '.$r->customer?->name">
     <x-admin.page-header :title="$r->customer?->name ?? 'Deleted customer'" :back="route('loyalty-cards.requests.index', ['status' => $r->status->value])"
-                         :subtitle="'Asked for a loyalty card through a friend · '.$r->created_at->format('M j, Y g:i A')">
+                         :subtitle="'Asked for membership through a friend\'s invite · '.$r->created_at->format('M j, Y g:i A')">
         <x-slot:actions>
             <x-admin.badge :tone="$r->status->color()">{{ $r->status->label() }}</x-admin.badge>
         </x-slot:actions>
@@ -13,25 +13,25 @@
 
     <div class="grid gap-6 lg:grid-cols-3">
         <div class="space-y-6 lg:col-span-2">
-            <x-admin.card :title="$r->status === LoyaltyCardRequestStatus::Approved ? 'Loyalty card' : 'Card to activate'"
-                          :subtitle="$r->isPending() ? 'This number is set aside for the request. It becomes active in the customer\'s app as soon as you approve, for '.LoyaltyNumber::validity().'.' : null">
+            <x-admin.card :title="$r->status === LoyaltyCardRequestStatus::Approved ? 'Membership' : 'Membership to activate'"
+                          :subtitle="$r->isPending() ? 'This Member ID is set aside for the request. It becomes active in the customer\'s app as soon as you approve, for '.LoyaltyNumber::validity().'.' : null">
                 <div class="flex flex-col gap-5 xl:flex-row xl:items-start">
                     <x-admin.loyalty-card :number="$r->loyaltyCard?->number" :name="$r->customer?->name" class="xl:w-80 xl:shrink-0" />
                     <dl class="grid flex-1 gap-3 text-sm">
-                        <div><dt class="text-on-surface-variant">Card number</dt><dd class="font-mono font-semibold">{{ LoyaltyNumber::format($r->loyaltyCard?->number) ?? 'Picked on approval' }}</dd></div>
+                        <div><dt class="text-on-surface-variant">Member ID</dt><dd class="font-mono font-semibold">{{ LoyaltyNumber::format($r->loyaltyCard?->number) ?? 'Picked on approval' }}</dd></div>
                         @if ($r->status === LoyaltyCardRequestStatus::Approved && $r->customer?->loyalty_expires_at)
                             <div><dt class="text-on-surface-variant">Expires on</dt><dd class="font-medium">{{ $r->customer->loyalty_expires_at->format('M j, Y') }}</dd></div>
                         @endif
                         @if ($r->endorser_paid_directly)
-                            <div><dt class="text-on-surface-variant">Card price</dt><dd class="font-medium">{{ Fmt::peso((float) $r->gcash_amount + (float) $r->endorser_cash) }}
-                                <span class="text-on-surface-variant">= {{ Fmt::peso($r->gcash_amount) }} GCash to the salon + {{ Fmt::peso($r->endorser_cash) }} cash to the endorser</span></dd></div>
+                            <div><dt class="text-on-surface-variant">Membership price</dt><dd class="font-medium">{{ Fmt::peso((float) $r->gcash_amount + (float) $r->endorser_cash) }}
+                                <span class="text-on-surface-variant">= {{ Fmt::peso($r->gcash_amount) }} GCash to the salon + {{ Fmt::peso($r->endorser_cash) }} cash to the friend who invited them</span></dd></div>
                         @else
-                            <div><dt class="text-on-surface-variant">Card price</dt><dd class="font-medium">{{ Fmt::peso($r->gcash_amount) }} <span class="text-on-surface-variant">paid to the salon</span></dd></div>
+                            <div><dt class="text-on-surface-variant">Membership price</dt><dd class="font-medium">{{ Fmt::peso($r->gcash_amount) }} <span class="text-on-surface-variant">paid to the salon</span></dd></div>
                             @if ((float) $r->endorser_cash > 0)
-                                <div><dt class="text-on-surface-variant">Endorser's reward</dt><dd>{{ Fmt::peso($r->endorser_cash) }} <span class="text-on-surface-variant">added to their earnings when you approve</span></dd></div>
+                                <div><dt class="text-on-surface-variant">Friend's reward</dt><dd>{{ Fmt::peso($r->endorser_cash) }} <span class="text-on-surface-variant">added to their Wallet when you approve</span></dd></div>
                             @endif
                         @endif
-                        <div><dt class="text-on-surface-variant">Digital card</dt><dd>Shows in the customer's app (Profile → Loyalty card). No plastic card to hand over.</dd></div>
+                        <div><dt class="text-on-surface-variant">Digital membership</dt><dd>Shows in the customer's app (Profile → Membership). Nothing to hand over.</dd></div>
                     </dl>
                 </div>
             </x-admin.card>
@@ -43,20 +43,20 @@
                         <p class="text-sm text-on-surface-variant">{{ $r->customer->phone ?? '—' }}</p>
                         <p class="text-sm text-on-surface-variant">{{ $r->customer->email }}</p>
                         @if ($r->isPending() && $r->customer->hasLoyaltyCard())
-                            <p class="mt-3 rounded-xl bg-warning-container px-3 py-2 text-xs text-warning">Already has card {{ LoyaltyNumber::format($r->customer->loyalty_number) }}{{ $r->customer->loyaltyCardExpired() ? ' (expired)' : '' }}. Reject this request, or disconnect that card first.</p>
+                            <p class="mt-3 rounded-xl bg-warning-container px-3 py-2 text-xs text-warning">Already a member ({{ LoyaltyNumber::format($r->customer->loyalty_number) }}){{ $r->customer->loyaltyCardExpired() ? ', expired' : '' }}. Reject this request, or remove their membership first.</p>
                         @endif
                     @else
                         <p class="text-sm text-on-surface-variant">This customer deleted their account.</p>
                     @endif
                 </x-admin.card>
-                <x-admin.card title="Endorsed by">
+                <x-admin.card title="Invited by">
                     @if ($r->endorser && ! $r->endorser->trashed())
                         <p class="font-medium"><a href="{{ route('customers.show', $r->endorser) }}" class="text-primary hover:underline">{{ $r->endorser->name }}</a></p>
                         <p class="text-sm text-on-surface-variant">{{ $r->endorser->phone ?? '—' }}</p>
-                        <p class="mt-2 text-sm">Card {{ LoyaltyNumber::format($r->endorser->loyalty_number) ?? '—' }}
+                        <p class="mt-2 text-sm">Member ID {{ LoyaltyNumber::format($r->endorser->loyalty_number) ?? '—' }}
                             @if ($r->endorser->hasLoyaltyCard())<x-admin.badge :tone="$r->endorser->hasActiveLoyaltyCard() ? 'success' : 'warning'">{{ $r->endorser->hasActiveLoyaltyCard() ? 'Active' : 'Expired' }}</x-admin.badge>@endif
                         </p>
-                        <p class="mt-1 text-xs text-on-surface-variant">{{ $endorserStats['approved'] }} {{ \Illuminate\Support\Str::plural('card', $endorserStats['approved']) }} endorsed · {{ Fmt::peso($endorserStats['earned']) }} earned</p>
+                        <p class="mt-1 text-xs text-on-surface-variant">{{ $endorserStats['approved'] }} {{ \Illuminate\Support\Str::plural('invite', $endorserStats['approved']) }} approved · {{ Fmt::peso($endorserStats['earned']) }} earned</p>
                     @else
                         <p class="text-sm text-on-surface-variant">This customer deleted their account.</p>
                     @endif
@@ -65,15 +65,15 @@
         </div>
 
         <div class="space-y-6">
-            @php $bank = $r->payment_method === \App\Models\LoyaltyCardRequest::METHOD_BANK; @endphp
-            <x-admin.card :title="$bank ? 'Bank payment' : 'GCash payment'" id="payment">
+            @php $counter = $r->payment_method === \App\Models\LoyaltyCardRequest::METHOD_COUNTER; $bank = $r->payment_method === \App\Models\LoyaltyCardRequest::METHOD_BANK; @endphp
+            <x-admin.card :title="$counter ? 'Paid at the salon' : ($bank ? 'Bank payment' : 'GCash payment')" id="payment">
                 <dl class="space-y-2 text-sm">
-                    <div class="flex justify-between gap-3"><dt class="text-on-surface-variant">Paid by</dt><dd class="font-semibold">{{ $bank ? 'Bank transfer' : 'GCash' }}</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-on-surface-variant">Paid by</dt><dd class="font-semibold">{{ $counter ? 'Paid at the salon' : ($bank ? 'Bank transfer' : 'GCash') }}</dd></div>
                     <div class="flex justify-between gap-3"><dt class="text-on-surface-variant">Amount to the salon</dt><dd class="font-semibold">{{ Fmt::peso($r->gcash_amount) }}</dd></div>
-                    <div class="flex justify-between gap-3"><dt class="text-on-surface-variant">Ref No.</dt><dd class="font-mono font-semibold">{{ $r->reference_number }}</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-on-surface-variant">Ref No.</dt><dd class="{{ $counter ? 'font-semibold' : 'font-mono font-semibold' }}">{{ $counter ? 'Paid at the salon' : $r->reference_number }}</dd></div>
                     <div class="flex justify-between gap-3"><dt class="text-on-surface-variant">Sent</dt><dd>{{ $r->created_at->format('M j, g:i A') }}</dd></div>
                     @if ($r->endorser_paid_directly)
-                        <div class="flex justify-between gap-3"><dt class="text-on-surface-variant">Cash to endorser</dt><dd>{{ Fmt::peso($r->endorser_cash) }} <span class="text-on-surface-variant">(customer confirmed)</span></dd></div>
+                        <div class="flex justify-between gap-3"><dt class="text-on-surface-variant">Cash to the friend</dt><dd>{{ Fmt::peso($r->endorser_cash) }} <span class="text-on-surface-variant">(customer confirmed)</span></dd></div>
                     @endif
                 </dl>
                 @if ($r->proof_path)
@@ -83,9 +83,11 @@
                 @endif
 
                 @if ($r->isPending())
+                    @unless ($counter)
                     <p class="mt-4 rounded-xl bg-gold-soft px-3 py-2 text-xs">Open the salon's {{ $bank ? 'bank' : 'GCash' }} app and find this Ref No. and amount in the transaction history before approving.</p>
+                    @endunless
                     <form method="POST" action="{{ route('loyalty-cards.requests.approve', $r) }}" class="mt-4"
-                          data-confirm="Approve and activate {{ LoyaltyNumber::format($r->loyaltyCard?->number) ?? 'a loyalty card' }} for {{ $r->customer?->name }}?">
+                          data-confirm="Approve and activate {{ LoyaltyNumber::format($r->loyaltyCard?->number) ?? 'a membership' }} for {{ $r->customer?->name }}?">
                         @csrf
                         <x-admin.button type="submit" icon="check_circle" class="w-full">Approve</x-admin.button>
                     </form>
@@ -101,10 +103,10 @@
     </div>
 
     @if ($r->isPending())
-        <x-admin.modal name="reject-card-request" title="Reject loyalty card request">
+        <x-admin.modal name="reject-card-request" title="Reject membership request">
             <form method="POST" action="{{ route('loyalty-cards.requests.reject', $r) }}" class="space-y-4">
                 @csrf
-                <p class="text-sm text-on-surface-variant">The customer sees this reason in the app and can send a new reference number. The card number goes back to the available cards.</p>
+                <p class="text-sm text-on-surface-variant">The customer sees this reason in the app and can send a new reference number. The Member ID goes back to the available ones.</p>
                 <x-admin.textarea name="reason" id="card_request_reject_reason" label="Reason (shared with the customer)" rows="3" required
                                   placeholder="e.g. We couldn't find this Ref No. in our payment history." />
                 <div class="flex flex-wrap gap-2 text-xs">

@@ -33,15 +33,15 @@ class LoyaltyPricesTest extends TestCase
 
         // Regular price first, then the loyalty prices: a tab each for Less and Tiered (lapsed box first, maintenance second).
         $this->get("/services/{$this->service->id}/edit")->assertOk()
-            ->assertSeeInOrder(['Pricing &amp; timing', 'Loyalty card prices', 'Less (discount)', 'Tiered member pricing',
+            ->assertSeeInOrder(['Pricing &amp; timing', 'Member prices', 'Less (discount)', 'Tiered member pricing',
                 'How Less works', 'name="loyalty_discount"', 'name="loyalty_discount_type"',
                 'How tiered pricing works', 'Lapsed price', 'Maintenance price', 'Enable lapsed price'], false)
             ->assertSee('name="loyalty_pricing" value="less"', false) // a new or untouched service starts on Less
             ->assertSeeInOrder(['name="return_price"', 'name="loyalty_price"'], false)
-            ->assertSee('No visit within the period: card holder who has not had this service within the period below.')
-            ->assertSee('Visited within the period: card holder who had this service within the period below.')
+            ->assertSee('No visit within the period: member who has not had this service within the period below.')
+            ->assertSee('Visited within the period: member who had this service within the period below.')
             ->assertSee('Example: regular ₱1,500, lapsed price ₱1,000, maintenance price ₱500.')
-            ->assertSee('A card holder who had this service in the last 30 days pays ₱500; one who has not pays ₱1,000.');
+            ->assertSee('A member who had this service in the last 30 days pays ₱500; one who has not pays ₱1,000.');
 
         $save = fn (array $prices) => $this->put("/services/{$this->service->id}", $prices + [
             'category_id' => $this->service->category_id, 'name' => $this->service->name, 'regular_price' => 1000,
@@ -76,7 +76,7 @@ class LoyaltyPricesTest extends TestCase
         // A new service starts with the switch off.
         $this->get('/services/create')->assertOk()
             ->assertSee('role="switch"', false)->assertSee('name="loyalty_enabled"', false)->assertSee('loyaltyOn: false', false)
-            ->assertSee('Loyalty card prices are off for this service');
+            ->assertSee('Member prices are off for this service');
 
         // Signs the admin back in each time: loyaltyPriceFor() switches to the customer's app login.
         $editPage = fn () => $this->actingAs($admin, 'web')->get("/services/{$this->service->id}/edit")->assertOk();

@@ -23,7 +23,7 @@
                     <tr role="link" tabindex="0" data-href="{{ route('walk-ins.show', $visit) }}" onclick="window.location.href = this.dataset.href" onkeydown="if (event.key === 'Enter') window.location.href = this.dataset.href" class="cursor-pointer hover:bg-surface-container/60 focus-visible:outline-2 focus-visible:outline-primary">
                         <td>
                             <p class="font-medium">{{ $visit->customer?->name ?? $visit->guest_name ?? 'Walk-in guest' }}</p>
-                            @if ($visit->customer?->loyalty_number)<p class="text-xs text-primary">Member · {{ $visit->customer->hasActiveLoyaltyCard() ? 'active loyalty card' : 'card expired' }}</p>@endif
+                            @if ($visit->customer?->loyalty_number)<p class="text-xs text-primary">Member · {{ $visit->customer->hasActiveLoyaltyCard() ? 'membership active' : 'membership expired' }}</p>@endif
                             <p class="text-xs text-on-surface-variant">{{ $visit->phone ?: 'No phone provided' }}</p>
                         </td>
                         <td class="max-w-64 whitespace-normal break-words">{{ $visit->items->map(fn ($item) => $item->service_name.($item->staff?->user?->name ? ' · '.$item->staff->user->name : ''))->join(', ') }}</td>

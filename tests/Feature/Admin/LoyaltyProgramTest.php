@@ -87,7 +87,7 @@ class LoyaltyProgramTest extends TestCase
     public function test_the_owner_edits_the_referral_rewards_in_settings(): void
     {
         $this->actingAs(User::factory()->superAdmin()->create());
-        $this->get('/settings')->assertOk()->assertSee('Loyalty card &amp; referrals', false)->assertSee('Direct referral rewards');
+        $this->get('/settings')->assertOk()->assertSee('Membership &amp; referrals', false)->assertSee('Direct referral rewards');
 
         $this->saveSettings([
             'referral_rewards' => [
@@ -150,11 +150,11 @@ class LoyaltyProgramTest extends TestCase
         $customer = $this->customer(['name' => 'Ana Reyes']);
         $this->actingAs(User::factory()->admin()->create(), 'web');
 
-        $this->get("/customers/{$customer->id}")->assertOk()->assertSee('No loyalty card linked')->assertSee('LC-•••••••');
+        $this->get("/customers/{$customer->id}")->assertOk()->assertSee('Not a member yet.')->assertSee('LC-•••••••');
 
         $customer->forceFill(['loyalty_number' => '0000353'])->save();
         $this->get("/customers/{$customer->id}")->assertOk()
-            ->assertSee('aria-label="Loyalty card LC-0000353, Ana Reyes"', false)
-            ->assertSee('Customer name')->assertDontSee('No loyalty card linked yet.');
+            ->assertSee('aria-label="DGS Membership, Member ID LC-0000353, Ana Reyes"', false)
+            ->assertSee('Member name')->assertDontSee('Not a member yet.');
     }
 }

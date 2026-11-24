@@ -19,9 +19,13 @@
                        :mobile-order="['Name' => 0, 'Status' => 1, 'Role' => 2, 'Account type' => 3]"
                        :mobile-summary="['Status', 'Role']">
             @foreach ($admins as $admin)
-                <tr>
+                {{-- The whole row opens the account's edit page, like the name link; the Live/Test form keeps its own clicks. --}}
+                <tr role="link" tabindex="0" data-href="{{ route('admin-accounts.edit', $admin) }}"
+                    onclick="if (!event.target.closest('a, button, form')) window.location.href = this.dataset.href"
+                    onkeydown="if (event.key === 'Enter' && event.target === this) window.location.href = this.dataset.href"
+                    class="cursor-pointer hover:bg-surface-container/60 focus-visible:outline-2 focus-visible:outline-primary">
                     <td>
-                        <p class="font-medium">{{ $admin->name }} @if ($admin->is(auth()->user()))<span class="text-xs font-normal text-on-surface-variant">(you)</span>@endif</p>
+                        <p><a href="{{ route('admin-accounts.edit', $admin) }}" class="font-medium text-primary hover:underline">{{ $admin->name }}</a> @if ($admin->is(auth()->user()))<span class="text-xs font-normal text-on-surface-variant">(you)</span>@endif</p>
                         <p class="text-xs text-on-surface-variant">{{ $admin->email }}</p>
                     </td>
                     <td class="whitespace-nowrap">{{ $admin->role->label() }}</td>

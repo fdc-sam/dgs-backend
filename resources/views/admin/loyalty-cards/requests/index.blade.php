@@ -1,14 +1,14 @@
 @php use App\Enums\LoyaltyCardRequestStatus; use App\Support\Fmt; use App\Support\LoyaltyNumber; @endphp
-<x-admin.layout title="Loyalty card requests">
-    <x-admin.page-header title="Loyalty Cards" subtitle="Customers who asked for a card in the app through a friend. Find each payment's reference number in the salon's GCash or bank history, then approve to activate the card in their app." />
+<x-admin.layout title="Membership requests">
+    <x-admin.page-header title="Membership" subtitle="Customers who asked for membership in the app through a friend's invite. Find each payment's reference number in the salon's GCash or bank history, then approve to activate their membership." />
 
     @include('admin.loyalty-cards.partials.tabs')
 
     @unless ($enabled)
         <div class="mb-4 flex items-start gap-3 rounded-card border border-warning/40 bg-warning-container px-4 py-3 text-sm text-warning" role="status">
             <span class="material-symbols-outlined" aria-hidden="true">info</span>
-            <p>Customers can't ask for a card through a friend right now. Turn it on, set the card price and add a GCash or bank QR (or number) in
-                @can('super-admin')<a href="{{ route('settings.edit') }}#loyalty" class="font-semibold underline">Settings → Loyalty card &amp; referrals</a>@else Settings (super admin) @endcan.</p>
+            <p>Invited customers can't pay for membership in the app right now. Turn it on, set the membership price and add a GCash or bank QR (or number) in
+                @can('super-admin')<a href="{{ route('settings.edit') }}#loyalty" class="font-semibold underline">Settings → Membership &amp; referrals</a>@else Settings (super admin) @endcan.</p>
         </div>
     @endunless
 
@@ -23,7 +23,7 @@
 
     <x-admin.filter-bar :action="route('loyalty-cards.requests.index')" :collapse="false" :except="['status']">
         <input type="hidden" name="status" value="{{ $status->value }}">
-        <x-admin.input name="search" label="Search" :value="request('search')" placeholder="Name, phone, Ref No. or card number" class="w-full sm:w-80" />
+        <x-admin.input name="search" label="Search" :value="request('search')" placeholder="Name, phone, Ref No. or Member ID" class="w-full sm:w-80" />
     </x-admin.filter-bar>
 
     <x-admin.card :padding="false">
@@ -31,10 +31,10 @@
             <x-admin.empty-state icon="credit_card" :title="$status === LoyaltyCardRequestStatus::Pending ? 'No requests to check' : 'Nothing here'"
                                  :message="$status === LoyaltyCardRequestStatus::Pending ? 'When a customer scans a friend\'s QR in the app and sends their payment\'s reference number, it shows here.' : null" />
         @else
-            <x-admin.table :headers="['Customer', 'Endorsed by', '>Paid', 'Ref No.', 'Card no.', $status === LoyaltyCardRequestStatus::Pending ? 'Sent' : 'Reviewed', 'Status', '>Actions']"
-                           :mobile-order="['Customer' => 0, 'Paid' => 1, 'Status' => 2, 'Sent' => 3, 'Reviewed' => 3, 'Endorsed by' => 4, 'Ref No.' => 5, 'Card no.' => 6, 'Actions' => 7]"
+            <x-admin.table :headers="['Customer', 'Invited by', '>Paid', 'Ref No.', 'Member ID', $status === LoyaltyCardRequestStatus::Pending ? 'Sent' : 'Reviewed', 'Status', '>Actions']"
+                           :mobile-order="['Customer' => 0, 'Paid' => 1, 'Status' => 2, 'Sent' => 3, 'Reviewed' => 3, 'Invited by' => 4, 'Ref No.' => 5, 'Member ID' => 6, 'Actions' => 7]"
                            :mobile-summary="['Status', $status === LoyaltyCardRequestStatus::Pending ? 'Sent' : 'Reviewed']"
-                           :mobile-labels="['Ref No.' => 'Reference number', 'Card no.' => 'Card number']">
+                           :mobile-labels="['Ref No.' => 'Reference number', 'Member ID' => 'Member ID']">
                 @foreach ($items as $r)
                     <tr>
                         <td>
@@ -49,9 +49,9 @@
                         </td>
                         <td class="whitespace-nowrap text-right">
                             <p class="font-medium">{{ Fmt::peso($r->gcash_amount) }}</p>
-                            <p class="text-xs text-on-surface-variant">{{ $r->payment_method === \App\Models\LoyaltyCardRequest::METHOD_BANK ? 'Bank' : 'GCash' }}</p>
+                            <p class="text-xs text-on-surface-variant">{{ $r->payment_method === \App\Models\LoyaltyCardRequest::METHOD_COUNTER ? 'Paid at the salon' : ($r->payment_method === \App\Models\LoyaltyCardRequest::METHOD_BANK ? 'Bank' : 'GCash') }}</p>
                         </td>
-                        <td class="font-mono text-xs">{{ $r->reference_number }}</td>
+                        <td class="font-mono text-xs">{{ $r->payment_method === \App\Models\LoyaltyCardRequest::METHOD_COUNTER ? 'Paid at the salon' : $r->reference_number }}</td>
                         <td class="whitespace-nowrap font-mono text-xs font-semibold">{{ LoyaltyNumber::format($r->loyaltyCard?->number) ?? '—' }}</td>
                         <td class="whitespace-nowrap">
                             @if ($status === LoyaltyCardRequestStatus::Pending)

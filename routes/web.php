@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin;
 use App\Http\Controllers\Site\AccountDeletionController;
+use App\Http\Controllers\Site\InviteController;
 use App\Http\Controllers\Site\PublicSiteController;
 use Illuminate\Support\Facades\Route;
 
@@ -17,6 +18,10 @@ Route::get('sitemap.xml', [PublicSiteController::class, 'sitemap'])->name('sitem
 Route::get('privacy', [PublicSiteController::class, 'privacy'])->name('privacy');
 Route::get('delete-account', [AccountDeletionController::class, 'create'])->name('account-deletion');
 Route::post('delete-account', [AccountDeletionController::class, 'store'])->middleware('throttle:auth')->name('account-deletion.store');
+
+// Invite links customers share from the app (Invites), and the file that lets Android open them in the app.
+Route::get('i/{code}', [InviteController::class, 'show'])->where('code', '[A-Za-z0-9-]{1,64}')->middleware('throttle:60,1')->name('invite.show');
+Route::get('.well-known/assetlinks.json', [InviteController::class, 'assetLinks'])->name('asset-links');
 
 Route::middleware('guest')->group(function () {
     Route::get('login', [Admin\AuthController::class, 'create'])->name('login');
@@ -147,6 +152,8 @@ Route::middleware(['auth', 'auth.session', 'admin'])->group(function () {
         Route::get('admin-accounts', [Admin\AdminAccountController::class, 'index'])->name('admin-accounts.index');
         Route::get('admin-accounts/create', [Admin\AdminAccountController::class, 'create'])->name('admin-accounts.create');
         Route::post('admin-accounts', [Admin\AdminAccountController::class, 'store'])->name('admin-accounts.store');
+        Route::get('admin-accounts/{user}/edit', [Admin\AdminAccountController::class, 'edit'])->name('admin-accounts.edit');
+        Route::put('admin-accounts/{user}', [Admin\AdminAccountController::class, 'update'])->name('admin-accounts.update');
         Route::put('admin-accounts/{user}/account-type', [Admin\AdminAccountController::class, 'updateAccountType'])->name('admin-accounts.account-type');
     });
 });

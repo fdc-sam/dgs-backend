@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use App\Support\CustomerCode;
+use App\Support\InviteCode;
 use App\Support\TestMode;
 use Database\Factories\UserFactory;
 use DateTimeInterface;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -38,6 +40,8 @@ class User extends Authenticatable
         // Set on new models too, so a just-registered customer's profile can show "no card yet".
         'loyalty_number' => null,
         'loyalty_expires_at' => null,
+        'invited_by_id' => null,
+        'invited_at' => null,
     ];
 
     protected static function booted(): void
@@ -47,6 +51,10 @@ class User extends Authenticatable
         static::creating(function (User $user) {
             if ($user->role === UserRole::Customer && blank($user->qr_code)) {
                 $user->qr_code = static::newUniqueQrCode();
+            }
+            // ...and their invite code, for the link they share with friends (Invites in the app).
+            if ($user->role === UserRole::Customer && blank($user->invite_code)) {
+                $user->invite_code = static::newUniqueInviteCode((string) $user->name);
             }
         });
 
@@ -68,10 +76,20 @@ class User extends Authenticatable
         return $code;
     }
 
+    public static function newUniqueInviteCode(string $name): string
+    {
+        do {
+            $code = InviteCode::generate($name);
+        } while (static::withTrashed()->where('invite_code', $code)->exists());
+
+        return $code;
+    }
+
     protected function casts(): array
     {
         return [
             'email_verified_at' => 'datetime',
+            'invited_at' => 'datetime',
             'password' => 'hashed',
             'role' => UserRole::class,
             'status' => UserStatus::class,
@@ -104,6 +122,18 @@ class User extends Authenticatable
     public function reviews(): HasMany
     {
         return $this->hasMany(Review::class, 'customer_id');
+    }
+
+    /** The friend whose invite link (or code) this customer signed up with; they earn the reward for this customer's membership. */
+    public function invitedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'invited_by_id')->withTrashed();
+    }
+
+    /** Customers who signed up with this customer's invite. */
+    public function invitees(): HasMany
+    {
+        return $this->hasMany(User::class, 'invited_by_id');
     }
 
     /** People this customer referred to the salon. */

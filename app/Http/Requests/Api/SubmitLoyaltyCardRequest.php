@@ -7,7 +7,7 @@ use App\Services\PaymentService;
 use Illuminate\Validation\Rule;
 
 /**
- * A loyalty card through a friend: the friend's QR code, how the card was paid to the salon (GCash or bank) and the
+ * DGS Membership through a friend: the friend's invite code (unless they signed up with the friend's link), how the card was paid to the salon (GCash or bank) and the
  * payment's reference number. Older app versions also send a receipt screenshot and "cash_given"; both are ignored.
  */
 class SubmitLoyaltyCardRequest extends ApiRequest
@@ -26,7 +26,8 @@ class SubmitLoyaltyCardRequest extends ApiRequest
     public function rules(): array
     {
         return [
-            'code' => ['required', 'string', 'max:64'],
+            // Not needed when the customer signed up with a friend's invite link: the request goes through that friend.
+            'code' => ['nullable', 'string', 'max:64'],
             'payment_method' => ['required', Rule::in([LoyaltyCardRequest::METHOD_GCASH, LoyaltyCardRequest::METHOD_BANK])],
             'reference_number' => ['required', 'string', 'regex:/^[A-Z0-9]{6,30}$/'],
         ];
@@ -35,7 +36,6 @@ class SubmitLoyaltyCardRequest extends ApiRequest
     public function messages(): array
     {
         return [
-            'code.required' => "Scan your friend's QR code first.",
             'payment_method.in' => 'Choose GCash or bank transfer.',
             'reference_number.required' => 'Enter the reference number of your payment.',
             'reference_number.regex' => 'Enter the reference number exactly as shown on your receipt (6 to 30 letters or numbers).',

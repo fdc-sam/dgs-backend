@@ -89,10 +89,10 @@
                         <form method="POST" action="{{ route('referrals.status', $referral) }}">@csrf<input type="hidden" name="status" value="in_progress"><x-admin.button type="submit" variant="tonal" icon="autorenew" class="w-full">Mark in progress</x-admin.button></form>
                     @endif
                     @if ($referral->status === ReferralStatus::InProgress)
-                        @if ($referral->items->contains(fn ($item) => $item->service_id !== null))
+                        @if ($referral->items->isNotEmpty())
                             <x-admin.button type="button" icon="task_alt" class="w-full" @click="$dispatch('open-modal', 'referral-complete')">Complete referral</x-admin.button>
                         @else
-                            <p class="rounded-xl bg-warning/10 px-4 py-3 text-sm text-on-surface-variant">Add at least one service before completing this referral.</p>
+                            <p class="rounded-xl bg-warning/10 px-4 py-3 text-sm text-on-surface-variant">Add at least one service or charge before completing this referral.</p>
                         @endif
                     @endif
                     @if (in_array($referral->status, [ReferralStatus::Pending, ReferralStatus::Accepted, ReferralStatus::InProgress], true))

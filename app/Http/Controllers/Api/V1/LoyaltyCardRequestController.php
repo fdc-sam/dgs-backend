@@ -31,7 +31,7 @@ class LoyaltyCardRequestController extends ApiController
     /** Who a scanned code belongs to, before the customer pays: errors say why that friend can't endorse them. */
     public function endorser(Request $request): JsonResponse
     {
-        $data = $request->validate(['code' => ['required', 'string', 'max:64']], ['code.required' => "Scan your friend's QR code first."]);
+        $data = $request->validate(['code' => ['required', 'string', 'max:64']], ['code.required' => "Enter your friend's invite code first."]);
         $endorser = $this->requests->endorserFor($request->user(), $data['code']);
 
         return $this->ok(['endorser' => ['name' => LoyaltyCardRequest::shortName($endorser->name), 'code' => $endorser->qr_code]]);
@@ -39,10 +39,10 @@ class LoyaltyCardRequestController extends ApiController
 
     public function store(SubmitLoyaltyCardRequest $request): JsonResponse
     {
-        $created = $this->requests->submit($request->user(), $request->input('code'), $request->input('payment_method'), $request->input('reference_number'));
+        $created = $this->requests->submit($request->user(), $request->filled('code') ? (string) $request->input('code') : null, $request->input('payment_method'), $request->input('reference_number'));
 
         return $this->created(new LoyaltyCardRequestResource($created->load(['endorser', 'loyaltyCard'])),
-            "Request sent! We'll activate your card once we've checked your payment.");
+            "Payment sent! We'll activate your membership once we've checked it.");
     }
 
     /** The endorser's side: rewards earned from friends' approved cards, what is still waiting, and the full log. */

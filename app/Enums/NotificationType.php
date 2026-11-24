@@ -39,7 +39,7 @@ enum NotificationType: string
             self::PaymentRefunded => 'Payment Refunded',
             self::Promotion => 'Promotion',
             self::Referral => 'Referral',
-            self::LoyaltyCard => 'Loyalty Card',
+            self::LoyaltyCard => 'Membership',
             self::CashOut => 'Cash Out',
             self::General => 'General',
         };

@@ -13,7 +13,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /**
- * Cash-outs: customers asking for their earnings (referral and card endorsement rewards) in GCash. The admin sends the
+ * Cash-outs: customers asking for their earnings (referral and invite rewards) in GCash. The admin sends the
  * money to the GCash number shown, then enters the reference number; the customer is notified and it leaves their balance.
  */
 class CashOutController extends Controller
