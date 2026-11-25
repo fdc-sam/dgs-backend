@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $seo['title'] }}</title>
     <meta name="robots" content="{{ $seo['indexing'] ? 'index, follow, max-image-preview:large' : 'noindex, nofollow' }}">
-    <link rel="canonical" href="{{ url('/') }}">
+    <link rel="canonical" href="{{ $seo['canonical'] ?? url('/') }}">
     @if (filled($s['google_site_verification'] ?? null))
         <meta name="google-site-verification" content="{{ $s['google_site_verification'] }}">
     @endif

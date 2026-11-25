@@ -66,9 +66,10 @@ class InviteController extends Controller
         }
         $price = Fmt::peso($requests->cardPrice());
 
+        // Word for word the app's share message, so the preview reads the same as before.
         return [
-            'shareTitle' => "Join me at {$salon}! Become a member for {$price} and get member prices for a whole year.",
-            'shareDescription' => 'Get the app with my invite and become a member to get member prices on your services for a whole year.'.$codeText,
+            'shareTitle' => "Join me at {$salon}! Get the app with my invite and become a member for {$price} to get member prices for a whole year.",
+            'shareDescription' => $code ? "Invite code {$code}" : "Get the {$salon} app and become a member.",
         ];
     }
 

@@ -56,8 +56,10 @@ class InviteTest extends TestCase
             // In the sharer's words, like the app's old share message; the code is in the description.
             ->assertSee('<meta property="og:title" content="Join me at', false)
             ->assertSee('<title>Join me at', false)
+            // Its own address, not the home page: Facebook keys the preview on it.
+            ->assertSee('<link rel="canonical" href="'.url('/i/'.strtolower($this->maria->invite_code)).'">', false)
             ->assertSee('<meta property="og:image:type" content="image/jpeg">', false)
-            ->assertSee('Invite code '.$this->maria->invite_code.'.', false);
+            ->assertSee('Invite code '.$this->maria->invite_code, false);
 
         $card = $this->get('/i/'.$this->maria->invite_code.'/card.jpg')->assertOk()->assertHeader('Content-Type', 'image/jpeg');
         $this->assertSame([1200, 630, IMAGETYPE_JPEG], array_slice(getimagesizefromstring($card->getContent()), 0, 3));
@@ -66,6 +68,11 @@ class InviteTest extends TestCase
         // Served again from the saved file, the same picture.
         $this->assertSame($card->getContent(), $this->get('/i/'.$this->maria->invite_code.'/card.jpg')->getContent());
         $this->get('/i/NOBODY99/card.png')->assertOk()->assertHeader('Content-Type', 'image/jpeg');
+
+        // Chat apps' preview bots may read the link even while search engines are kept out of the site.
+        $robots = $this->get('/robots.txt')->assertOk()->getContent();
+        $this->assertStringContainsString("User-agent: facebookexternalhit", $robots);
+        $this->assertMatchesRegularExpression('/User-agent: WhatsApp\n(User-agent: .+\n)*Allow: \/\nDisallow: \/api\//', $robots);
 
         $this->get('/i/NOBODY99')->assertOk()->assertSee('Join')->assertDontSee('invited you');
 

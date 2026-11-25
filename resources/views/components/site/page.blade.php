@@ -1,7 +1,7 @@
 {{-- A simple public page (privacy policy, account deletion): site header, one readable column, footer links. --}}
 @props(['s', 'title', 'logoUrl', 'description' => null, 'shareImage' => null, 'shareTitle' => null])
 {{-- shareTitle: what a shared link says in chats; it is the tab title too, since some apps (iPhone Messages) read that. --}}
-@php $seo = ['title' => $shareTitle ?? $title.' · '.$s['salon_name'], 'description' => $description ?? $title.' for the '.$s['salon_name'].' app.', 'indexing' => false, 'image' => $shareImage, 'share_title' => $shareTitle]; @endphp
+@php $seo = ['title' => $shareTitle ?? $title.' · '.$s['salon_name'], 'description' => $description ?? $title.' for the '.$s['salon_name'].' app.', 'indexing' => false, 'image' => $shareImage, 'share_title' => $shareTitle, 'canonical' => url()->current()]; @endphp
 <x-site.layout :s="$s" :seo="$seo">
     <header class="border-b border-outline-variant/60 bg-surface">
         <div class="mx-auto flex h-16 max-w-3xl items-center gap-3 px-4 sm:px-6">

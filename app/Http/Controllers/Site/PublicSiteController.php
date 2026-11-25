@@ -22,6 +22,12 @@ use Illuminate\View\View;
  */
 class PublicSiteController extends Controller
 {
+    /** Link-preview crawlers of chat and social apps, allowed in robots.txt even while the site isn't indexed. */
+    private const LINK_PREVIEW_BOTS = [
+        'facebookexternalhit', 'Facebot', 'WhatsApp', 'TelegramBot', 'Twitterbot', 'Viber',
+        'Slackbot', 'Slackbot-LinkExpanding', 'Discordbot', 'LinkedInBot', 'SkypeUriPreview',
+    ];
+
     private const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
     public function __construct(private readonly SettingsService $settings) {}
@@ -74,6 +80,12 @@ class PublicSiteController extends Controller
         $lines = $this->settings->bool('website_indexing')
             ? ['User-agent: *', 'Allow: /$', 'Disallow: /api/', 'Disallow: /login', 'Disallow: /dashboard', 'Disallow: /storage/', '', 'Sitemap: '.url('/sitemap.xml')]
             : ['User-agent: *', 'Disallow: /'];
+
+        // Chat apps' link-preview bots (Messenger/Facebook, WhatsApp, Telegram, Viber…) obey robots.txt too: without
+        // their own group they get "Disallow: /" and shared invite links (/i/…) show no picture or text. They don't
+        // index anything, so they may read the pages and pictures, just not the API or the admin.
+        $previewBots = array_map(fn (string $bot) => 'User-agent: '.$bot, self::LINK_PREVIEW_BOTS);
+        $lines = [...$previewBots, 'Allow: /', 'Disallow: /api/', 'Disallow: /dashboard', '', ...$lines];
 
         return response(implode("\n", $lines)."\n", 200, ['Content-Type' => 'text/plain; charset=UTF-8']);
     }
