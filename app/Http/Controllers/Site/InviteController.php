@@ -44,6 +44,8 @@ class InviteController extends Controller
             'intentUrl' => $intent,
             'claimDays' => (int) config('salon.invites.claim_days', 7),
             'cardUrl' => route('invite.card', ['code' => $code]),
+            // The address chat apps file the preview under: the shared one, with its preview version.
+            'shareUrl' => InviteService::linkFor($code),
             ...$this->shareText($settings->all()['salon_name'], $requests, $inviter?->invite_code ?? InviteCode::normalize($code)),
         ]);
     }

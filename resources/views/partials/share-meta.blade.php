@@ -12,7 +12,7 @@
 <meta property="og:site_name" content="{{ $salonName }}">
 <meta property="og:title" content="{{ $shareTitle ?? $salonName }}">
 <meta property="og:description" content="{{ $shareDescription }}">
-<meta property="og:url" content="{{ url()->current() }}">
+<meta property="og:url" content="{{ $shareUrl ?? url()->current() }}">
 <meta property="og:image" content="{{ $shareImageUrl }}">
 <meta property="og:image:secure_url" content="{{ $shareImageUrl }}">
 <meta property="og:image:type" content="{{ $shareImageType }}">

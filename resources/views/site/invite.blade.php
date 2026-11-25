@@ -3,7 +3,7 @@
     $title = $inviterName ? "{$inviterName} invited you to {$s['salon_name']}" : "Join {$s['salon_name']}";
     $price = \App\Support\Fmt::peso($cardPrice);
 @endphp
-<x-site.page :s="$s" :title="$title" :logo-url="$logoUrl" :description="$shareDescription" :share-title="$shareTitle" :share-image="$cardUrl">
+<x-site.page :s="$s" :title="$title" :logo-url="$logoUrl" :description="$shareDescription" :share-title="$shareTitle" :share-image="$cardUrl" :canonical="$shareUrl">
     <p class="mt-4 leading-relaxed text-on-surface-variant">
         Book your hair and spa services in the {{ $s['salon_name'] }} app.
         @if ($membershipOffered)

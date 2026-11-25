@@ -26,10 +26,23 @@ class InviteService
         private readonly AuditLogger $audit,
     ) {}
 
+    /**
+     * Bumped whenever what a shared link previews changes (title, picture). Chat apps (Messenger, iPhone Messages…)
+     * keep the first preview they made for an address and never read the page again, so a new version is a new
+     * address for them. The app shares the link the API gives it, so no app update is needed.
+     */
+    public const PREVIEW_VERSION = 2;
+
     /** The link a customer shares, on this server (APP_URL): it opens the app, or the Play Store with the code. */
     public function link(User $customer): string
     {
-        return route('invite.show', ['code' => $customer->invite_code]);
+        return self::linkFor((string) $customer->invite_code);
+    }
+
+    /** /i/MARIA7K2M?v=2: the path carries the code (the app reads it), the version only renews chat previews. */
+    public static function linkFor(string $code): string
+    {
+        return route('invite.show', ['code' => $code, 'v' => self::PREVIEW_VERSION]);
     }
 
     /** An active customer behind an invite code (or, as before, the code in their QR), or null. */

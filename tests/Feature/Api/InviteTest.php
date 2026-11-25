@@ -8,6 +8,7 @@ use App\Models\LoyaltyCardRequest;
 use App\Models\User;
 use App\Notifications\BroadcastNotification;
 use App\Services\EarningsService;
+use App\Services\InviteService;
 use App\Services\SettingsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
@@ -57,7 +58,9 @@ class InviteTest extends TestCase
             ->assertSee('<meta property="og:title" content="Join me at', false)
             ->assertSee('<title>Join me at', false)
             // Its own address, not the home page: Facebook keys the preview on it.
-            ->assertSee('<link rel="canonical" href="'.url('/i/'.strtolower($this->maria->invite_code)).'">', false)
+            // The shared address with its preview version: chat apps file previews under it (renewed on each bump).
+            ->assertSee('<link rel="canonical" href="'.url('/i/'.$this->maria->invite_code).'?v='.InviteService::PREVIEW_VERSION.'">', false)
+            ->assertSee('<meta property="og:url" content="'.url('/i/'.$this->maria->invite_code).'?v='.InviteService::PREVIEW_VERSION.'">', false)
             ->assertSee('<meta property="og:image:type" content="image/jpeg">', false)
             ->assertSee('Invite code '.$this->maria->invite_code, false);
 
@@ -106,7 +109,7 @@ class InviteTest extends TestCase
         $this->actingAsCustomer($this->maria);
         $this->getJson('/api/v1/invites')->assertOk()
             ->assertJsonPath('data.code', $this->maria->invite_code)
-            ->assertJsonPath('data.link', url('/i/'.$this->maria->invite_code))
+            ->assertJsonPath('data.link', url('/i/'.$this->maria->invite_code).'?v='.InviteService::PREVIEW_VERSION)
             ->assertJsonPath('data.reward', 100)
             ->assertJsonPath('data.can_enter_code', true)
             ->assertJsonPath('data.items.0.friend_name', 'Ana Reyes')
