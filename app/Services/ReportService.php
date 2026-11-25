@@ -181,7 +181,8 @@ class ReportService
             $table->all(),
             [
                 'date' => 'Total', 'appointments' => $appointmentCount, 'walk_ins' => $walkInCount, 'referrals' => $referralCount,
-                'before_discounts' => $table->sum('before_discounts'), 'discounts' => $table->sum('discounts'), 'gross' => $gross,
+                'before_discounts' => $table->sum('before_discounts'), 'discounts' => $table->sum('discounts'),
+                'referral_sales' => $table->sum('referral_sales'), 'gross' => $gross,
                 'product_cost' => $table->sum('product_cost'), 'referral_rewards' => $table->sum('referral_rewards'), 'net' => $net,
             ],
             ['type' => 'line', 'money' => true, 'labels' => array_map(fn ($d) => CarbonImmutable::parse($d)->format('M j'), $range->days()), 'series' => [

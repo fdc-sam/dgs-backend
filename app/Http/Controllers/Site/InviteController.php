@@ -4,10 +4,15 @@ namespace App\Http\Controllers\Site;
 
 use App\Http\Controllers\Controller;
 use App\Models\LoyaltyCardRequest;
+use App\Services\InviteCardService;
 use App\Services\InviteService;
 use App\Services\LoyaltyCardRequestService;
 use App\Services\SettingsService;
+use App\Support\Fmt;
+use App\Support\InviteCode;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\View\View;
 
 /**
@@ -38,7 +43,61 @@ class InviteController extends Controller
             'playUrl' => $play,
             'intentUrl' => $intent,
             'claimDays' => (int) config('salon.invites.claim_days', 7),
+            'cardUrl' => route('invite.card', ['code' => $code]),
+            ...$this->shareText($settings->all()['salon_name'], $requests, $inviter?->invite_code ?? InviteCode::normalize($code)),
         ]);
+    }
+
+    /**
+     * What the shared link says in a chat, in the sharer's words like the app's old share message. Messages (iPhone)
+     * shows only the title under the picture, so the offer goes in the title; Messenger and Viber add the description.
+     * The code comes from the link itself, so test accounts' links (unknown to guests) still show it.
+     *
+     * @return array{shareTitle: string, shareDescription: string}
+     */
+    private function shareText(string $salon, LoyaltyCardRequestService $requests, ?string $code): array
+    {
+        $codeText = $code ? " Invite code {$code}." : '';
+        if (! $requests->isEnabled()) {
+            return [
+                'shareTitle' => "Join me at {$salon}!",
+                'shareDescription' => "Get the {$salon} app with my invite and book your hair and spa services.".$codeText,
+            ];
+        }
+        $price = Fmt::peso($requests->cardPrice());
+
+        return [
+            'shareTitle' => "Join me at {$salon}! Become a member for {$price} and get member prices for a whole year.",
+            'shareDescription' => 'Get the app with my invite and become a member to get member prices on your services for a whole year.'.$codeText,
+        ];
+    }
+
+    /**
+     * The invite card picture (/i/{code}/card.jpg) the link shows in chat apps: who invited, the price, the code.
+     * Unknown codes get a generic card, so a mistyped link still previews nicely. Drawn once per inviter, name, price
+     * and design, then served from storage/app/cache, so link previews (which give up on slow pictures) get it at once.
+     */
+    public function card(string $code, Request $request, InviteService $invites, LoyaltyCardRequestService $requests, InviteCardService $cards): Response
+    {
+        $inviter = $invites->inviterFor($code);
+        $name = $inviter ? LoyaltyCardRequest::shortName($inviter->name) : null;
+        $offer = $requests->isEnabled() ? Fmt::peso($requests->cardPrice()).' · member prices on your services for a whole year' : null;
+        $shownCode = $inviter?->invite_code ?? InviteCode::normalize($code);
+        $key = md5(InviteCardService::RENDER_VERSION.'|'.$name.'|'.$shownCode.'|'.$offer.'|'.@filemtime(public_path('images/og-share.png')));
+        $headers = ['Content-Type' => 'image/jpeg', 'Cache-Control' => 'public, max-age=86400', 'ETag' => '"'.$key.'"'];
+        if (trim((string) $request->header('If-None-Match')) === '"'.$key.'"') {
+            return response('', 304, $headers);
+        }
+
+        $file = storage_path('app/cache/invite-cards/'.$key.'.jpg');
+        $jpeg = is_file($file) ? (string) @file_get_contents($file) : '';
+        if ($jpeg === '') {
+            $jpeg = $cards->jpeg($name, $shownCode, $offer);
+            @mkdir(dirname($file), 0775, true);
+            @file_put_contents($file, $jpeg, LOCK_EX);
+        }
+
+        return response($jpeg, 200, $headers);
     }
 
     /** Digital Asset Links: lets Android open /i/… links straight in the app (config salon.android). */

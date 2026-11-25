@@ -50,7 +50,22 @@ class InviteTest extends TestCase
             ->assertSee('intent://', false)
             ->assertSee('package=com.dgs.salon', false)
             ->assertSee('referrer=invite_code%3D'.$this->maria->invite_code, false)
-            ->assertSee($this->maria->invite_code);
+            ->assertSee($this->maria->invite_code)
+            // Chat apps preview the link with Maria's invite card.
+            ->assertSee('<meta property="og:image" content="'.url('/i/'.$this->maria->invite_code.'/card.jpg').'">', false)
+            // In the sharer's words, like the app's old share message; the code is in the description.
+            ->assertSee('<meta property="og:title" content="Join me at', false)
+            ->assertSee('<title>Join me at', false)
+            ->assertSee('<meta property="og:image:type" content="image/jpeg">', false)
+            ->assertSee('Invite code '.$this->maria->invite_code.'.', false);
+
+        $card = $this->get('/i/'.$this->maria->invite_code.'/card.jpg')->assertOk()->assertHeader('Content-Type', 'image/jpeg');
+        $this->assertSame([1200, 630, IMAGETYPE_JPEG], array_slice(getimagesizefromstring($card->getContent()), 0, 3));
+        $this->assertLessThan(250_000, strlen($card->getContent()), 'small enough for iPhone Messages previews');
+        $this->get('/i/'.$this->maria->invite_code.'/card.jpg', ['If-None-Match' => $card->headers->get('ETag')])->assertStatus(304);
+        // Served again from the saved file, the same picture.
+        $this->assertSame($card->getContent(), $this->get('/i/'.$this->maria->invite_code.'/card.jpg')->getContent());
+        $this->get('/i/NOBODY99/card.png')->assertOk()->assertHeader('Content-Type', 'image/jpeg');
 
         $this->get('/i/NOBODY99')->assertOk()->assertSee('Join')->assertDontSee('invited you');
 

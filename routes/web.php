@@ -20,6 +20,9 @@ Route::get('delete-account', [AccountDeletionController::class, 'create'])->name
 Route::post('delete-account', [AccountDeletionController::class, 'store'])->middleware('throttle:auth')->name('account-deletion.store');
 
 // Invite links customers share from the app (Invites), and the file that lets Android open them in the app.
+Route::get('i/{code}/card.jpg', [InviteController::class, 'card'])->where('code', '[A-Za-z0-9-]{1,64}')->middleware('throttle:120,1')->name('invite.card');
+// The first version's address, still in previews chat apps saved.
+Route::get('i/{code}/card.png', [InviteController::class, 'card'])->where('code', '[A-Za-z0-9-]{1,64}')->middleware('throttle:120,1');
 Route::get('i/{code}', [InviteController::class, 'show'])->where('code', '[A-Za-z0-9-]{1,64}')->middleware('throttle:60,1')->name('invite.show');
 Route::get('.well-known/assetlinks.json', [InviteController::class, 'assetLinks'])->name('asset-links');
 

@@ -1,5 +1,5 @@
 @props(['s', 'seo', 'jsonLd' => null])
-@php $salonName = $s['salon_name']; $shareTitle = $seo['title']; $shareDescription = $seo['description']; @endphp
+@php $salonName = $s['salon_name']; $shareTitle = $seo['share_title'] ?? $seo['title']; $shareDescription = $seo['description']; $shareImage = $seo['image'] ?? null; @endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
