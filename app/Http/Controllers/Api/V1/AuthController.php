@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\ChangePasswordRequest;
 use App\Http\Requests\Api\DeleteAccountRequest;
 use App\Http\Requests\Api\ForgotPasswordRequest;
+use App\Http\Requests\Api\GoogleLoginRequest;
 use App\Http\Requests\Api\LoginRequest;
 use App\Http\Requests\Api\RegisterRequest;
 use App\Http\Requests\Api\ResetPasswordRequest;
@@ -36,6 +37,23 @@ class AuthController extends ApiController
         $result = $this->auth->login($request->input('email'), $request->input('password'), $request->input('device_name'));
 
         return $this->ok($this->tokenPayload($result));
+    }
+
+    /**
+     * Sign in with Google. A Google account new to DGS answers {needs_phone: true, name, email} (no token) until the
+     * app sends the customer's mobile number with the same ID token; then the account is created.
+     */
+    public function google(GoogleLoginRequest $request): JsonResponse
+    {
+        $result = $this->auth->loginWithGoogle($request->validated());
+
+        if (isset($result['needs_phone'])) {
+            return $this->ok($result, 'Add your mobile number to finish signing up.');
+        }
+
+        return $result['created']
+            ? $this->created($this->tokenPayload($result), 'Welcome to DGS Hair Salon & Spa!')
+            : $this->ok($this->tokenPayload($result));
     }
 
     public function logout(Request $request): JsonResponse
@@ -88,7 +106,13 @@ class AuthController extends ApiController
     /** Deletes the signed-in customer's account (Google Play requires in-app account deletion). */
     public function deleteAccount(DeleteAccountRequest $request, AccountDeletionService $deletion): JsonResponse
     {
-        $deletion->deleteWithPassword($request->user(), $request->input('password'));
+        $user = $request->user();
+        // A customer who only signed in with Google has no password to type: being signed in is enough.
+        if ($user->password === null) {
+            $deletion->delete($user);
+        } else {
+            $deletion->deleteWithPassword($user, (string) $request->input('password'));
+        }
 
         return $this->ok(null, 'Your account has been deleted.');
     }

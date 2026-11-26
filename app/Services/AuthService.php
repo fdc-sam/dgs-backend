@@ -15,11 +15,15 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class AuthService
 {
-    public function __construct(private readonly FileUploadService $uploads) {}
+    public function __construct(
+        private readonly FileUploadService $uploads,
+        private readonly GoogleIdTokenVerifier $google,
+    ) {}
 
     /** @return array{user: User, token: string} */
     public function register(array $data): array
@@ -60,6 +64,67 @@ class AuthService
         }
 
         return ['user' => $user->load('customerProfile'), 'token' => $this->issueToken($user, $deviceName)];
+    }
+
+    /**
+     * Sign in with Google (customer app). Signs in the customer with that Google account, or with its (Google-verified)
+     * email, linking the two; otherwise creates the customer, which, like the sign-up form, needs a mobile number.
+     *
+     * @param  array{id_token: string, phone?: ?string, device_name?: ?string, invite_code?: ?string}  $data
+     * @return array{user: User, token: string, created: bool}|array{needs_phone: true, name: string, email: string}
+     */
+    public function loginWithGoogle(array $data): array
+    {
+        $claims = $this->google->verify($data['id_token']);
+        if (! $claims) {
+            throw ValidationException::withMessages(['id_token' => 'Google sign-in failed. Please try again.']);
+        }
+        $email = strtolower((string) ($claims['email'] ?? ''));
+        $emailVerified = $email !== '' && filter_var($claims['email_verified'] ?? false, FILTER_VALIDATE_BOOL);
+        if (! $emailVerified) {
+            throw ValidationException::withMessages(['id_token' => 'Your Google account has no verified email address.']);
+        }
+
+        $user = User::where('google_id', $claims['sub'])->first() ?? User::where('email', $email)->first();
+        if ($user) {
+            if ($user->google_id && $user->google_id !== $claims['sub']) {
+                throw ApiException::forbidden('This email is linked to a different Google account. Please sign in with your password.');
+            }
+            if (! $user->isActive()) {
+                throw ApiException::forbidden('Your account is '.$user->status->value.'. Please contact the salon.');
+            }
+            if (! $user->isCustomer()) {
+                throw ApiException::forbidden('This app is for customers. Staff and administrators should use the admin portal.');
+            }
+            $user->forceFill(['google_id' => $claims['sub'], 'email_verified_at' => $user->email_verified_at ?? now()])->save();
+
+            return ['user' => $user->load('customerProfile'), 'token' => $this->issueToken($user, $data['device_name'] ?? null), 'created' => false];
+        }
+
+        $name = trim((string) ($claims['name'] ?? '')) ?: Str::before($email, '@');
+        if (blank($data['phone'] ?? null)) {
+            return ['needs_phone' => true, 'name' => $name, 'email' => $email];
+        }
+
+        $user = DB::transaction(function () use ($data, $claims, $email, $name) {
+            $user = User::create([
+                'name' => Str::limit($name, 120, ''),
+                'email' => $email,
+                'phone' => $data['phone'],
+                'password' => null,
+                'role' => UserRole::Customer,
+                'status' => UserStatus::Active,
+            ]);
+            $user->forceFill(['google_id' => $claims['sub'], 'email_verified_at' => now()])->save();
+            $user->customerProfile()->create([]);
+
+            return $user;
+        });
+
+        event(new Registered($user));
+        app(InviteService::class)->attachOnSignup($user, $data['invite_code'] ?? null);
+
+        return ['user' => $user->load('customerProfile'), 'token' => $this->issueToken($user, $data['device_name'] ?? null), 'created' => true];
     }
 
     /** Sign-in for the admin mobile app: admins, super admins and staff only. @return array{user: User, token: string} */
@@ -117,9 +182,10 @@ class AuthService
     }
 
     /** @param  ?string  $deviceToken  this device's push token, kept so it still gets notifications */
-    public function changePassword(User $user, string $current, string $new, ?string $deviceToken = null): void
+    public function changePassword(User $user, ?string $current, string $new, ?string $deviceToken = null): void
     {
-        if (! Hash::check($current, $user->password)) {
+        // A customer who only signed in with Google has no password yet: they set their first one without a current one.
+        if ($user->password !== null && ! Hash::check((string) $current, $user->password)) {
             throw ValidationException::withMessages(['current_password' => 'Your current password is incorrect.']);
         }
 

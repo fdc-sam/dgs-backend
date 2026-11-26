@@ -42,6 +42,12 @@ return [
         'private_key' => str_replace('\\n', "\n", (string) env('FCM_PRIVATE_KEY', '')),
     ],
 
+    // Sign in with Google (customer app). The OAuth "Web application" client id(s) the app asks Google for an ID token
+    // with (comma-separated). Google sign-in is off when this is empty.
+    'google' => [
+        'client_ids' => env('GOOGLE_CLIENT_IDS'),
+    ],
+
     // Who sends push notifications: "supabase" (Edge Function triggered by new notification rows)
     // or "fcm" (Laravel calls FCM directly — used for local MySQL development).
     'push' => [

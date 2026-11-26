@@ -14,6 +14,7 @@ class UserResource extends JsonResource
     public function toArray(Request $request): array
     {
         $profile = $this->customerProfile;
+        $attributes = $this->resource->getAttributes();
 
         return [
             'id' => $this->id,
@@ -35,6 +36,10 @@ class UserResource extends JsonResource
                 ? ['name' => LoyaltyCardRequest::shortName($inviter->name), 'code' => $inviter->invite_code]
                 : null,
             'email_verified_at' => Fmt::iso($this->email_verified_at),
+            // Sign in with Google: whether this account is linked to a Google account, and whether that is its only way in
+            // (no password yet: change-password then sets the first one without the current one, and delete asks none).
+            'google_linked' => $google = filled($attributes['google_id'] ?? null),
+            'google_only' => $google && array_key_exists('password', $attributes) && $attributes['password'] === null,
             'profile' => $profile ? [
                 'date_of_birth' => $profile->date_of_birth?->toDateString(),
                 'gender' => $profile->gender,
